@@ -75,6 +75,9 @@ struct _PtyxisWindow
   guint                  tab_overview_animating : 1;
   guint                  disposed : 1;
   guint                  single_terminal_mode : 1;
+  guint                  is_maximized : 1;
+  guint                  is_fullscreen : 1;
+  guint                  reset_nonvisible_from_size_allocate : 1;
 };
 
 G_DEFINE_FINAL_TYPE (PtyxisWindow, ptyxis_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -1035,6 +1038,7 @@ ptyxis_window_toplevel_state_changed_cb (PtyxisWindow *self,
 {
   GdkToplevelState state;
   gboolean is_fullscreen;
+  gboolean is_maximized;
 
   g_assert (PTYXIS_IS_WINDOW (self));
   g_assert (GDK_IS_TOPLEVEL (toplevel));
@@ -1042,11 +1046,23 @@ ptyxis_window_toplevel_state_changed_cb (PtyxisWindow *self,
   state = gdk_toplevel_get_state (toplevel);
 
   is_fullscreen = !!(state & GDK_TOPLEVEL_STATE_FULLSCREEN);
+  is_maximized = !!(state & GDK_TOPLEVEL_STATE_MAXIMIZED);
 
   gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.fullscreen", !is_fullscreen);
   gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.unfullscreen", is_fullscreen);
 
   ptyxis_fullscreen_box_set_fullscreen (self->fullscreen_box, is_fullscreen);
+
+  /* Clear cached grid size for non-visible tabs when leaving fullscreen or
+   * maximized state. Otherwise we'll jump back to large grid size which is
+   * not expected from a user-standpoint.
+   */
+  if ((!is_maximized && self->is_maximized) ||
+      (!is_fullscreen && self->is_fullscreen))
+    self->reset_nonvisible_from_size_allocate = TRUE;
+
+  self->is_fullscreen = is_fullscreen;
+  self->is_maximized = is_maximized;
 }
 
 static void
@@ -1511,6 +1527,39 @@ ptyxis_window_my_computer_action (GtkWidget  *widget,
 }
 
 static void
+ptyxis_window_size_allocate (GtkWidget *widget,
+                             int        width,
+                             int        height,
+                             int        baseline)
+{
+  PtyxisWindow *self = (PtyxisWindow *)widget;
+
+  g_assert (PTYXIS_IS_WINDOW (self));
+
+  GTK_WIDGET_CLASS (ptyxis_window_parent_class)->size_allocate (widget, width, height, baseline);
+
+  if (self->reset_nonvisible_from_size_allocate)
+    {
+      g_autoptr(GListModel) pages = ptyxis_window_list_pages (self);
+      guint n_pages = g_list_model_get_n_items (pages);
+
+      for (guint i = 0; i < n_pages; i++)
+        {
+          g_autoptr(AdwTabPage) page = g_list_model_get_item (pages, i);
+          PtyxisTab *tab = PTYXIS_TAB (adw_tab_page_get_child (page));
+          PtyxisTerminal *terminal = ptyxis_tab_get_terminal (tab);
+
+          if (page == adw_tab_view_get_selected_page (self->tab_view))
+            continue;
+
+          ptyxis_terminal_reset_for_size (terminal);
+        }
+
+      self->reset_nonvisible_from_size_allocate = FALSE;
+    }
+}
+
+static void
 ptyxis_window_dispose (GObject *object)
 {
   PtyxisWindow *self = (PtyxisWindow *)object;
@@ -1598,6 +1647,7 @@ ptyxis_window_class_init (PtyxisWindowClass *klass)
   object_class->set_property = ptyxis_window_set_property;
 
   widget_class->realize = ptyxis_window_realize;
+  widget_class->size_allocate = ptyxis_window_size_allocate;
 
   window_class->close_request = ptyxis_window_close_request;
 
