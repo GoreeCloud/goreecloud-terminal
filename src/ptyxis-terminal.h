@@ -40,5 +40,6 @@ char          *ptyxis_terminal_dup_current_directory_uri     (PtyxisTerminal *se
 char          *ptyxis_terminal_dup_current_file_uri          (PtyxisTerminal *self);
 gboolean       ptyxis_terminal_can_paste                     (PtyxisTerminal *self);
 void           ptyxis_terminal_paste                         (PtyxisTerminal *self);
+void           ptyxis_terminal_reset_for_size                (PtyxisTerminal *self);
 
 G_END_DECLS

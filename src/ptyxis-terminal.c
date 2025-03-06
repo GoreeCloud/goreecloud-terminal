@@ -68,6 +68,9 @@ struct _PtyxisTerminal
   guint               size_dismiss_source;
   guint               n_columns;
   guint               n_rows;
+
+  guint               cell_height;
+  guint               cell_width;
 };
 
 enum {
@@ -1074,6 +1077,19 @@ notify_property_changed (PtyxisTerminal *self,
 }
 
 static void
+ptyxis_terminal_char_size_changed (VteTerminal *terminal,
+                                   guint        width,
+                                   guint        height)
+{
+  PtyxisTerminal *self = (PtyxisTerminal *)terminal;
+
+  g_assert (PTYXIS_IS_TERMINAL (self));
+
+  self->cell_width = width;
+  self->cell_height = height;
+}
+
+static void
 ptyxis_terminal_constructed (GObject *object)
 {
   PtyxisTerminal *self = (PtyxisTerminal *)object;
@@ -1186,6 +1202,7 @@ ptyxis_terminal_class_init (PtyxisTerminalClass *klass)
 
   terminal_class->selection_changed = ptyxis_terminal_selection_changed;
   terminal_class->setup_context_menu = ptyxis_terminal_setup_context_menu;
+  terminal_class->char_size_changed = ptyxis_terminal_char_size_changed;
 
   properties[PROP_CURRENT_CONTAINER_NAME] =
     g_param_spec_string ("current-container-name", NULL, NULL,
@@ -1463,4 +1480,26 @@ ptyxis_terminal_paste (PtyxisTerminal *self)
 
   if (vte_terminal_get_scroll_on_keystroke (VTE_TERMINAL (self)))
     ptyxis_terminal_scroll_to_bottom (self);
+}
+
+void
+ptyxis_terminal_reset_for_size (PtyxisTerminal *self)
+{
+  int width;
+  int height;
+  int cols;
+  int rows;
+
+  g_return_if_fail (PTYXIS_IS_TERMINAL (self));
+
+  if (self->cell_width == 0 || self->cell_height == 0)
+    return;
+
+  width = gtk_widget_get_width (GTK_WIDGET (self));
+  height = gtk_widget_get_height (GTK_WIDGET (self));
+
+  cols = width / self->cell_width;
+  rows = height / self->cell_height;
+
+  vte_terminal_set_size (VTE_TERMINAL (self), cols, rows);
 }
