@@ -27,6 +27,8 @@
 #include "ptyxis-application.h"
 #include "ptyxis-util.h"
 
+static gint64 default_rlimit_nofile;
+
 static void
 check_early_opts (int        *argc,
                   char     ***argv,
@@ -112,6 +114,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\
     }
 }
 
+static gint64
+get_current_fd_limit (void)
+{
+  struct rlimit limit;
+
+  if (getrlimit (RLIMIT_NOFILE, &limit) == 0)
+    return limit.rlim_cur;
+
+  return 0;
+}
+
 static void
 bump_to_max_fd_limit (void)
 {
@@ -128,6 +141,12 @@ bump_to_max_fd_limit (void)
         g_debug ("Set RLIMIT_NOFILE to %"G_GSSIZE_FORMAT"",
                  (gssize)limit.rlim_max);
     }
+}
+
+gint64
+ptyxis_application_get_default_rlimit_nofile (void)
+{
+  return default_rlimit_nofile;
 }
 
 int
@@ -151,6 +170,7 @@ main (int   argc,
   if (standalone)
     flags |= G_APPLICATION_NON_UNIQUE;
 
+  default_rlimit_nofile = get_current_fd_limit ();
   bump_to_max_fd_limit ();
 
   gtk_init ();
