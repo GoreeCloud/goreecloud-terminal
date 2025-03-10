@@ -31,6 +31,7 @@
 #include <glib/gstdio.h>
 #include <glib-unix.h>
 
+#include "ptyxis-application.h"
 #include "ptyxis-client.h"
 #include "ptyxis-util.h"
 
@@ -336,6 +337,7 @@ ptyxis_client_new (gboolean   in_sandbox,
   g_autoptr(GSocket) socket = NULL;
   g_auto(GStrv) object_paths = NULL;
   g_autofree char *guid = NULL;
+  gint64 default_rlimit_nofile;
   int pair[2];
   int res;
 
@@ -350,6 +352,8 @@ ptyxis_client_new (gboolean   in_sandbox,
 
   g_ptr_array_add (argv, g_strdup (ptyxis_agent_path));
   g_ptr_array_add (argv, g_strdup ("--socket-fd=3"));
+  if ((default_rlimit_nofile = ptyxis_application_get_default_rlimit_nofile ()) > 0)
+    g_ptr_array_add (argv, g_strdup_printf ("--rlimit-nofile=%"G_GINT64_FORMAT, default_rlimit_nofile));
   g_ptr_array_add (argv, NULL);
 
 #if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
