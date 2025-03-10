@@ -26,6 +26,7 @@
 #ifdef __linux__
 # include <sys/prctl.h>
 #endif
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include "ptyxis-agent-compat.h"
@@ -892,9 +893,29 @@ ptyxis_run_context_callback_layer (PtyxisRunContext       *self,
 }
 
 static void
+set_max_fd_limit (gint64 value)
+{
+  struct rlimit limit;
+
+  if (value <= 0)
+    return;
+
+  if (getrlimit (RLIMIT_NOFILE, &limit) == 0)
+    {
+      limit.rlim_cur = value;
+
+      if (setrlimit (RLIMIT_NOFILE, &limit) != 0)
+        g_warning ("Failed to set FD limit to %"G_GSSIZE_FORMAT"",
+                   (gssize)value);
+    }
+}
+
+static void
 ptyxis_run_context_child_setup_cb (gpointer data)
 {
   gboolean setup_tty = GPOINTER_TO_INT (data);
+
+  set_max_fd_limit (ptyxis_agent_get_default_rlimit_nofile ());
 
   setsid ();
   setpgid (0, 0);

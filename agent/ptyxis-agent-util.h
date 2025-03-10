@@ -27,15 +27,16 @@
 
 G_BEGIN_DECLS
 
-int      ptyxis_agent_pty_new          (GError             **error);
-int      ptyxis_agent_pty_new_producer (int                  consumer_fd,
-                                        GError             **error);
-void     ptyxis_agent_push_spawn       (PtyxisRunContext    *run_context,
-                                        GUnixFDList         *fd_list,
-                                        const char          *cwd,
-                                        const char * const  *argv,
-                                        GVariant            *fds,
-                                        GVariant            *env);
-gboolean ptyxis_agent_is_sandboxed     (void) G_GNUC_CONST;
+int      ptyxis_agent_pty_new                   (GError             **error);
+int      ptyxis_agent_pty_new_producer          (int                  consumer_fd,
+                                                 GError             **error);
+void     ptyxis_agent_push_spawn                (PtyxisRunContext    *run_context,
+                                                 GUnixFDList         *fd_list,
+                                                 const char          *cwd,
+                                                 const char * const  *argv,
+                                                 GVariant            *fds,
+                                                 GVariant            *env);
+gboolean ptyxis_agent_is_sandboxed              (void) G_GNUC_CONST;
+gint64   ptyxis_agent_get_default_rlimit_nofile (void);
 
 G_END_DECLS

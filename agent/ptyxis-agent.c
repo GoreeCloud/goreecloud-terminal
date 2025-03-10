@@ -39,6 +39,9 @@
 #include "ptyxis-podman-provider.h"
 #include "ptyxis-session-container.h"
 #include "ptyxis-toolbox-container.h"
+#include "ptyxis-agent-util.h"
+
+gint64 default_rlimit_nofile = 0;
 
 typedef struct _PtyxisAgent
 {
@@ -172,6 +175,12 @@ ptyxis_agent_destroy (PtyxisAgent *agent)
   g_clear_pointer (&agent->main_loop, g_main_loop_unref);
 }
 
+gint64
+ptyxis_agent_get_default_rlimit_nofile (void)
+{
+  return default_rlimit_nofile;
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -184,6 +193,7 @@ main (int   argc,
 
   const GOptionEntry entries[] = {
     { "socket-fd", 0, 0, G_OPTION_ARG_INT, &socket_fd, "The socketpair to communicate over", "FD" },
+    { "rlimit-nofile", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_INT64, &default_rlimit_nofile },
     { NULL }
   };
 
