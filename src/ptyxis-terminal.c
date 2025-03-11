@@ -921,7 +921,7 @@ ptyxis_terminal_size_allocate (GtkWidget *widget,
   G_GNUC_END_IGNORE_DEPRECATIONS;
 
   gtk_widget_get_preferred_size (GTK_WIDGET (self->size_revealer), &min, NULL);
-  revealer_alloc.x = width + margin.right - min.width;
+  revealer_alloc.x = width - min.width + padding.right;
   revealer_alloc.y = height + padding.bottom + margin.bottom - min.height;
   revealer_alloc.width = min.width;
   revealer_alloc.height = min.height;

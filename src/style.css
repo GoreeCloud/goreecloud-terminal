@@ -13,13 +13,8 @@ scrollbar.overlay-indicator.vertical range.vertical trough slider {
 }
 
 vte-terminal.padded {
-  margin-left: 9px;
-  margin-right: 9px;
-  margin-bottom: 1px;
-  padding-left: 0;
-  padding-right: 0;
-  padding-top: 9px;
-  padding-bottom: 3px;
+  margin-bottom: 0 0 1px 0;
+  padding: 9px 9px 3px 9px;
 }
 
 vte-terminal:drop(active) { border-radius: 0 0 11px 11px; }
