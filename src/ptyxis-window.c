@@ -1069,6 +1069,14 @@ ptyxis_window_toplevel_state_changed_cb (PtyxisWindow *self,
       (!is_fullscreen && self->is_fullscreen))
     self->reset_nonvisible_from_size_allocate = TRUE;
 
+  /* If transitioning to fullscreen, animate in the fullscreen controls which
+   * ensures that they will disappear after timeout.
+   *
+   * See: https://gitlab.gnome.org/chergert/ptyxis/-/issues/376
+   */
+  if (!self->is_fullscreen && is_fullscreen)
+    ptyxis_fullscreen_box_reveal (self->fullscreen_box);
+
   self->is_fullscreen = is_fullscreen;
   self->is_maximized = is_maximized;
 }
