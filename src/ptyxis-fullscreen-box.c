@@ -585,6 +585,15 @@ ptyxis_fullscreen_box_reveal (PtyxisFullscreenBox *self)
 
   show_ui (self);
 
+  /* Make switching tabs work when revealing. There are certainly
+   * better ways to handle this by cleanup in the whole show/hide
+   * semantics here.
+   *
+   * Otherwise, no motion on the pointer will cause us to keep the
+   * topbar displayed when switching tabs.
+   */
+  self->last_y = G_MAXDOUBLE;
+
   g_clear_handle_id (&self->timeout_id, g_source_remove);
   self->forced_reveal_id = g_timeout_add_once (FORCED_REVEAL_DELAY,
                                                (GSourceOnceFunc)clear_forced_timeout,
