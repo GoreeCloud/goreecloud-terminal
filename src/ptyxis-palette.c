@@ -168,7 +168,13 @@ ptyxis_palette_get_all (void)
       GtkFlattenListModel *flatten = gtk_flatten_list_model_new (G_LIST_MODEL (models));
 
       g_list_store_append (models, builtin);
-      g_list_store_append (models, user_palettes);
+
+      /* If for some reason we failed to create our state directory and
+       * failed to create a monitor for it, we could get NULL back for
+       * the user_palettes.
+       */
+      if (user_palettes != NULL)
+        g_list_store_append (models, user_palettes);
 
       for (guint i = 0; resources[i]; i++)
         {
@@ -176,9 +182,10 @@ ptyxis_palette_get_all (void)
           g_autofree char *path = g_strdup_printf ("/org/gnome/Ptyxis/palettes/%s", resources[i]);
           g_autoptr(PtyxisPalette) palette = ptyxis_palette_new_from_resource (path, &error);
 
-          g_assert_no_error (error);
-
-          g_list_store_append (builtin, palette);
+          if (palette == NULL)
+            g_critical ("Bundled palette \"%s\" is invalid: %s", resources[i], error ? error->message : "");
+          else
+            g_list_store_append (builtin, palette);
         }
 
       instance = gtk_sort_list_model_new (G_LIST_MODEL (flatten),
