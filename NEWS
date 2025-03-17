@@ -1,5 +1,5 @@
 # Ptyxis 47.11
-#
+
  * Use runtime version of VTE for $VTE_VERSION environment variable
  * Reset RLIMIT_NOFILE to original value for shells spawned by ptyxis-agent
  * Various fixes to animated fullscreen bar including no mouse movement
