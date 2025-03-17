@@ -13,7 +13,7 @@ scrollbar.overlay-indicator.vertical range.vertical trough slider {
 }
 
 vte-terminal.padded {
-  margin-bottom: 0 0 1px 0;
+  margin: 0 0 1px 0;
   padding: 9px 9px 3px 9px;
 }
 
