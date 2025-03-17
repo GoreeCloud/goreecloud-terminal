@@ -1,3 +1,17 @@
+# Ptyxis 47.11
+#
+ * Use runtime version of VTE for $VTE_VERSION environment variable
+ * Reset RLIMIT_NOFILE to original value for shells spawned by ptyxis-agent
+ * Various fixes to animated fullscreen bar including no mouse movement
+ * Handle errors gracefully if we fail to create a directory or inotify monitor
+ * SIGWINCH child processes when we leave maximize or fullscreen state to
+   improve cell size calculations
+ * Avoid terminal widget snapshots when closing a tab in an effort to avoid
+   OpenGL/Vulkan GPU texture stalls
+ * Lower severity of log message about podman failures
+ * Add a UUID to the systemd unit spawned by Ptyxis
+ * Translation updates
+
 # Ptyxis 47.10
 
  * Fix appinfo for automated CI

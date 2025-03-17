@@ -43,6 +43,22 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="47.11" date="2025-03-17">
+      <description>
+        <p>This release contains various bug fixes and feature improvements.</p>
+        <ul>
+          <li>Use runtime version of VTE for $VTE_VERSION environment variable</li>
+          <li>Reset RLIMIT_NOFILE to original value for shells spawned by ptyxis-agent</li>
+          <li>Various fixes to animated fullscreen bar including when no mouse movement occurs</li>
+          <li>Handle errors gracefully if we fail to create a directory or inotify monitor</li>
+          <li>SIGWINCH child processes when we leave maximize or fullscreen state to improve cell size calculations</li>
+          <li>Avoid terminal widget snapshots when closing a tab in an effort to avoid OpenGL/Vulkan GPU texture stalls</li>
+          <li>Lower severity of log message about podman failures</li>
+          <li>Add a UUID to the systemd unit spawned by Ptyxis</li>
+          <li>Translation updates</li>
+        </ul>
+      </description>
+    </release>
     <release version="47.10" date="2025-02-13"/>
     <release version="47.9" date="2025-02-13">
       <description>
