@@ -100,6 +100,7 @@ enum {
 
 enum {
   BELL,
+  COMMIT,
   N_SIGNALS
 };
 
@@ -931,6 +932,18 @@ ptyxis_tab_root (GtkWidget *widget)
 }
 
 static void
+ptyxis_tab_commit_cb (PtyxisTab      *self,
+                      const char     *str,
+                      guint           length,
+                      PtyxisTerminal *terminal)
+{
+  g_assert (PTYXIS_IS_TAB (self));
+  g_assert (PTYXIS_IS_TERMINAL (terminal));
+
+  g_signal_emit (self, signals[COMMIT], 0, str);
+}
+
+static void
 ptyxis_tab_dispose (GObject *object)
 {
   PtyxisTab *self = (PtyxisTab *)object;
@@ -1165,6 +1178,17 @@ ptyxis_tab_class_init (PtyxisTabClass *klass)
                                 NULL,
                                 G_TYPE_NONE, 0);
 
+  signals[COMMIT] =
+    g_signal_new_class_handler ("commit",
+                                G_TYPE_FROM_CLASS (klass),
+                                G_SIGNAL_RUN_LAST,
+                                NULL,
+                                NULL, NULL,
+                                NULL,
+                                G_TYPE_NONE,
+                                1,
+                                G_TYPE_STRING | G_SIGNAL_TYPE_STATIC_SCOPE);
+
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Ptyxis/ptyxis-tab.ui");
   gtk_widget_class_set_layout_manager_type (widget_class, GTK_TYPE_BIN_LAYOUT);
   gtk_widget_class_set_css_name (widget_class, "ptyxistab");
@@ -1182,6 +1206,7 @@ ptyxis_tab_class_init (PtyxisTabClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, ptyxis_tab_bell_cb);
   gtk_widget_class_bind_template_callback (widget_class, ptyxis_tab_invalidate_icon);
   gtk_widget_class_bind_template_callback (widget_class, ptyxis_tab_match_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, ptyxis_tab_commit_cb);
 
   gtk_widget_class_install_action (widget_class, "tab.respawn", NULL, ptyxis_tab_respawn_action);
   gtk_widget_class_install_action (widget_class, "tab.inspect", NULL, ptyxis_tab_inspect_action);

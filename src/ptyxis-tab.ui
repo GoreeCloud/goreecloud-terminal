@@ -47,6 +47,7 @@
               <object class="PtyxisTerminal" id="terminal">
                 <property name="enable-fallback-scrolling">false</property>
                 <property name="scroll-unit-is-pixels">true</property>
+                <signal name="commit" handler="ptyxis_tab_commit_cb" swapped="1"/>
                 <signal name="notify::palette" handler="ptyxis_tab_notify_palette_cb" swapped="1"/>
                 <signal name="notify::window-title" handler="ptyxis_tab_notify_window_title_cb" swapped="1"/>
                 <signal name="current-file-uri-changed" handler="ptyxis_tab_notify_window_subtitle_cb" swapped="1"/>
