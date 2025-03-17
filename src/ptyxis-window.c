@@ -1034,7 +1034,6 @@ ptyxis_window_toplevel_state_changed_cb (PtyxisWindow *self,
                                          GdkToplevel  *toplevel)
 {
   GdkToplevelState state;
-  gboolean was_fullscreen;
   gboolean is_fullscreen;
 
   g_assert (PTYXIS_IS_WINDOW (self));
@@ -1043,20 +1042,11 @@ ptyxis_window_toplevel_state_changed_cb (PtyxisWindow *self,
   state = gdk_toplevel_get_state (toplevel);
 
   is_fullscreen = !!(state & GDK_TOPLEVEL_STATE_FULLSCREEN);
-  was_fullscreen = ptyxis_fullscreen_box_get_fullscreen (self->fullscreen_box);
 
   gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.fullscreen", !is_fullscreen);
   gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.unfullscreen", is_fullscreen);
 
   ptyxis_fullscreen_box_set_fullscreen (self->fullscreen_box, is_fullscreen);
-
-  /* If transitioning to fullscreen, animate in the fullscreen controls which
-   * ensures that they will disappear after timeout.
-   *
-   * See: https://gitlab.gnome.org/chergert/ptyxis/-/issues/376
-   */
-  if (is_fullscreen && !was_fullscreen)
-    ptyxis_fullscreen_box_reveal (self->fullscreen_box);
 }
 
 static void
