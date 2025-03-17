@@ -787,6 +787,18 @@ ptyxis_window_active_tab_bell_cb (PtyxisWindow *self,
 }
 
 static void
+ptyxis_window_active_tab_commit_cb (PtyxisWindow *self,
+                                    const char   *str,
+                                    PtyxisTab    *tab)
+{
+  g_assert (PTYXIS_IS_WINDOW (self));
+  g_assert (PTYXIS_IS_TAB (tab));
+
+  if (self->is_fullscreen)
+    ptyxis_fullscreen_box_unreveal (self->fullscreen_box);
+}
+
+static void
 ptyxis_window_close_action (GtkWidget  *widget,
                             const char *action_name,
                             GVariant   *param)
@@ -1774,6 +1786,11 @@ ptyxis_window_init (PtyxisWindow *self)
   g_signal_group_connect_object (self->active_tab_signals,
                                  "bell",
                                  G_CALLBACK (ptyxis_window_active_tab_bell_cb),
+                                 self,
+                                 G_CONNECT_SWAPPED);
+  g_signal_group_connect_object (self->active_tab_signals,
+                                 "commit",
+                                 G_CALLBACK (ptyxis_window_active_tab_commit_cb),
                                  self,
                                  G_CONNECT_SWAPPED);
   g_signal_group_connect_object (self->active_tab_signals,
