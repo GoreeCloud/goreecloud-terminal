@@ -43,6 +43,16 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="47.12" date="2025-03-17">
+      <description>
+        <p>This release contains feature improvement backports.</p>
+        <ul>
+          <li>Dismiss fullscreen top bar when user types into terminal</li>
+          <li>Fix dismissal of fullscreen top bar when there is pointer motion</li>
+          <li>Improve ability to select text near edge of window</li>
+        </ul>
+      </description>
+    </release>
     <release version="47.11" date="2025-03-17">
       <description>
         <p>This release contains various bug fixes and feature improvements.</p>

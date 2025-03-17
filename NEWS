@@ -1,3 +1,11 @@
+# Ptyxis 47.12
+
+ * Adds a few missing patches that were missed in 47.11
+ * Fix release of fullscreen controls w/o motion
+ * Use padding instead of margin for CSS so that we get selection
+   controls near the edge of the window
+ * Unreveal fullscreen top bar when user types into terminal
+
 # Ptyxis 47.11
 
  * Use runtime version of VTE for $VTE_VERSION environment variable
