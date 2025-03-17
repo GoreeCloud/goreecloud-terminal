@@ -599,3 +599,15 @@ ptyxis_fullscreen_box_reveal (PtyxisFullscreenBox *self)
                                                (GSourceOnceFunc)clear_forced_timeout,
                                                self);
 }
+
+void
+ptyxis_fullscreen_box_unreveal (PtyxisFullscreenBox *self)
+{
+  g_return_if_fail (PTYXIS_IS_FULLSCREEN_BOX (self));
+
+  if (self->forced_reveal_id)
+    {
+      g_clear_handle_id (&self->forced_reveal_id, g_source_remove);
+      update (self, TRUE);
+    }
+}

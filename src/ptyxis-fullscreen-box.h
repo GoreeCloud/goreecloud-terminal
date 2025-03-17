@@ -43,5 +43,6 @@ void                 ptyxis_fullscreen_box_add_top_bar    (PtyxisFullscreenBox *
 void                 ptyxis_fullscreen_box_add_bottom_bar (PtyxisFullscreenBox *self,
                                                            GtkWidget           *child);
 void                 ptyxis_fullscreen_box_reveal         (PtyxisFullscreenBox *self);
+void                 ptyxis_fullscreen_box_unreveal       (PtyxisFullscreenBox *self);
 
 G_END_DECLS
