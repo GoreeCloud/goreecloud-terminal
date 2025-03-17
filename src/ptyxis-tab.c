@@ -32,9 +32,9 @@
 #include "ptyxis-application.h"
 #include "ptyxis-enums.h"
 #include "ptyxis-inspector.h"
-#include "ptyxis-tab.h"
 #include "ptyxis-tab-monitor.h"
 #include "ptyxis-tab-notify.h"
+#include "ptyxis-tab-private.h"
 #include "ptyxis-terminal.h"
 #include "ptyxis-util.h"
 #include "ptyxis-window.h"
@@ -79,6 +79,7 @@ struct _PtyxisTab
   PtyxisProcessLeaderKind  leader_kind : 3;
   guint                    has_foreground_process : 1;
   guint                    forced_exit : 1;
+  guint                    ignore_snapshot : 1;
 };
 
 enum {
@@ -808,6 +809,9 @@ ptyxis_tab_snapshot (GtkWidget   *widget,
   g_assert (PTYXIS_IS_TAB (self));
   g_assert (GTK_IS_SNAPSHOT (snapshot));
 
+  if (self->ignore_snapshot)
+    return;
+
   window = PTYXIS_WINDOW (gtk_widget_get_root (widget));
   animating = ptyxis_window_is_animating (window);
   width = gtk_widget_get_width (widget);
@@ -911,6 +915,19 @@ ptyxis_tab_match_clicked_cb (PtyxisTab       *self,
     }
 
   return FALSE;
+}
+
+static void
+ptyxis_tab_root (GtkWidget *widget)
+{
+  PtyxisTab *self = PTYXIS_TAB (widget);
+
+  /* Clear our ignore_snapshot bit in case we've had our tab restored
+   * from the parking lot.
+   */
+  self->ignore_snapshot = FALSE;
+
+  GTK_WIDGET_CLASS (ptyxis_tab_parent_class)->root (widget);
 }
 
 static void
@@ -1063,6 +1080,7 @@ ptyxis_tab_class_init (PtyxisTabClass *klass)
   widget_class->map = ptyxis_tab_map;
   widget_class->snapshot = ptyxis_tab_snapshot;
   widget_class->size_allocate = ptyxis_tab_size_allocate;
+  widget_class->root = ptyxis_tab_root;
 
   properties[PROP_COMMAND_LINE] =
     g_param_spec_string ("command-line", NULL, NULL,
@@ -1957,4 +1975,12 @@ ptyxis_tab_query_working_directory_from_agent (PtyxisTab *self)
     return g_steal_pointer (&path);
 
   return NULL;
+}
+
+void
+_ptyxis_tab_ignore_snapshot (PtyxisTab *self)
+{
+  g_return_if_fail (PTYXIS_IS_TAB (self));
+
+  self->ignore_snapshot = TRUE;
 }
