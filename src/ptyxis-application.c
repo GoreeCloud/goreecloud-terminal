@@ -791,6 +791,7 @@ ptyxis_application_startup (GApplication *application)
   g_autoptr(GError) error = NULL;
   AdwStyleManager *style_manager;
   gboolean sandbox_agent;
+  int timeout_msec;
 
   g_assert (PTYXIS_IS_APPLICATION (self));
 
@@ -813,11 +814,14 @@ ptyxis_application_startup (GApplication *application)
 
   G_APPLICATION_CLASS (ptyxis_application_parent_class)->startup (application);
 
-  sandbox_agent = ptyxis_application_should_sandbox_agent (self);
+  if ((sandbox_agent = ptyxis_application_should_sandbox_agent (self)))
+    timeout_msec = G_MAXINT;
+  else
+    timeout_msec = 2000;
 
   /* Try to spawn ptyxis-agent on the host when possible */
   if (!(self->client = ptyxis_client_new (sandbox_agent, &error)) ||
-      !ptyxis_client_ping (self->client, &error))
+      !ptyxis_client_ping (self->client, timeout_msec, &error))
     {
       self->client_is_fallback = TRUE;
 
@@ -833,7 +837,7 @@ ptyxis_application_startup (GApplication *application)
       g_clear_error (&error);
 
       if (!(self->client = ptyxis_client_new (TRUE, &error)) ||
-          !ptyxis_client_ping (self->client, &error))
+          !ptyxis_client_ping (self->client, G_MAXINT, &error))
         g_error ("Failed to spawn ptyxis-agent in sandbox: %s", error->message);
     }
 

@@ -69,6 +69,7 @@ PtyxisIpcContainer *ptyxis_client_discover_current_container (PtyxisClient      
                                                               VtePty               *pty);
 const char         *ptyxis_client_get_os_name                (PtyxisClient         *self);
 gboolean            ptyxis_client_ping                       (PtyxisClient         *self,
+                                                              int                   timeout_msec,
                                                               GError              **error);
 
 G_END_DECLS

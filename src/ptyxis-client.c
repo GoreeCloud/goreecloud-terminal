@@ -976,6 +976,7 @@ ptyxis_client_discover_proxy_environment (PtyxisClient  *self,
 
 gboolean
 ptyxis_client_ping (PtyxisClient  *self,
+                    int            timeout_msec,
                     GError       **error)
 {
   g_autoptr(GVariant) ret = NULL;
@@ -990,7 +991,7 @@ ptyxis_client_ping (PtyxisClient  *self,
                                      NULL,
                                      NULL,
                                      G_DBUS_CALL_FLAGS_NONE,
-                                     1000, /* 1 second */
+                                     timeout_msec,
                                      NULL,
                                      error);
 
