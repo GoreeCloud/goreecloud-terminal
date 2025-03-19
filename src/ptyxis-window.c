@@ -1466,6 +1466,30 @@ ptyxis_window_update_menu_visibility (PtyxisWindow *self)
 }
 
 static void
+notify_decoration_layout_cb (PtyxisWindow *self,
+                             GParamSpec   *pspec,
+                             GtkSettings  *gtk_settings)
+{
+  g_autofree char *layout = NULL;
+  gboolean inverted = FALSE;
+  const char *colon;
+  const char *close_;
+
+  g_assert (PTYXIS_IS_WINDOW (self));
+  g_assert (GTK_IS_SETTINGS (gtk_settings));
+
+  g_object_get (gtk_settings,
+                "gtk-decoration-layout", &layout,
+                NULL);
+
+  if ((colon = strchr (layout, ':')) && (close_ = strstr (layout, "close")))
+    inverted = close_ < colon;
+
+  if (self->tab_bar)
+    adw_tab_bar_set_inverted (self->tab_bar, inverted);
+}
+
+static void
 ptyxis_window_constructed (GObject *object)
 {
   PtyxisWindow *self = (PtyxisWindow *)object;
@@ -1475,6 +1499,7 @@ ptyxis_window_constructed (GObject *object)
   g_autoptr(GMenuModel) profile_menu = NULL;
   g_autoptr(GMenuModel) container_menu = NULL;
   g_autoptr(GMenu) menu = NULL;
+  GtkSettings *gtk_settings;
 
   G_OBJECT_CLASS (ptyxis_window_parent_class)->constructed (object);
 
@@ -1514,6 +1539,14 @@ ptyxis_window_constructed (GObject *object)
                            self,
                            G_CONNECT_SWAPPED);
   ptyxis_window_update_menu_visibility (self);
+
+  gtk_settings = gtk_settings_get_default ();
+  g_signal_connect_object (gtk_settings,
+                           "notify::gtk-decoration-layout",
+                           G_CALLBACK (notify_decoration_layout_cb),
+                           self,
+                           G_CONNECT_SWAPPED);
+  notify_decoration_layout_cb (self, NULL, gtk_settings);
 }
 
 static void
