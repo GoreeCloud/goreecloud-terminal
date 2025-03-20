@@ -586,6 +586,20 @@ ptyxis_preferences_window_drop_palette_cb (PtyxisPreferencesWindow *self,
   return FALSE;
 }
 
+static void
+ptyxis_preferences_window_activate_palette_cb (GtkFlowBoxChild *child,
+                                               PtyxisPalette   *palette)
+{
+  g_autoptr(GVariant) param = NULL;
+
+  g_assert (GTK_IS_FLOW_BOX_CHILD (child));
+  g_assert (PTYXIS_IS_PALETTE (palette));
+
+  param = g_variant_take_ref (g_variant_new_string (ptyxis_palette_get_id (palette)));
+
+  gtk_widget_activate_action_variant (GTK_WIDGET (child), "default-profile.palette", param);
+}
+
 static GtkWidget *
 create_palette_preview (gpointer item,
                         gpointer user_data)
@@ -619,6 +633,11 @@ create_palette_preview (gpointer item,
   child = g_object_new (GTK_TYPE_FLOW_BOX_CHILD,
                         "child", button,
                         NULL);
+  g_signal_connect_object (child,
+                           "activate",
+                           G_CALLBACK (ptyxis_preferences_window_activate_palette_cb),
+                           palette,
+                           0);
 
   /* This is probably pretty slow and terrible to do here, but we need another
    * way to track default-palette of default-profile, both of which could change.
