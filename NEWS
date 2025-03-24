@@ -1,3 +1,13 @@
+# Ptyxis 47.13
+
+ * Wait indefinitely for ptyxis-agent to start up when UI is not
+   sandboxed or agent is running within sandbox. Resolves
+   https://bugzilla.redhat.com/show_bug.cgi?id=2350946
+ * Improve shell detection which in turn fixes various uses of
+   safe-directory-inheritance for new tabs and --directory.
+ * Respect gtk-decoration-layout for tab close buttons
+ * Fix palette selection using keyboard
+
 # Ptyxis 47.12
 
  * Adds a few missing patches that were missed in 47.11

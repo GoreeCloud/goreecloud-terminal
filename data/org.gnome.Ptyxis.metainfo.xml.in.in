@@ -43,6 +43,17 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="47.13" date="2025-03-24">
+      <description>
+        <p>This release contains bug fixes.</p>
+        <ul>
+          <li>Fix timeout when waiting for ptyxis-agent to start</li>
+          <li>Improve shell detection which in turn improves safe-directory-inheritance for new tabs and --directory command line argument</li>
+          <li>Respect gtk-decoration-layout</li>
+          <li>Fix palette selection using keyboard</li>
+        </ul>
+      </description>
+    </release>
     <release version="47.12" date="2025-03-17">
       <description>
         <p>This release contains feature improvement backports.</p>
