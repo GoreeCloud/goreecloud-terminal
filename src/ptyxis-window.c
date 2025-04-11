@@ -78,6 +78,7 @@ struct _PtyxisWindow
   guint                  single_terminal_mode : 1;
   guint                  is_maximized : 1;
   guint                  is_fullscreen : 1;
+  guint                  in_close_request : 1;
   guint                  reset_nonvisible_from_size_allocate : 1;
 };
 
@@ -373,7 +374,8 @@ update_visible_and_maybe_close (PtyxisWindow *self)
 
   if (n_pages == 0 && !adw_tab_view_get_is_transferring_page (self->tab_view))
     {
-      ptyxis_application_save_session (PTYXIS_APPLICATION_DEFAULT);
+      if (!self->in_close_request)
+        ptyxis_application_save_session (PTYXIS_APPLICATION_DEFAULT);
       gtk_window_destroy (GTK_WINDOW (self));
       return;
     }
@@ -1242,10 +1244,10 @@ ptyxis_window_close_request_cb (GObject      *object,
   g_assert (G_IS_ASYNC_RESULT (result));
   g_assert (PTYXIS_IS_WINDOW (self));
 
-  if (!_ptyxis_close_dialog_run_finish (result, &error))
-    return;
+  if (_ptyxis_close_dialog_run_finish (result, &error))
+    gtk_window_destroy (GTK_WINDOW (self));
 
-  gtk_window_destroy (GTK_WINDOW (self));
+  self->in_close_request = FALSE;
 }
 
 static gboolean
@@ -1287,6 +1289,8 @@ ptyxis_window_close_request (GtkWindow *window)
   tabs = g_ptr_array_new_with_free_func (g_object_unref);
   n_pages = adw_tab_view_get_n_pages (self->tab_view);
 
+  self->in_close_request = TRUE;
+
   for (guint i = n_pages; i > 0; i--)
     {
       AdwTabPage *page = adw_tab_view_get_nth_page (self->tab_view, i - 1);
@@ -1298,16 +1302,16 @@ ptyxis_window_close_request (GtkWindow *window)
         adw_tab_view_close_page (self->tab_view, page);
     }
 
-  if (tabs->len == 0)
-    return GDK_EVENT_PROPAGATE;
+  if (tabs->len > 0)
+    _ptyxis_close_dialog_run_async (GTK_WINDOW (self),
+                                    tabs,
+                                    NULL,
+                                    ptyxis_window_close_request_cb,
+                                    g_object_ref (self));
+  else
+    self->in_close_request = FALSE;
 
-  _ptyxis_close_dialog_run_async (GTK_WINDOW (self),
-                                  tabs,
-                                  NULL,
-                                  ptyxis_window_close_request_cb,
-                                  g_object_ref (self));
-
-  return GDK_EVENT_STOP;
+  return tabs->len > 0;
 }
 
 static void
