@@ -1,3 +1,7 @@
+# Ptyxis 48.3
+
+ * New build to work around GNOME CI infrastructure issue
+
 # Ptyxis 48.2
 
  * Fix palette selection via keyboard
