@@ -43,6 +43,16 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="48.2" date="2025-05-07">
+      <description>
+        <ul>
+          <li>Fix session saving during application shutdown</li>
+          <li>Fix palette selection via keyboard</li>
+          <li>Make backgrounds opaque in fullscreen mode to match Wayland protocol requirements</li>
+          <li>Translation updates</li>
+        </ul>
+      </description>
+    </release>
     <release version="48.1" date="2025-03-19">
       <description>
         <ul>

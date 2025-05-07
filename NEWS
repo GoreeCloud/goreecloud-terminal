@@ -1,3 +1,12 @@
+# Ptyxis 48.2
+
+ * Fix palette selection via keyboard
+ * Avoid saving sessions twice during shutdown which fixes an issue where session
+   state was getting cleared after destruction of tabs.
+ * Make background opaque in fullscreen as Wayland forbids compositors from
+   allowing contents to bleed through fullscreen surfaces anyway.
+ * Translation updates
+
 # Ptyxis 48.1
 
  * Unreveal fullscreen topbar upon user input into terminal
