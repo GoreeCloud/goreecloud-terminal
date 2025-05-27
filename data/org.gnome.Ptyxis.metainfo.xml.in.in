@@ -43,6 +43,17 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="48.4" date="2025-05-27">
+      <description>
+        <p>This is a bug fix release.</p>
+        <ul>
+          <li>Fix incorrect use of mnemonics in the new-terminal menu</li>
+          <li>Don't add additional tabs with --new-window when restoring session</li>
+          <li>Fix session restore directory URI for tabs which have never been visited</li>
+        </ul>
+      </description>
+    </release>
+    <release version="48.3" date="2025-05-07"/>
     <release version="48.2" date="2025-05-07">
       <description>
         <ul>

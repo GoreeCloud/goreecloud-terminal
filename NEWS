@@ -1,3 +1,9 @@
+# Ptyxis 48.4
+
+ * Fix incorrect use of mnemonics in the new-terminal menu
+ * Don't add additional tabs with --new-window when restoring session
+ * Fix session restore directory URI for tabs which have never been visited
+
 # Ptyxis 48.3
 
  * New build to work around GNOME CI infrastructure issue
