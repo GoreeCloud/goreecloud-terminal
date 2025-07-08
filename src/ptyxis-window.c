@@ -69,6 +69,7 @@ struct _PtyxisWindow
   GSignalGroup          *selected_page_signals;
   PtyxisWindowDressing  *dressing;
   GtkBox                *visual_bell;
+  GPropertyAction       *interface_style_action;
 
   guint                  visual_bell_source;
   guint                  focus_active_tab_source;
@@ -1453,8 +1454,8 @@ ptyxis_window_add_theme_controls (PtyxisWindow *self)
   g_assert (PTYXIS_IS_WINDOW (self));
 
   settings = ptyxis_application_get_settings (PTYXIS_APPLICATION_DEFAULT);
-  interface_style = g_property_action_new ("interface-style", settings, "interface-style");
-  g_action_map_add_action (G_ACTION_MAP (self), G_ACTION (interface_style));
+  self->interface_style_action = g_property_action_new ("interface-style", settings, "interface-style");
+  g_action_map_add_action (G_ACTION_MAP (self), G_ACTION (self->interface_style_action));
 
   popover = gtk_menu_button_get_popover (self->primary_menu_button);
   selector = g_object_new (PTYXIS_TYPE_THEME_SELECTOR,
@@ -1655,6 +1656,7 @@ ptyxis_window_dispose (GObject *object)
   g_signal_group_set_target (self->selected_page_signals, NULL);
   g_clear_handle_id (&self->focus_active_tab_source, g_source_remove);
   g_clear_object (&self->parking_lot);
+  g_clear_object (&self->interface_style_action);
 
   G_OBJECT_CLASS (ptyxis_window_parent_class)->dispose (object);
 }
