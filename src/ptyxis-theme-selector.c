@@ -226,10 +226,8 @@ ptyxis_theme_selector_set_action_name (PtyxisThemeSelector *self,
 {
   g_return_if_fail (PTYXIS_IS_THEME_SELECTOR (self));
 
-  if (g_strcmp0 (action_name, self->action_name) != 0)
+  if (g_set_str (&self->action_name, action_name))
     {
-      g_free (self->action_name);
-      self->action_name = g_strdup (action_name);
       gtk_actionable_set_action_name (GTK_ACTIONABLE (self->dark), action_name);
       gtk_actionable_set_action_name (GTK_ACTIONABLE (self->light), action_name);
       gtk_actionable_set_action_name (GTK_ACTIONABLE (self->follow), action_name);
