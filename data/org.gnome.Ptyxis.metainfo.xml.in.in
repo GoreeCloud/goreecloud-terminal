@@ -43,6 +43,15 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="48.5" date="2025-07-07">
+      <description>
+        <p>This is a bug fix release.</p>
+        <ul>
+          <li>Improve restoring of session state</li>
+          <li>Fix a potential crash when changing interface styling</li>
+        </ul>
+      </description>
+    </release>
     <release version="48.4" date="2025-05-27">
       <description>
         <p>This is a bug fix release.</p>

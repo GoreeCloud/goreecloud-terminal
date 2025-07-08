@@ -1,3 +1,12 @@
+# Ptyxis 48.5
+
+ * Check for X_OK before potential chdir()
+ * restore initial title when tab has not been visited
+ * re-use existing new-tab option from overview so consistent
+   styling/container/directory is applied
+ * remove interface-style action when disposing window to workaround
+   a crash in action muxing inside GTK
+
 # Ptyxis 48.4
 
  * Fix incorrect use of mnemonics in the new-terminal menu
