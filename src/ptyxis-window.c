@@ -396,6 +396,11 @@ update_visible_and_maybe_close (PtyxisWindow *self)
     {
       gtk_widget_set_visible (GTK_WIDGET (self->tab_bar), visible);
       gtk_window_set_default_size (GTK_WINDOW (self), -1, -1);
+
+      if (visible)
+        gtk_widget_add_css_class (GTK_WIDGET (self), "has-tab-bar");
+      else
+        gtk_widget_remove_css_class (GTK_WIDGET (self), "has-tab-bar");
     }
 }
 

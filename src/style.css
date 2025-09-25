@@ -168,6 +168,10 @@ fullscreenbox > toolbarview > revealer.top-bar > windowhandle > box {
   padding-bottom: 0;
 }
 .visual-bell-area {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+window.has-tab-bar .visual-bell-area {
   padding-top: 3px;
   padding-bottom: 3px;
 }
