@@ -1,3 +1,11 @@
+# Ptyxis 49.1
+
+ * Check for --working-directory when applying --new-window option
+   when there is a session to restore
+ * Fix overly large headerbar due to CSS for visual bell
+ * Use `desktop-application` for metainfo component type
+ * Translation updates
+
 # Ptyxis 49.0
 
  * Fix padding around visual-bell when tabs are visible
