@@ -20,14 +20,77 @@
 
 #include "config.h"
 
+#include <json-glib/json-glib.h>
+
 #include "ptyxis-distrobox-container.h"
 
 struct _PtyxisDistroboxContainer
 {
   PtyxisPodmanContainer parent_instance;
+  gboolean has_init_flag;
 };
 
 G_DEFINE_TYPE (PtyxisDistroboxContainer, ptyxis_distrobox_container, PTYXIS_TYPE_PODMAN_CONTAINER)
+
+static gboolean
+ptyxis_distrobox_container_deserialize (PtyxisPodmanContainer  *self,
+                                       JsonObject             *object,
+                                       GError                **error)
+{
+  PtyxisDistroboxContainer *distrobox_container = PTYXIS_DISTROBOX_CONTAINER (self);
+  JsonNode *node;
+  gboolean has_init_flag = FALSE;
+
+  g_assert (PTYXIS_IS_DISTROBOX_CONTAINER (self));
+  g_assert (object != NULL);
+
+  if (!PTYXIS_PODMAN_CONTAINER_CLASS (ptyxis_distrobox_container_parent_class)->deserialize (self, object, error))
+    return FALSE;
+
+  /* If we get [..., "--init", "1", ...] in the Command array, then we
+   * do not want to do our --tty redirection workaround.
+   *
+   * See: #477
+   */
+  if (json_object_has_member (object, "Command") &&
+      (node = json_object_get_member (object, "Command")) &&
+      JSON_NODE_HOLDS_ARRAY (node))
+    {
+      JsonArray *ar = json_node_get_array (node);
+      guint length = json_array_get_length (ar);
+
+      if (length > 1)
+        {
+          for (guint i = 0; i < length - 1; i++)
+            {
+              JsonNode *element = json_array_get_element (ar, i);
+              JsonNode *next = json_array_get_element (ar, i + 1);
+
+              if (element != NULL &&
+                  next != NULL &&
+                  JSON_NODE_HOLDS_VALUE (element) &&
+                  JSON_NODE_HOLDS_VALUE (next) &&
+                  json_node_get_value_type (element) == G_TYPE_STRING &&
+                  json_node_get_value_type (next) == G_TYPE_STRING)
+                {
+                  const char *our_str = json_node_get_string (element);
+                  const char *next_str = json_node_get_string (next);
+
+                  if (g_strcmp0 (our_str, "--init") == 0 &&
+                      g_strcmp0 (next_str, "1") == 0)
+                    {
+                      has_init_flag = TRUE;
+                      break;
+                    }
+                }
+            }
+        }
+    }
+
+  distrobox_container->has_init_flag = has_init_flag;
+
+  return TRUE;
+}
 
 static gboolean
 ptyxis_distrobox_container_run_context_cb (PtyxisRunContext    *run_context,
@@ -53,10 +116,16 @@ ptyxis_distrobox_container_run_context_cb (PtyxisRunContext    *run_context,
 
   ptyxis_run_context_append_argv (run_context, "distrobox");
   ptyxis_run_context_append_argv (run_context, "enter");
-  ptyxis_run_context_append_argv (run_context, "--no-tty");
+
+  if (!self->has_init_flag)
+    ptyxis_run_context_append_argv (run_context, "--no-tty");
+
   ptyxis_run_context_append_argv (run_context, name);
 
-  additional_flags = g_string_new ("--tty");
+  additional_flags = g_string_new (NULL);
+
+  if (!self->has_init_flag)
+    g_string_append (additional_flags, "--tty");
 
   /* From podman-exec(1):
    *
@@ -129,6 +198,7 @@ ptyxis_distrobox_container_class_init (PtyxisDistroboxContainerClass *klass)
 {
   PtyxisPodmanContainerClass *podman_container_class = PTYXIS_PODMAN_CONTAINER_CLASS (klass);
 
+  podman_container_class->deserialize = ptyxis_distrobox_container_deserialize;
   podman_container_class->prepare_run_context = ptyxis_distrobox_container_prepare_run_context;
 }
 
