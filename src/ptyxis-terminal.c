@@ -49,6 +49,8 @@
 #define TEXT_X_MOZ_URL                      "text/x-moz-url"
 #define TEXT_URI_LIST                       "text/uri-list"
 
+#define FILE_ATTRIBUTE_HOST_PATH "xattr::document-portal.host-path"
+
 struct _PtyxisTerminal
 {
   VteTerminal        parent_instance;
@@ -508,6 +510,59 @@ text_uri_list_free (TextUriList *uri_list)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (TextUriList, text_uri_list_free)
 
+static gboolean
+file_is_from_document_portal (GFile *file)
+{
+#ifdef G_OS_UNIX
+  static char *docportal;
+
+  if G_UNLIKELY (docportal == NULL)
+    docportal = g_strdup_printf ("%s/doc/", g_get_user_runtime_dir ());
+
+  if (g_file_is_native (file))
+    {
+      const char *path = g_file_peek_path (file);
+
+      if (g_str_has_prefix (path, docportal))
+        return TRUE;
+    }
+#endif
+
+  return FALSE;
+}
+
+static char *
+ptyxis_terminal_get_portal_host_path (GFile *file)
+{
+  g_autoptr(GFileInfo) info = NULL;
+
+  g_return_val_if_fail (G_IS_FILE (file), NULL);
+
+  if ((info = g_file_query_info (file,
+                                 FILE_ATTRIBUTE_HOST_PATH,
+                                 G_FILE_QUERY_INFO_NONE,
+                                 NULL, NULL)))
+    {
+      const char *host_path;
+
+      if ((host_path = g_file_info_get_attribute_string (info, FILE_ATTRIBUTE_HOST_PATH)))
+        {
+          g_autofree gchar *fs_path = NULL;
+          gsize len = strlen (host_path);
+
+          /* Early portal versions added a "\x00" suffix, trim it if present */
+          if (len > 4 && g_strcmp0 (&host_path[len-4], "\\x00") == 0)
+              fs_path = g_strndup (host_path, len - 4);
+          else
+              fs_path = g_strdup (host_path);
+
+          return g_filename_display_name (fs_path);
+        }
+    }
+
+  return g_strdup (_("Document Portal"));
+}
+
 static void
 ptyxis_terminal_drop_file_list (PtyxisTerminal *self,
                                 const GList    *files)
@@ -523,7 +578,15 @@ ptyxis_terminal_drop_file_list (PtyxisTerminal *self,
     {
       GFile *file = G_FILE (iter->data);
 
-      if (g_file_is_native (file))
+      if (file_is_from_document_portal (file))
+        {
+          g_autofree char *host_path = ptyxis_terminal_get_portal_host_path (file);
+          g_autofree char *quoted = g_shell_quote (host_path);
+
+          g_string_append (string, quoted);
+          g_string_append_c (string, ' ');
+        }
+      else if (g_file_is_native (file))
         {
           g_autofree char *quoted = g_shell_quote (g_file_peek_path (file));
 
