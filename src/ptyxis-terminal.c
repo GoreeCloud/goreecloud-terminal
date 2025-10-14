@@ -560,7 +560,7 @@ ptyxis_terminal_get_portal_host_path (GFile *file)
         }
     }
 
-  return g_strdup (_("Document Portal"));
+  return NULL;
 }
 
 static void
@@ -576,11 +576,12 @@ ptyxis_terminal_drop_file_list (PtyxisTerminal *self,
 
   for (const GList *iter = files; iter; iter = iter->next)
     {
+      g_autofree char *host_path = NULL;
       GFile *file = G_FILE (iter->data);
 
-      if (file_is_from_document_portal (file))
+      if (file_is_from_document_portal (file) &&
+          (host_path = ptyxis_terminal_get_portal_host_path (file)))
         {
-          g_autofree char *host_path = ptyxis_terminal_get_portal_host_path (file);
           g_autofree char *quoted = g_shell_quote (host_path);
 
           g_string_append (string, quoted);
