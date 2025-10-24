@@ -80,6 +80,7 @@
             "buildsystem" : "meson",
             "config-opts" : [
                 "--buildtype=release",
+                "-Dapp=false",
                 "-Dgtk3=false",
                 "-Dgtk4=true",
                 "-Dglade=false",
@@ -91,10 +92,6 @@
                     "type" : "git",
                     "url" : "https://gitlab.gnome.org/GNOME/vte.git",
                     "branch" : "vte-0-82"
-                },
-                {
-                    "type" : "patch",
-                    "path" : "build-aux/0001-build-disable-app.patch"
                 }
             ]
         },
