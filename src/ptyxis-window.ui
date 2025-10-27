@@ -525,16 +525,7 @@
                                                                             </binding>
                                                                           </object>
                                                                         </property>
-                                                                        <property name="model">
-                                                                          <object class="PtyxisGatedListModel">
-                                                                            <binding name="gated">
-                                                                              <closure function="ptyxis_window_check_singular" type="gboolean">
-                                                                                <lookup name="n-items">maybe_containers</lookup>
-                                                                              </closure>
-                                                                            </binding>
-                                                                            <property name="model">maybe_containers</property>
-                                                                          </object>
-                                                                        </property>
+									<property name="model">maybe_containers</property>
                                                                       </object>
                                                                     </child>
                                                                   </object>
