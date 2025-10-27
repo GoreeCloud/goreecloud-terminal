@@ -1,3 +1,11 @@
+# Ptyxis 49.2
+
+ * Avoid using document portal paths during DnD when in Flatpak
+ * Improve single-instnace handling of preferences window
+ * Fix snapshot rewriting for transparency when window fully empty
+   and only blinking cursor.
+ * Fix container check for showing list of containers in menu
+
 # Ptyxis 49.1
 
  * Check for --working-directory when applying --new-window option
