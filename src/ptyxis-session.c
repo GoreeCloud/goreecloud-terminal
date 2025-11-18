@@ -298,16 +298,16 @@ ptyxis_session_restore (PtyxisApplication *app,
                 active_tab = the_tab;
             }
 
+          if (maximized)
+            gtk_window_maximize (GTK_WINDOW (the_window));
+
+          gtk_window_present (GTK_WINDOW (the_window));
+
           if (active_tab)
             {
               ptyxis_window_set_active_tab (the_window, active_tab);
               ptyxis_tab_grab_focus (active_tab);
             }
-
-          if (maximized)
-            gtk_window_maximize (GTK_WINDOW (the_window));
-
-          gtk_window_present (GTK_WINDOW (the_window));
         }
 
       added_window |= the_window != NULL;
