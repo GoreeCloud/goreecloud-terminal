@@ -620,6 +620,7 @@ ptyxis_window_new_tab_action (GtkWidget  *widget,
 
   ptyxis_window_add_tab (self, tab);
   ptyxis_window_set_active_tab (self, tab);
+  ptyxis_tab_grab_focus (tab);
 }
 
 static void
@@ -679,6 +680,8 @@ ptyxis_window_new_window_action (GtkWidget  *widget,
   ptyxis_window_add_tab (window, tab);
 
   gtk_window_present (GTK_WINDOW (window));
+
+  ptyxis_tab_grab_focus (tab);
 }
 
 static void
