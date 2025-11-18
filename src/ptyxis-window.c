@@ -286,7 +286,7 @@ ptyxis_window_focus_active_tab_cb (gpointer data)
 
   if ((active_tab = ptyxis_window_get_active_tab (self)))
     {
-      gtk_widget_grab_focus (GTK_WIDGET (active_tab));
+      ptyxis_tab_grab_focus (active_tab);
       gtk_widget_queue_resize (GTK_WIDGET (active_tab));
     }
 
@@ -331,7 +331,7 @@ ptyxis_window_tab_overview_notify_open_cb (PtyxisWindow   *self,
                                                           self, NULL);
 
       if ((active_tab = ptyxis_window_get_active_tab (self)))
-        gtk_widget_grab_focus (GTK_WIDGET (active_tab));
+        ptyxis_tab_grab_focus (active_tab);
     }
 
   self->tab_overview_animating = TRUE;
@@ -479,7 +479,7 @@ ptyxis_window_notify_selected_page_cb (PtyxisWindow *self,
 
       adw_tab_page_set_needs_attention (page, FALSE);
 
-      gtk_widget_grab_focus (GTK_WIDGET (tab));
+      ptyxis_tab_grab_focus (tab);
     }
 
   if (terminal == NULL)
@@ -1008,6 +1008,7 @@ ptyxis_window_move_left_action (GtkWidget  *widget,
   tab_page = adw_tab_view_get_page (self->tab_view, GTK_WIDGET (tab));
   adw_tab_view_reorder_backward (self->tab_view, tab_page);
   ptyxis_tab_raise (tab);
+  ptyxis_tab_grab_focus (tab);
 }
 
 static void
@@ -1027,6 +1028,7 @@ ptyxis_window_move_right_action (GtkWidget  *widget,
   tab_page = adw_tab_view_get_page (self->tab_view, GTK_WIDGET (tab));
   adw_tab_view_reorder_forward (self->tab_view, tab_page);
   ptyxis_tab_raise (tab);
+  ptyxis_tab_grab_focus (tab);
 }
 
 static void
@@ -1190,7 +1192,7 @@ ptyxis_window_undo_close_tab_action (GtkWidget  *widget,
         ptyxis_tab_show_banner (tab);
       ptyxis_window_add_tab (self, tab);
       ptyxis_window_set_active_tab (self, tab);
-      gtk_widget_grab_focus (GTK_WIDGET (tab));
+      ptyxis_tab_grab_focus (tab);
     }
 }
 
@@ -1674,7 +1676,7 @@ ptyxis_window_menu_stop_search (PtyxisWindow   *self,
   gtk_menu_button_popdown (self->new_terminal_menu_button);
 
   if ((tab = ptyxis_window_get_active_tab (self)))
-    gtk_widget_grab_focus (GTK_WIDGET (tab));
+    ptyxis_tab_grab_focus (tab);
 }
 
 static void
@@ -1700,7 +1702,7 @@ ptyxis_window_menu_activate_cb (PtyxisWindow *self,
    * on the button itself.
    */
   if ((tab = ptyxis_window_get_active_tab (self)))
-    gtk_widget_grab_focus (GTK_WIDGET (tab));
+    ptyxis_tab_grab_focus (tab);
 
   if (PTYXIS_IS_PROFILE (item))
     {
@@ -2238,7 +2240,7 @@ ptyxis_window_append_tab (PtyxisWindow *self,
 
   ptyxis_window_setup_page (self, tab, page);
 
-  gtk_widget_grab_focus (GTK_WIDGET (tab));
+  ptyxis_tab_grab_focus (tab);
 }
 
 PtyxisWindow *
@@ -2348,7 +2350,7 @@ ptyxis_window_add_tab (PtyxisWindow *self,
   if (adw_tab_view_get_n_pages (self->tab_view) == 2)
     gtk_window_set_default_size (GTK_WINDOW (self), -1, -1);
 
-  gtk_widget_grab_focus (GTK_WIDGET (tab));
+  ptyxis_tab_grab_focus (tab);
 }
 
 PtyxisTab *
@@ -2485,6 +2487,7 @@ ptyxis_window_focus_tab_by_uuid (PtyxisWindow *self,
         {
           ptyxis_window_set_active_tab (self, tab);
           gtk_window_present (GTK_WINDOW (self));
+          ptyxis_tab_grab_focus (tab);
           return TRUE;
         }
     }

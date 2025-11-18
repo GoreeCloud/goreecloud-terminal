@@ -301,7 +301,7 @@ ptyxis_session_restore (PtyxisApplication *app,
           if (active_tab)
             {
               ptyxis_window_set_active_tab (the_window, active_tab);
-              gtk_widget_grab_focus (GTK_WIDGET (active_tab));
+              ptyxis_tab_grab_focus (active_tab);
             }
 
           if (maximized)

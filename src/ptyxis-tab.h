@@ -126,5 +126,6 @@ gboolean            ptyxis_tab_poll_agent_finish                  (PtyxisTab    
 void                ptyxis_tab_open_uri                           (PtyxisTab            *self,
                                                                    const char           *uri);
 char               *ptyxis_tab_query_working_directory_from_agent (PtyxisTab            *self);
+void                ptyxis_tab_grab_focus                         (PtyxisTab            *self);
 
 G_END_DECLS

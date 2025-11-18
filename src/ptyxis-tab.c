@@ -263,16 +263,6 @@ ptyxis_tab_update_custom_links (PtyxisTab *self)
   ptyxis_terminal_update_custom_links_list(self->terminal, custom_links_list);
 }
 
-static gboolean
-ptyxis_tab_grab_focus (GtkWidget *widget)
-{
-  PtyxisTab *self = (PtyxisTab *)widget;
-
-  g_assert (PTYXIS_IS_TAB (self));
-
-  return gtk_widget_grab_focus (GTK_WIDGET (self->terminal));
-}
-
 static void
 ptyxis_tab_wait_cb (GObject      *object,
                     GAsyncResult *result,
@@ -1195,7 +1185,6 @@ ptyxis_tab_class_init (PtyxisTabClass *klass)
   object_class->get_property = ptyxis_tab_get_property;
   object_class->set_property = ptyxis_tab_set_property;
 
-  widget_class->grab_focus = ptyxis_tab_grab_focus;
   widget_class->map = ptyxis_tab_map;
   widget_class->snapshot = ptyxis_tab_snapshot;
   widget_class->size_allocate = ptyxis_tab_size_allocate;
@@ -2354,4 +2343,12 @@ _ptyxis_tab_ignore_snapshot (PtyxisTab *self)
   g_return_if_fail (PTYXIS_IS_TAB (self));
 
   self->ignore_snapshot = TRUE;
+}
+
+void
+ptyxis_tab_grab_focus (PtyxisTab *self)
+{
+  g_return_if_fail (PTYXIS_IS_TAB (self));
+
+  gtk_widget_grab_focus (GTK_WIDGET (self->terminal));
 }
