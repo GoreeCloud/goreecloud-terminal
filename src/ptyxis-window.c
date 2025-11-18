@@ -2352,8 +2352,6 @@ ptyxis_window_add_tab (PtyxisWindow *self,
   /* Resize if we are going from 1->2 tabs */
   if (adw_tab_view_get_n_pages (self->tab_view) == 2)
     gtk_window_set_default_size (GTK_WINDOW (self), -1, -1);
-
-  ptyxis_tab_grab_focus (tab);
 }
 
 PtyxisTab *
