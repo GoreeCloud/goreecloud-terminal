@@ -1239,6 +1239,7 @@ generate_debug_info (PtyxisApplication *self)
   const char *os_name = ptyxis_application_get_os_name (self);
   const char *vte_sh_path = "/etc/profile.d/vte.sh";
   const char *etc_os_release = "/etc/os-release";
+  const char *desktop_session = g_getenv ("DESKTOP_SESSION");
   struct utsname u;
   guint n_items;
   guint id = 0;
@@ -1264,6 +1265,11 @@ generate_debug_info (PtyxisApplication *self)
   g_string_append_printf (str,
                           "Agent: running %s\n",
                           self->client_is_fallback ? "in sandbox" : "on host");
+
+  g_string_append_c (str, '\n');
+  g_string_append_printf (str,
+                          "Desktop Session: %s\n",
+                          desktop_session ? desktop_session : "Unspecified");
 
   g_string_append_c (str, '\n');
   g_string_append_printf (str,
