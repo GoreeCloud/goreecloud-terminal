@@ -462,6 +462,8 @@ ptyxis_palette_new_from_file (const char  *path,
   self = g_object_new (PTYXIS_TYPE_PALETTE, NULL);
   self->allocated = g_memdup2 (&data, sizeof data);
   self->palette = self->allocated;
+  self->is_primary = g_key_file_get_boolean (key_file, "Palette", "Primary", NULL);
+  self->use_system_accent = g_key_file_get_boolean (key_file, "Palette", "UseSystemAccent", NULL);
   self->has_dark = has_dark;
   self->has_light = has_light;
 
