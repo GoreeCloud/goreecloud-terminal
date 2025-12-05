@@ -1637,7 +1637,10 @@ ptyxis_application_dup_profile (PtyxisApplication *self,
         return g_steal_pointer (&profile);
     }
 
-  return ptyxis_profile_new (profile_uuid);
+  /* We don't want to inflate profiles that no longer exist
+   * so fallback to using the default profile.
+   */
+  return ptyxis_application_dup_default_profile (self);
 }
 
 gboolean
