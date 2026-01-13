@@ -137,6 +137,11 @@ ptyxis_agent_init (PtyxisAgent  *agent,
                                              PTYXIS_TYPE_DISTROBOX_CONTAINER);
 
   ptyxis_podman_provider_set_type_for_label (PTYXIS_PODMAN_PROVIDER (podman),
+                                             "manager",
+                                             "apx",
+                                             PTYXIS_TYPE_DISTROBOX_CONTAINER);
+
+  ptyxis_podman_provider_set_type_for_label (PTYXIS_PODMAN_PROVIDER (podman),
                                              "com.github.containers.toolbox",
                                              NULL,
                                              PTYXIS_TYPE_TOOLBOX_CONTAINER);
