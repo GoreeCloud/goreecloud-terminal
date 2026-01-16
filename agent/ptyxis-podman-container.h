@@ -42,8 +42,10 @@ struct _PtyxisPodmanContainerClass
                                    PtyxisRunContext       *run_context);
 };
 
-gboolean ptyxis_podman_container_deserialize (PtyxisPodmanContainer  *self,
-                                              JsonObject             *object,
-                                              GError                **error);
+gboolean    ptyxis_podman_container_deserialize  (PtyxisPodmanContainer  *self,
+                                                  JsonObject             *object,
+                                                  GError                **error);
+const char *ptyxis_podman_container_lookup_label (PtyxisPodmanContainer  *self,
+                                                  const char             *key);
 
 G_END_DECLS

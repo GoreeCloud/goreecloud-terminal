@@ -387,6 +387,18 @@ ptyxis_podman_container_deserialize (PtyxisPodmanContainer  *self,
   return PTYXIS_PODMAN_CONTAINER_GET_CLASS (self)->deserialize (self, object, error);
 }
 
+const char *
+ptyxis_podman_container_lookup_label (PtyxisPodmanContainer *self,
+                                      const char            *key)
+{
+  PtyxisPodmanContainerPrivate *priv = ptyxis_podman_container_get_instance_private (self);
+
+  g_return_val_if_fail (PTYXIS_IS_PODMAN_CONTAINER (self), NULL);
+  g_return_val_if_fail (priv->labels != NULL, NULL);
+
+  return g_hash_table_lookup (priv->labels, key);
+}
+
 static void
 ptyxis_podman_container_handle_spawn_cb (GObject      *object,
                                          GAsyncResult *result,
