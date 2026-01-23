@@ -43,6 +43,24 @@
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
 
   <releases>
+    <release version="49.3" date="2026-01-23">
+      <description>
+        <p>New features and improvements:</p>
+        <ul>
+          <li>Add support for apx containers</li>
+          <li>Improve tab focus handling when creating new tabs and windows</li>
+          <li>Add Norwegian Nynorsk translation</li>
+        </ul>
+        <p>Bug fixes:</p>
+        <ul>
+          <li>Fix user palettes being able to set primary/system-accent colors</li>
+          <li>Fix using default profile when requested profile UUID does not exist</li>
+          <li>Clear X11 urgency hint when window becomes active</li>
+          <li>Improve force-quit fallback priority</li>
+          <li>Improve agent handling of --no-tty/--tty flags for distrobox containers</li>
+        </ul>
+      </description>
+    </release>
     <release version="49.2" date="2025-10-27"/>
     <release version="49.1" date="2025-09-26"/>
     <release version="49.0" date="2025-09-12"/>
