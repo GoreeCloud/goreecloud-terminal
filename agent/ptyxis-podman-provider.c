@@ -292,8 +292,6 @@ _ptyxis_podman_provider_parse_json (PtyxisPodmanProvider  *self,
     {
       guint n_elements = json_array_get_length (root_array);
 
-      g_printerr ("Looking through %d elements\n", n_elements);
-
       for (guint i = 0; i < n_elements; i++)
         {
           g_autoptr(PtyxisPodmanContainer) container = NULL;
