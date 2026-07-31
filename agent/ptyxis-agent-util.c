@@ -88,6 +88,9 @@ ptyxis_pty_create_producer (int      consumer_fd,
 {
   _g_autofd int ret = -1;
   int extra = blocking ? 0 : O_NONBLOCK;
+#ifdef __linux__
+  static int has_tiocgptpeer = -1;
+#endif
 #if defined(HAVE_PTSNAME_R) || defined(__FreeBSD__)
   char name[256] = {0};
 #else
@@ -107,7 +110,10 @@ ptyxis_pty_create_producer (int      consumer_fd,
    * have that if we're in a Flatpak on something like CentOS 7.
    * Handle that by doing a minimal kernel check first.
    */
-  if (ret == -1 && _linux_check_version (4, 13))
+  if (has_tiocgptpeer == -1)
+    has_tiocgptpeer = _linux_check_version (4, 13);
+
+  if (ret == -1 && has_tiocgptpeer)
     ret = ioctl (consumer_fd, TIOCGPTPEER, O_NOCTTY | O_RDWR | O_CLOEXEC | extra);
 #endif
 
@@ -171,9 +177,13 @@ ptyxis_pty_create_producer (int      consumer_fd,
 #ifdef __linux__
   {
     static GFile *run_host_ptmx;
+    static int run_host_ptmx_exists = -1;
 
     if (run_host_ptmx == NULL)
       run_host_ptmx = g_file_new_for_path ("/run/host/dev/pts/ptmx");
+
+    if (run_host_ptmx_exists == -1)
+      run_host_ptmx_exists = g_file_query_exists (run_host_ptmx, NULL);
 
     /* We want to try to open a PTY for the child that will be available
      * at the same location in and outside of the container. This helps
@@ -182,7 +192,7 @@ ptyxis_pty_create_producer (int      consumer_fd,
      * Since we created the PTY, we know that came from /dev so just see
      * if /run/host/dev/pts/ptmx is the same as the host.
      */
-    if (g_file_query_exists (run_host_ptmx, NULL))
+    if (run_host_ptmx_exists)
       {
         char tty_name[64];
 

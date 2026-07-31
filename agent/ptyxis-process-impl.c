@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -169,51 +170,67 @@ ptyxis_process_impl_handle_send_signal (PtyxisIpcProcess      *process,
 static char *
 get_cmdline_for_pid (GPid pid)
 {
-  g_autofree char *cmdline = NULL;
+  char *cmdline = NULL;
 
 #ifdef __linux__
   g_autofree char *path = g_strdup_printf ("/proc/%u/cmdline", (guint)pid);
-  gsize len;
+  _g_autofd int fd = -1;
+  ssize_t len;
 
-  if (g_file_get_contents (path, &cmdline, &len, NULL))
+  if ((fd = open (path, O_RDONLY | O_CLOEXEC)) != -1)
     {
-      g_autofree char *sanitized = NULL;
+      cmdline = g_malloc (1025);
 
-      if (len > 1024)
+      do
+        len = read (fd, cmdline, 1024);
+      while (len == -1 && errno == EINTR);
+
+      if (len > 0)
         {
-          len = 1024;
           cmdline[len] = 0;
+
+          for (ssize_t i = 0; i < len; i++)
+            {
+              if (cmdline[i] == 0 || g_ascii_iscntrl (cmdline[i]))
+                cmdline[i] = ' ';
+            }
+
+          if (!g_utf8_validate (cmdline, len, NULL))
+            {
+              char *valid = g_utf8_make_valid (cmdline, len);
+
+              g_free (cmdline);
+              cmdline = valid;
+            }
         }
-
-      for (gsize i = 0; i < len; i++)
-        {
-          if (cmdline[i] == 0 || g_ascii_iscntrl (cmdline[i]))
-            cmdline[i] = ' ';
-        }
-
-      sanitized = g_utf8_make_valid (cmdline, len);
-
-      if (sanitized != NULL)
+      else
         {
           g_free (cmdline);
-          cmdline = g_steal_pointer (&sanitized);
+          cmdline = NULL;
         }
     }
 #endif
 
-  return g_steal_pointer (&cmdline);
+  return cmdline;
 }
 
 static const char *
 get_leader_kind (GPid pid)
 {
-  g_autofree char *path = g_strdup_printf ("/proc/%d/", pid);
-  g_autofree char *exe = g_strdup_printf ("/proc/%d/exe", pid);
-  g_autoptr(GFile) file = g_file_new_for_path (path);
+  g_autofree char *path = NULL;
+  g_autofree char *exe = NULL;
+  g_autoptr(GFile) file = NULL;
   g_autoptr(GFileInfo) info = NULL;
   const char *leader_kind = NULL;
   char execpath[512];
   gssize len;
+
+  if (pid <= 0)
+    return "unknown";
+
+  path = g_strdup_printf ("/proc/%d/", pid);
+  exe = g_strdup_printf ("/proc/%d/exe", pid);
+  file = g_file_new_for_path (path);
 
   /* We use GFile API so that we can avoid linking against
    * stat64 which is different on older glibc versions.
