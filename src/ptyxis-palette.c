@@ -114,8 +114,37 @@ ptyxis_palette_init (PtyxisPalette *self)
 PtyxisPalette *
 ptyxis_palette_lookup (const char *id)
 {
-  GListModel *model = ptyxis_palette_get_all ();
-  guint n_items = g_list_model_get_n_items (model);
+  static GHashTable *builtin_cache;
+  GListModel *model;
+  guint n_items;
+
+  g_return_val_if_fail (id != NULL, NULL);
+
+  if (builtin_cache == NULL)
+    builtin_cache = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+
+  if (strchr (id, '/') == NULL)
+    {
+      PtyxisPalette *cached = g_hash_table_lookup (builtin_cache, id);
+
+      if (cached != NULL)
+        return g_object_ref (cached);
+
+      if (id[0] != 0)
+        {
+          g_autofree char *path = g_strdup_printf ("/org/gnome/Ptyxis/palettes/%s.palette", id);
+          g_autoptr(PtyxisPalette) palette = ptyxis_palette_new_from_resource (path, NULL);
+
+          if (palette != NULL)
+            {
+              g_hash_table_insert (builtin_cache, g_strdup (id), g_object_ref (palette));
+              return g_steal_pointer (&palette);
+            }
+        }
+    }
+
+  model = ptyxis_palette_get_all ();
+  n_items = g_list_model_get_n_items (model);
 
   for (guint i = 0; i < n_items; i++)
     {

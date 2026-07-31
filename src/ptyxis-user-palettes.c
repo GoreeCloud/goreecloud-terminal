@@ -29,7 +29,9 @@ struct _PtyxisUserPalettes
   GFile        *directory;
   GFileMonitor *monitor;
   GHashTable   *file_to_palette;
+  GHashTable   *pending_reloads;
   GPtrArray    *items;
+  guint         reload_source;
 };
 
 static gpointer
@@ -115,6 +117,8 @@ ptyxis_user_palettes_dispose (GObject *object)
 {
   PtyxisUserPalettes *self = (PtyxisUserPalettes *)object;
 
+  g_clear_handle_id (&self->reload_source, g_source_remove);
+
   if (self->monitor != NULL)
     g_file_monitor_cancel (self->monitor);
 
@@ -122,6 +126,7 @@ ptyxis_user_palettes_dispose (GObject *object)
   g_clear_object (&self->monitor);
 
   g_hash_table_remove_all (self->file_to_palette);
+  g_hash_table_remove_all (self->pending_reloads);
 
   if (self->items->len > 0)
     g_ptr_array_remove_range (self->items, 0, self->items->len);
@@ -135,6 +140,7 @@ ptyxis_user_palettes_finalize (GObject *object)
   PtyxisUserPalettes *self = (PtyxisUserPalettes *)object;
 
   g_clear_pointer (&self->file_to_palette, g_hash_table_unref);
+  g_clear_pointer (&self->pending_reloads, g_hash_table_unref);
   g_clear_pointer (&self->items, g_ptr_array_unref);
 
   G_OBJECT_CLASS (ptyxis_user_palettes_parent_class)->finalize (object);
@@ -157,6 +163,7 @@ ptyxis_user_palettes_init (PtyxisUserPalettes *self)
                                                  g_str_equal,
                                                  g_free,
                                                  g_object_unref);
+  self->pending_reloads = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 }
 
 static void
@@ -205,7 +212,46 @@ ptyxis_user_palettes_remove (PtyxisUserPalettes *self,
           g_ptr_array_remove_index (self->items, pos);
           g_list_model_items_changed (G_LIST_MODEL (self), pos, 1, 0);
         }
+
+      g_hash_table_remove (self->file_to_palette, path);
     }
+}
+
+static gboolean
+ptyxis_user_palettes_reload_cb (gpointer user_data)
+{
+  PtyxisUserPalettes *self = user_data;
+  GHashTableIter iter;
+  gpointer key;
+
+  g_assert (PTYXIS_IS_USER_PALETTES (self));
+
+  self->reload_source = 0;
+
+  g_hash_table_iter_init (&iter, self->pending_reloads);
+  while (g_hash_table_iter_next (&iter, &key, NULL))
+    ptyxis_user_palettes_load_file (self, key);
+
+  g_hash_table_remove_all (self->pending_reloads);
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+ptyxis_user_palettes_queue_reload (PtyxisUserPalettes *self,
+                                   const char         *path)
+{
+  g_assert (PTYXIS_IS_USER_PALETTES (self));
+  g_assert (path != NULL);
+
+  g_hash_table_add (self->pending_reloads, g_strdup (path));
+
+  if (self->reload_source == 0)
+    self->reload_source = g_timeout_add_full (G_PRIORITY_LOW,
+                                              100,
+                                              ptyxis_user_palettes_reload_cb,
+                                              g_object_ref (self),
+                                              g_object_unref);
 }
 
 static void
@@ -228,10 +274,14 @@ ptyxis_user_palettes_monitor_changed_cb (PtyxisUserPalettes *self,
     return;
 
   if (event_type == G_FILE_MONITOR_EVENT_DELETED)
-    ptyxis_user_palettes_remove (self, g_file_peek_path (file));
+    {
+      g_hash_table_remove (self->pending_reloads, g_file_peek_path (file));
+      ptyxis_user_palettes_remove (self, g_file_peek_path (file));
+    }
   else if (event_type == G_FILE_MONITOR_EVENT_CREATED ||
-           event_type == G_FILE_MONITOR_EVENT_CHANGED)
-    ptyxis_user_palettes_load_file (self, g_file_peek_path (file));
+           event_type == G_FILE_MONITOR_EVENT_CHANGED ||
+           event_type == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT)
+    ptyxis_user_palettes_queue_reload (self, g_file_peek_path (file));
 }
 
 PtyxisUserPalettes *
