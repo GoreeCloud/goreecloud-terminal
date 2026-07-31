@@ -29,6 +29,7 @@ struct _PtyxisUserPalettes
   GFile        *directory;
   GFileMonitor *monitor;
   GHashTable   *file_to_palette;
+  GHashTable   *id_to_palette;
   GHashTable   *pending_reloads;
   GPtrArray    *items;
   guint         reload_source;
@@ -91,10 +92,15 @@ ptyxis_user_palettes_load_file (PtyxisUserPalettes *self,
 
           if (g_ptr_array_find (self->items, previous, &pos))
             {
+              g_hash_table_remove (self->id_to_palette,
+                                   ptyxis_palette_get_id (previous));
               g_object_unref (g_ptr_array_index (self->items, pos));
               g_ptr_array_index (self->items, pos) = g_object_ref (palette);
               g_hash_table_insert (self->file_to_palette,
                                    g_strdup (path),
+                                   g_object_ref (palette));
+              g_hash_table_insert (self->id_to_palette,
+                                   g_strdup (ptyxis_palette_get_id (palette)),
                                    g_object_ref (palette));
               g_list_model_items_changed (G_LIST_MODEL (self), pos, 1, 1);
               return;
@@ -103,6 +109,9 @@ ptyxis_user_palettes_load_file (PtyxisUserPalettes *self,
 
       g_hash_table_insert (self->file_to_palette,
                            g_strdup (path),
+                           g_object_ref (palette));
+      g_hash_table_insert (self->id_to_palette,
+                           g_strdup (ptyxis_palette_get_id (palette)),
                            g_object_ref (palette));
       g_ptr_array_add (self->items, g_object_ref (palette));
       g_list_model_items_changed (G_LIST_MODEL (self), self->items->len - 1, 0, 1);
@@ -126,6 +135,7 @@ ptyxis_user_palettes_dispose (GObject *object)
   g_clear_object (&self->monitor);
 
   g_hash_table_remove_all (self->file_to_palette);
+  g_hash_table_remove_all (self->id_to_palette);
   g_hash_table_remove_all (self->pending_reloads);
 
   if (self->items->len > 0)
@@ -140,6 +150,7 @@ ptyxis_user_palettes_finalize (GObject *object)
   PtyxisUserPalettes *self = (PtyxisUserPalettes *)object;
 
   g_clear_pointer (&self->file_to_palette, g_hash_table_unref);
+  g_clear_pointer (&self->id_to_palette, g_hash_table_unref);
   g_clear_pointer (&self->pending_reloads, g_hash_table_unref);
   g_clear_pointer (&self->items, g_ptr_array_unref);
 
@@ -163,6 +174,10 @@ ptyxis_user_palettes_init (PtyxisUserPalettes *self)
                                                  g_str_equal,
                                                  g_free,
                                                  g_object_unref);
+  self->id_to_palette = g_hash_table_new_full (g_str_hash,
+                                               g_str_equal,
+                                               g_free,
+                                               g_object_unref);
   self->pending_reloads = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 }
 
@@ -205,6 +220,7 @@ ptyxis_user_palettes_remove (PtyxisUserPalettes *self,
 
   if ((palette = g_hash_table_lookup (self->file_to_palette, path)))
     {
+      const char *id = ptyxis_palette_get_id (palette);
       guint pos;
 
       if (g_ptr_array_find (self->items, palette, &pos))
@@ -213,6 +229,7 @@ ptyxis_user_palettes_remove (PtyxisUserPalettes *self,
           g_list_model_items_changed (G_LIST_MODEL (self), pos, 1, 0);
         }
 
+      g_hash_table_remove (self->id_to_palette, id);
       g_hash_table_remove (self->file_to_palette, path);
     }
 }
@@ -314,4 +331,18 @@ ptyxis_user_palettes_new (const char *directory)
   ptyxis_user_palettes_load (self);
 
   return self;
+}
+
+PtyxisPalette *
+ptyxis_user_palettes_lookup (PtyxisUserPalettes *self,
+                             const char         *id)
+{
+  PtyxisPalette *palette;
+
+  g_return_val_if_fail (PTYXIS_IS_USER_PALETTES (self), NULL);
+  g_return_val_if_fail (id != NULL, NULL);
+
+  palette = g_hash_table_lookup (self->id_to_palette, id);
+
+  return palette ? g_object_ref (palette) : NULL;
 }

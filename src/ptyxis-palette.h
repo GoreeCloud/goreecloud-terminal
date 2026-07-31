@@ -60,6 +60,7 @@ typedef struct _PtyxisPaletteFace
 G_DECLARE_FINAL_TYPE (PtyxisPalette, ptyxis_palette, PTYXIS, PALETTE, GObject)
 
 GListModel              *ptyxis_palette_get_all                (void);
+void                     ptyxis_palette_init_user_palettes     (void);
 GListModel              *ptyxis_palette_list_model_get_default (void);
 PtyxisPalette           *ptyxis_palette_lookup                 (const char     *name);
 PtyxisPalette           *ptyxis_palette_new_from_file          (const char     *file,

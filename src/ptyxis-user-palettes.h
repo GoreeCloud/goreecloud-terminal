@@ -31,6 +31,8 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (PtyxisUserPalettes, ptyxis_user_palettes, PTYXIS, USER_PALETTES, GObject)
 
-PtyxisUserPalettes *ptyxis_user_palettes_new (const char *path);
+PtyxisUserPalettes *ptyxis_user_palettes_new    (const char         *path);
+PtyxisPalette      *ptyxis_user_palettes_lookup (PtyxisUserPalettes *self,
+                                                 const char         *id);
 
 G_END_DECLS

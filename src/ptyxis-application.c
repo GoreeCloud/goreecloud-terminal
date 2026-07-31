@@ -30,6 +30,7 @@
 #include "ptyxis-application.h"
 #include "ptyxis-build-ident.h"
 #include "ptyxis-client.h"
+#include "ptyxis-palette.h"
 #include "ptyxis-preferences-window.h"
 #include "ptyxis-session.h"
 #include "ptyxis-settings.h"
@@ -898,6 +899,7 @@ ptyxis_application_startup (GApplication *application)
   self->profiles = g_list_store_new (PTYXIS_TYPE_PROFILE);
   self->settings = ptyxis_settings_new ();
   self->shortcuts = ptyxis_shortcuts_new (NULL);
+  ptyxis_palette_init_user_palettes ();
   self->xdg_terminals_list_monitor = g_file_monitor (xdg_terminals_list, 0, NULL, NULL);
 
   /* Load the session state so it's available if we need it */

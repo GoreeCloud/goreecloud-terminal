@@ -59,6 +59,7 @@ enum {
 };
 
 static GParamSpec *properties[N_PROPS];
+static PtyxisUserPalettes *user_palettes;
 
 static void
 ptyxis_palette_finalize (GObject *object)
@@ -115,6 +116,7 @@ PtyxisPalette *
 ptyxis_palette_lookup (const char *id)
 {
   static GHashTable *builtin_cache;
+  g_autoptr(PtyxisPalette) user_palette = NULL;
   GListModel *model;
   guint n_items;
 
@@ -123,9 +125,15 @@ ptyxis_palette_lookup (const char *id)
   if (builtin_cache == NULL)
     builtin_cache = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
 
+  if (user_palettes != NULL &&
+      (user_palette = ptyxis_user_palettes_lookup (user_palettes, id)))
+    return g_steal_pointer (&user_palette);
+
   if (strchr (id, '/') == NULL)
     {
-      PtyxisPalette *cached = g_hash_table_lookup (builtin_cache, id);
+      PtyxisPalette *cached;
+
+      cached = g_hash_table_lookup (builtin_cache, id);
 
       if (cached != NULL)
         return g_object_ref (cached);
@@ -188,6 +196,17 @@ ptyxis_get_user_palettes_dir (void)
   return g_build_filename (g_get_user_data_dir (), APP_ID, "palettes", NULL);
 }
 
+void
+ptyxis_palette_init_user_palettes (void)
+{
+  if (user_palettes == NULL)
+    {
+      g_autofree char *directory = ptyxis_get_user_palettes_dir ();
+
+      user_palettes = ptyxis_user_palettes_new (directory);
+    }
+}
+
 GListModel *
 ptyxis_palette_get_all (void)
 {
@@ -196,18 +215,14 @@ ptyxis_palette_get_all (void)
   if (instance == NULL)
     {
       g_auto(GStrv) resources = g_resources_enumerate_children ("/org/gnome/Ptyxis/palettes/", 0, NULL);
-      g_autofree char *user_palettes_dir = ptyxis_get_user_palettes_dir ();
-      g_autoptr(PtyxisUserPalettes) user_palettes = ptyxis_user_palettes_new (user_palettes_dir);
       GListStore *builtin = g_list_store_new (PTYXIS_TYPE_PALETTE);
       GListStore *models = g_list_store_new (G_TYPE_LIST_MODEL);
       GtkFlattenListModel *flatten = gtk_flatten_list_model_new (G_LIST_MODEL (models));
 
       g_list_store_append (models, builtin);
 
-      /* If for some reason we failed to create our state directory and
-       * failed to create a monitor for it, we could get NULL back for
-       * the user_palettes.
-       */
+      ptyxis_palette_init_user_palettes ();
+
       if (user_palettes != NULL)
         g_list_store_append (models, user_palettes);
 
