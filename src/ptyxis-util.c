@@ -265,19 +265,23 @@ ptyxis_is_shell (const char *arg0)
   static const char * const builtin_shells[] = {
     "sh", "bash", "dash", "zsh", "fish", "tcsh", "csh", "tmux",
   };
-  static GHashTable *shells;
+  static GHashTable *configured_shells;
   static gsize initialized;
   const char *slash = strrchr (arg0, '/');
+
+  for (guint i = 0; i < G_N_ELEMENTS (builtin_shells); i++)
+    {
+      if (g_str_equal (arg0, builtin_shells[i]) ||
+          (slash != NULL && g_str_equal (slash + 1, builtin_shells[i])))
+        return TRUE;
+    }
 
   if (g_once_init_enter (&initialized))
     {
       const char *etc_shells_path = "/etc/shells";
       g_autofree char *etc_shells = NULL;
 
-      shells = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-
-      for (guint i = 0; i < G_N_ELEMENTS (builtin_shells); i++)
-        g_hash_table_add (shells, g_strdup (builtin_shells[i]));
+      configured_shells = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
       if (ptyxis_get_process_kind () == PTYXIS_PROCESS_KIND_FLATPAK)
         etc_shells_path = "/var/run/host/etc/shells";
@@ -291,15 +295,14 @@ ptyxis_is_shell (const char *arg0)
               char *line = g_strstrip (lines[i]);
 
               if (line[0] != 0 && line[0] != '#')
-                g_hash_table_add (shells, g_strdup (line));
+                g_hash_table_add (configured_shells, g_strdup (line));
             }
         }
 
       g_once_init_leave (&initialized, 1);
     }
 
-  return g_hash_table_contains (shells, arg0) ||
-         (slash != NULL && g_hash_table_contains (shells, slash + 1));
+  return g_hash_table_contains (configured_shells, arg0);
 }
 
 GListModel *
