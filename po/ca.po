@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: ptyxis main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/chergert/ptyxis/issues\n"
 "POT-Creation-Date: 2026-01-29 17:47+0000\n"
-"PO-Revision-Date: 2026-02-13 11:37+0100\n"
+"PO-Revision-Date: 2026-08-12 11:37+0100\n"
 "Last-Translator: Jordi Mas i Hernàndez <jmas@softcatala.org>\n"
 "Language-Team: Catalan <Catalan>\n"
 "Language: ca\n"
@@ -354,14 +354,14 @@ msgstr ""
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:237
 msgid "Disable Padding around Terminal Emulator"
-msgstr "Desactiva el sagnat al voltant de l'emulador de terminal"
+msgstr "Desactiva el farciment al voltant de l'emulador de terminal"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:238
 msgid ""
 "Do not pad around the terminal emulator widget. Setting to true may have significant performance impacts."
 msgstr ""
-"No sagnis el text al voltant del giny emulador del terminal. Establir a cert pot tenir impactes de "
-"rendiment significatius."
+"No afegeixis farciment al voltant del giny emulador del terminal. Establir a cert pot tenir impactes "
+"de rendiment significatius."
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:243
 msgid "Prompt when active tab is closed"
@@ -544,7 +544,7 @@ msgstr "Escala d'amplada de la cel·la del terminal"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:378
 msgid "CJK Ambiguous Width"
-msgstr "Amplada ambigu del CJK"
+msgstr "Amplada ambigua del CJK"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:379
 msgid "The size to apply to ambiguous width characters"
@@ -740,7 +740,7 @@ msgstr "Mou la pestanya a l'esquerra"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:538
 msgid "Shortcut to move the current tab to the left one position"
-msgstr "Drecera per a canviar a la pestanya a l'esquerra de l'actual"
+msgstr "Drecera per moure la pestanya actual una posició cap a l'esquerra"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:543 src/ptyxis-preferences-window.ui:841
 msgid "Move Tab Right"
@@ -748,7 +748,7 @@ msgstr "Mou la pestanya a la dreta"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:544
 msgid "Shortcut to move the current tab to the right one position"
-msgstr "Drecera per a canviar a la pestanya a la dreta de l'actual"
+msgstr "Drecera per moure la pestanya actual una posició cap a la dreta"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:549 src/ptyxis-preferences-window.ui:848
 msgid "Move Tab to New Window"
@@ -881,11 +881,11 @@ msgstr "Drecera per enviar el focus a la darrera pestanya"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:645 src/ptyxis-preferences-window.ui:807
 msgid "Undo Close Tab"
-msgstr "Desfer el tancar pestanya"
+msgstr "Desfés el tancament de la pestanya"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:646
 msgid "Undo closing of last tab"
-msgstr "Desfer el tancament de la darrera pestanya"
+msgstr "Desfés el tancament de la darrera pestanya"
 
 #: src/ptyxis-application.c:461
 msgid "--tab, --tab-with-profile, or --new-window may not be used together"
@@ -1486,7 +1486,7 @@ msgstr "Mostra una visió general de totes les pestanyes de la finestra"
 
 #: src/ptyxis-preferences-window.ui:794
 msgid "Close the current tab"
-msgstr "Tancar la pestanya actual"
+msgstr "Tanca la pestanya actual"
 
 #: src/ptyxis-preferences-window.ui:801
 msgid "Close all tabs except the active tab"
@@ -1494,15 +1494,15 @@ msgstr "Tanca totes les pestanyes tret de l'activa"
 
 #: src/ptyxis-preferences-window.ui:808
 msgid "Undo closing the last tab"
-msgstr "Desfer el tancament de la darrera pestanya"
+msgstr "Desfés el tancament de la darrera pestanya"
 
 #: src/ptyxis-preferences-window.ui:835
 msgid "Move the tab one position to the left"
-msgstr "Mou la pestanya a l'esquerra una posició cap a l'esquerra"
+msgstr "Mou la pestanya una posició cap a l'esquerra"
 
 #: src/ptyxis-preferences-window.ui:842
 msgid "Move the tab one position to the right"
-msgstr "Mou la pestanya a l'esquerra una posició cap a la dreta"
+msgstr "Mou la pestanya una posició cap a la dreta"
 
 #: src/ptyxis-preferences-window.ui:849
 msgid "Detach the current tab and move it to a new window"
@@ -1684,7 +1684,7 @@ msgstr "Esborra el perfil"
 
 #: src/ptyxis-profile-row.ui:43
 msgid "_Make Default"
-msgstr "Un terminal orientat a contenidors per al GNOME"
+msgstr "Fes-lo _predeterminat"
 
 #: src/ptyxis-profile-row.ui:49
 msgid "_Duplicate…"
@@ -1725,7 +1725,7 @@ msgstr "S'està executant un procés en primer pla"
 #: src/ptyxis-tab.c:412
 #, c-format
 msgid "Process Exited from Signal %d"
-msgstr "S'ha sortit del procés del senyal %d"
+msgstr "El procés ha finalitzat pel senyal %d"
 
 #: src/ptyxis-tab.c:415 src/ptyxis-tab.c:438
 msgid "_Restart"
@@ -1951,7 +1951,7 @@ msgstr "Fixa la _pestanya"
 
 #: src/ptyxis-window.ui:838
 msgid "Un_pin Tab"
-msgstr "Allibera la _pestanya"
+msgstr "Desfixa la _pestanya"
 
 #: src/ptyxis-window.ui:853
 msgid "Close _Other Tabs"
