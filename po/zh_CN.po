@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ptyxis main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/chergert/ptyxis/issues\n"
-"POT-Creation-Date: 2026-03-17 00:25+0000\n"
-"PO-Revision-Date: 2026-07-11 16:39+0800\n"
+"POT-Creation-Date: 2026-07-31 22:53+0000\n"
+"PO-Revision-Date: 2026-08-15 18:06+0800\n"
 "Last-Translator: lumingzh <lumingzh@qq.com>\n"
 "Language-Team: Chinese (China) <i18n-zh@googlegroups.com>\n"
 "Language: zh_CN\n"
@@ -29,7 +29,7 @@ msgid "A container-oriented terminal for GNOME"
 msgstr "一款面向容器的 GNOME 终端"
 
 #: data/org.gnome.Ptyxis.desktop.in.in:12 src/ptyxis-preferences-window.ui:669
-#: src/ptyxis-tab.c:1647 src/ptyxis-util.c:318
+#: src/ptyxis-tab.c:1647 src/ptyxis-util.c:328
 msgid "Terminal"
 msgstr "终端"
 
@@ -123,11 +123,6 @@ msgstr "终端标签页运行在各自的 cgroup 内"
 #: data/org.gnome.Ptyxis.metainfo.xml.in.in:27
 msgid "Terminal inspector to help when writing terminal-based applications"
 msgstr "终端检查器可帮助编写基于终端的应用程序"
-
-#. developer_name tag deprecated with Appstream 1.0
-#: data/org.gnome.Ptyxis.metainfo.xml.in.in:32
-msgid "Christian Hergert"
-msgstr "Christian Hergert"
 
 #: data/org.gnome.Ptyxis.metainfo.xml.in.in:54
 msgid "A column and row size indicator is displayed when resizing the window"
@@ -235,7 +230,7 @@ msgstr "可视化进程引领者"
 msgid ""
 "Display a visual window highlight when process leader is SSH, sudo, or other "
 "specialized tooling"
-msgstr "当进程引领者是 SSH、sudo 或其它专用工具时显示可视化窗口高亮"
+msgstr "当进程引领者是 SSH、sudo 或其他专用工具时显示可视化窗口高亮"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:137
 msgid "Use System Font"
@@ -784,11 +779,11 @@ msgstr "关闭当前标签页的快捷键"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:561 src/ptyxis-preferences-window.ui:800
 msgid "Close Other Tabs"
-msgstr "关闭其它标签页"
+msgstr "关闭其他标签页"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:562
 msgid "Shortcut to close all tabs in the window but the current one"
-msgstr "关闭窗口中除当前标签页外其它所有标签页的快捷键"
+msgstr "关闭窗口中除当前标签页外其他所有标签页的快捷键"
 
 #: src/org.gnome.Ptyxis.gschema.xml.in:567 src/ptyxis-preferences-window.ui:749
 msgid "Close Window"
@@ -903,36 +898,36 @@ msgstr "撤消关闭标签页"
 msgid "Undo closing of last tab"
 msgstr "撤消关闭上个标签页的动作"
 
-#: src/ptyxis-application.c:461
+#: src/ptyxis-application.c:462
 msgid "--tab, --tab-with-profile, or --new-window may not be used together"
 msgstr "--tab、--tab-with-profile 或 --new-window 可能无法同时使用"
 
-#: src/ptyxis-application.c:507
+#: src/ptyxis-application.c:508
 #, c-format
 msgid "Cannot parse command: %s"
 msgstr "无法解析命令：%s"
 
-#: src/ptyxis-application.c:1140
+#: src/ptyxis-application.c:1142
 msgid "Examples:"
 msgstr "示例："
 
-#: src/ptyxis-application.c:1142
+#: src/ptyxis-application.c:1144
 msgid "Show the application preferences"
 msgstr "显示应用程序首选项"
 
 #. Used for new tabs/windows/etc when specified
-#: src/ptyxis-application.c:1145
+#: src/ptyxis-application.c:1147
 msgid "Use DIR for --tab, --tab-with-profile, --new-window, or -x"
 msgstr "为 --tab、--tab-with-profile、--new-window 或 -x 使用目录"
 
-#: src/ptyxis-application.c:1145
+#: src/ptyxis-application.c:1147
 msgid "DIR"
 msgstr "目录"
 
 #. By default, this implies a new ptyxis instance unless the options
 #. * below are provided to override that.
 #.
-#: src/ptyxis-application.c:1150
+#: src/ptyxis-application.c:1152
 msgid "Command to execute in new window"
 msgstr "新建窗口中执行的命令"
 
@@ -940,69 +935,69 @@ msgstr "新建窗口中执行的命令"
 #. * short command options for these to make it easier to sniff them in early args
 #. * checking from `main.c`.
 #.
-#: src/ptyxis-application.c:1156
+#: src/ptyxis-application.c:1158
 msgid "New terminal window"
 msgstr "新建终端窗口"
 
-#: src/ptyxis-application.c:1157
+#: src/ptyxis-application.c:1159
 msgid "New terminal tab in active window"
 msgstr "在活动窗口中新建标签页"
 
-#: src/ptyxis-application.c:1158
+#: src/ptyxis-application.c:1160
 msgid "New terminal tab in active window using the profile UUID"
 msgstr "在活动窗口中使用配置文件 UUID 新建终端标签页"
 
-#: src/ptyxis-application.c:1158
+#: src/ptyxis-application.c:1160
 msgid "PROFILE_UUID"
 msgstr "配置文件 UUID"
 
 #. Standalone (single instance mode)
-#: src/ptyxis-application.c:1161
+#: src/ptyxis-application.c:1163
 msgid "Start a new instance, ignoring existing instances"
 msgstr "忽略现有实例而启动一个新实例"
 
-#: src/ptyxis-application.c:1163
+#: src/ptyxis-application.c:1165
 msgid "Set title for new tab"
 msgstr "为新标签页设置标题"
 
-#: src/ptyxis-application.c:1164
+#: src/ptyxis-application.c:1166
 msgid "Maximize a newly created window"
 msgstr "最大化新创建的窗口"
 
-#: src/ptyxis-application.c:1165
+#: src/ptyxis-application.c:1167
 msgid "Fullscreen a newly created window"
 msgstr "使新创建的窗口全屏"
 
 #. Import a custom .palette file. This works like dragging the file onto preferences
-#: src/ptyxis-application.c:1168
+#: src/ptyxis-application.c:1170
 msgid "Import a Ptyxis palette file"
 msgstr "导入 Ptyxis 色板文件"
 
-#: src/ptyxis-application.c:1168
+#: src/ptyxis-application.c:1170
 msgid "FILE"
 msgstr "文件"
 
-#: src/ptyxis-application.c:1175
+#: src/ptyxis-application.c:1177
 msgid "Run Separate Instance"
 msgstr "运行单独实例"
 
-#: src/ptyxis-application.c:1179
+#: src/ptyxis-application.c:1181
 msgid "Open Preferences"
 msgstr "打开首选项"
 
-#: src/ptyxis-application.c:1183
+#: src/ptyxis-application.c:1185
 msgid "Run Custom Command in New Window"
 msgstr "在新建窗口中运行自定义命令"
 
-#: src/ptyxis-application.c:1188
+#: src/ptyxis-application.c:1190
 msgid "Import a custom palette"
 msgstr "导入自定义色板"
 
-#: src/ptyxis-application.c:1191
+#: src/ptyxis-application.c:1193
 msgid "[-- COMMAND ARGUMENTS]"
 msgstr "[-- 命令参数]"
 
-#: src/ptyxis-application.c:1432
+#: src/ptyxis-application.c:1434
 msgid "translator-credits"
 msgstr ""
 "SuGotLand <sugotland@outlook.com>, 2024.\n"
@@ -1512,7 +1507,7 @@ msgstr "关闭当前标签页"
 
 #: src/ptyxis-preferences-window.ui:801
 msgid "Close all tabs except the active tab"
-msgstr "关闭其它标签页"
+msgstr "关闭其他标签页"
 
 #: src/ptyxis-preferences-window.ui:808
 msgid "Undo closing the last tab"
@@ -1783,7 +1778,7 @@ msgstr "已退出"
 msgid "Failed"
 msgstr "已失败"
 
-#: src/ptyxis-tab.c:2237
+#: src/ptyxis-tab.c:2240
 msgid "Failed to open link"
 msgstr "打开链接失败"
 
@@ -1888,11 +1883,11 @@ msgid "Append title from Shell application"
 msgstr "附加来自 Shell 应用程序的标题"
 
 #. translators: Builder Terminal means this is a terminal bundled with GNOME Builder
-#: src/ptyxis-util.c:316
+#: src/ptyxis-util.c:326
 msgid "Builder Terminal"
 msgstr "构建器终端"
 
-#: src/ptyxis-util.c:320
+#: src/ptyxis-util.c:330
 msgid "Ptyxis"
 msgstr "Ptyxis"
 
@@ -1978,11 +1973,14 @@ msgstr "取消固定标签页(_P)"
 
 #: src/ptyxis-window.ui:853
 msgid "Close _Other Tabs"
-msgstr "关闭其它标签页(_O)"
+msgstr "关闭其他标签页(_O)"
 
 #: src/ptyxis-window.ui:858
 msgid "_Close Tab"
 msgstr "关闭标签页(_C)"
+
+#~ msgid "Christian Hergert"
+#~ msgstr "Christian Hergert"
 
 #~ msgid "Unknown Container"
 #~ msgstr "未知容器"
