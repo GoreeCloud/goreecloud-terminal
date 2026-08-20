@@ -1,0 +1,106 @@
+name: Fork Foundation
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provenance:
+    name: Provenance and license
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate fork foundation records
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f COPYING
+          test -f GORECLOUD_FORK.md
+          grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
+          grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
+          grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
+          grep -Fq "GPL-3.0-or-later" data/org.gnome.Ptyxis.metainfo.xml.in.in
+
+      - name: Record baseline identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git describe --always --tags --dirty
+          grep -m1 "version:" meson.build
+
+  build:
+    name: Native build and tests
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:rawhide
+    steps:
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            appstream \
+            desktop-file-utils \
+            gcc \
+            gettext \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            json-glib-devel \
+            libadwaita-devel \
+            libportal-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            vte291-gtk4-devel
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure unchanged baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup _build \
+            --buildtype=debugoptimized \
+            --prefix=/usr \
+            -Ddevelopment=true
+
+      - name: Compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson compile -C _build
+
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson test -C _build --print-errorlogs
+
+      - name: Validate install staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          DESTDIR="$PWD/_install" meson install -C _build
+          test -x _install/usr/bin/ptyxis
+          test -x _install/usr/libexec/ptyxis-agent
