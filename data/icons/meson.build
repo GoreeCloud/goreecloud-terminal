@@ -8,7 +8,7 @@ else
   icon_prefix = 'goreecloud-terminal'
 endif
 
-if get_option('development') and app_is_generic
+if get_option('development')
   icon_prefix = '@0@-devel'.format(icon_prefix)
 endif
 
