@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=@APP_NAME@
-Comment=A container-oriented terminal for GNOME
+Comment=GoreeCloud terminal for local shells, SSH, development, and infrastructure administration
 Exec=ptyxis
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=@APP_ID@
@@ -11,7 +11,7 @@ Type=Application
 Categories=GNOME;GTK;System;TerminalEmulator;
 GenericName=Terminal
 # Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
-Keywords=terminal;prompt;ptyxis;shell;command;commandline;cmd;cli;console;container;podman;toolbox;distrobox;
+Keywords=terminal;prompt;shell;command;commandline;cmd;cli;console;ssh;remote;container;podman;toolbox;distrobox;GoreeCloud;
 Actions=new-window;new-tab;preferences;
 X-ExecArg=--
 X-TerminalArgTitle=--title
