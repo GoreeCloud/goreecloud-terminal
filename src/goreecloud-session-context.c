@@ -44,9 +44,39 @@ static const GoreeCloudSessionContext elevated_context = {
   .show_indicator = TRUE,
 };
 
+#if DEVELOPMENT_BUILD
+static const GoreeCloudSessionContext *
+goreecloud_session_context_from_preview (void)
+{
+  const char *preview = g_getenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW");
+
+  if (preview == NULL || *preview == '\0')
+    return NULL;
+
+  if (g_str_equal (preview, "local"))
+    return &local_context;
+  if (g_str_equal (preview, "remote"))
+    return &remote_context;
+  if (g_str_equal (preview, "container"))
+    return &container_context;
+  if (g_str_equal (preview, "elevated"))
+    return &elevated_context;
+
+  g_warning ("Ignoring unsupported GORECLOUD_SESSION_CONTEXT_PREVIEW value '%s'", preview);
+  return NULL;
+}
+#endif
+
 const GoreeCloudSessionContext *
 goreecloud_session_context_for_leader_kind (PtyxisProcessLeaderKind kind)
 {
+#if DEVELOPMENT_BUILD
+  const GoreeCloudSessionContext *preview = goreecloud_session_context_from_preview ();
+
+  if (preview != NULL)
+    return preview;
+#endif
+
   switch (kind)
     {
     case PTYXIS_PROCESS_LEADER_KIND_REMOTE:
