@@ -98,40 +98,101 @@ summary('Development Banner', get_option('development'))
 summary('Generic', app_is_generic)
 
 check_functions = [
-  'fchmod',
-  'setlocale',
-  'getuid',
-  'geteuid',
-  'getpwuid',
-  'setenv',
-  'unsetenv',
-  'setrlimit',
-  'getrlimit',
-  'prctl',
-  'setsid',
-  'setpgid',
-  'setpgrp',
-  'tcsetpgrp',
-  'statvfs',
+  ['HAVE_GRANTPT', 'grantpt'],
+  ['HAVE_POSIX_OPENPT', 'posix_openpt'],
+  ['HAVE_PTSNAME', 'ptsname'],
+  ['HAVE_PTSNAME_R', 'ptsname_r'],
+  ['HAVE_UNLOCKPT', 'unlockpt'],
 ]
-
-foreach check_function: check_functions
-  config_h.set10('HAVE_' + check_function.to_upper(), cc.has_function(check_function))
+foreach func: check_functions
+  config_h.set(func[0], cc.has_function(func[1]))
 endforeach
 
-configure_file(
-         output: 'config.h',
-  configuration: config_h,
-)
+project_c_args = []
+test_c_args = [
+  '-Wcast-align',
+  '-Wdeclaration-after-statement',
+  '-Werror=address',
+  '-Werror=array-bounds',
+  '-Werror=empty-body',
+  '-Werror=implicit',
+  '-Werror=implicit-function-declaration',
+  '-Werror=incompatible-pointer-types',
+  '-Werror=init-self',
+  '-Werror=int-conversion',
+  '-Werror=int-to-pointer-cast',
+  '-Werror=main',
+  '-Werror=misleading-indentation',
+  '-Werror=missing-braces',
+  '-Werror=missing-include-dirs',
+  '-Werror=nonnull',
+  '-Werror=overflow',
+  '-Werror=parenthesis',
+  '-Werror=pointer-arith',
+  '-Werror=pointer-to-int-cast',
+  '-Werror=redundant-decls',
+  '-Werror=return-type',
+  '-Werror=sequence-point',
+  '-Werror=shadow',
+  '-Werror=strict-prototypes',
+  '-Werror=trigraphs',
+  '-Werror=undef',
+  '-Werror=write-strings',
+  '-Wformat-nonliteral',
+  '-Wignored-qualifiers',
+  '-Wimplicit-function-declaration',
+  '-Wlogical-op',
+  '-Wmissing-format-attribute',
+  '-Wmissing-include-dirs',
+  '-Wmissing-noreturn',
+  '-Wnested-externs',
+  '-Wno-cast-function-type',
+  '-Wno-dangling-pointer',
+  '-Wno-missing-field-initializers',
+  '-Wno-sign-compare',
+  '-Wno-unused-parameter',
+  '-Wold-style-definition',
+  '-Wpointer-arith',
+  '-Wredundant-decls',
+  '-Wstrict-prototypes',
+  '-Wswitch-default',
+  '-Wswitch-enum',
+  '-Wundef',
+  '-Wuninitialized',
+  '-Wunused',
+  '-fno-strict-aliasing',
+  ['-Werror=format-security', '-Werror=format=2'],
+]
+if cc.has_multi_arguments('-Wmissing-declarations')
+  project_c_args += '-Wmissing-declarations'
+endif
+if get_option('buildtype') != 'plain'
+  test_c_args += '-fstack-protector-strong'
+endif
+foreach arg: test_c_args
+  if cc.has_multi_arguments(arg)
+    project_c_args += arg
+  endif
+endforeach
+add_project_arguments(project_c_args, language: 'c')
 
-subdir('src')
-subdir('agent')
+foreach link_arg: test_link_args
+  if cc.has_link_argument(link_arg)
+    release_link_args += link_arg
+  endif
+endforeach
+
 subdir('data')
+subdir('agent')
+subdir('src')
 subdir('po')
 subdir('man')
+subdir('testsuite')
+
+configure_file(output: 'config.h', configuration: config_h)
 
 gnome.post_install(
-  glib_compile_schemas: true,
-  gtk_update_icon_cache: true,
+     glib_compile_schemas: true,
+    gtk_update_icon_cache: true,
   update_desktop_database: true,
 )
