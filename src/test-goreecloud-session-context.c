@@ -93,6 +93,50 @@ test_unknown_values_fail_closed_to_local (void)
   g_assert_cmpint (context->severity, ==, GOREECLOUD_SESSION_CONTEXT_SEVERITY_NONE);
 }
 
+#if DEVELOPMENT_BUILD
+static void
+test_development_preview_override (void)
+{
+  g_setenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW", "remote", TRUE);
+  assert_context (PTYXIS_PROCESS_LEADER_KIND_UNKNOWN,
+                  "Remote",
+                  "Remote terminal session",
+                  "process-remote-symbolic",
+                  "session-context-remote",
+                  GOREECLOUD_SESSION_CONTEXT_SEVERITY_INFO,
+                  TRUE);
+
+  g_setenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW", "container", TRUE);
+  assert_context (PTYXIS_PROCESS_LEADER_KIND_UNKNOWN,
+                  "Container",
+                  "Containerized terminal session",
+                  "container-generic-symbolic",
+                  "session-context-container",
+                  GOREECLOUD_SESSION_CONTEXT_SEVERITY_CAUTION,
+                  TRUE);
+
+  g_setenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW", "elevated", TRUE);
+  assert_context (PTYXIS_PROCESS_LEADER_KIND_UNKNOWN,
+                  "Elevated",
+                  "Elevated superuser terminal session",
+                  "process-superuser-symbolic",
+                  "session-context-elevated",
+                  GOREECLOUD_SESSION_CONTEXT_SEVERITY_ELEVATED,
+                  TRUE);
+
+  g_setenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW", "local", TRUE);
+  assert_context (PTYXIS_PROCESS_LEADER_KIND_REMOTE,
+                  "Local",
+                  "Local terminal session",
+                  NULL,
+                  "session-context-local",
+                  GOREECLOUD_SESSION_CONTEXT_SEVERITY_NONE,
+                  FALSE);
+
+  g_unsetenv ("GORECLOUD_SESSION_CONTEXT_PREVIEW");
+}
+#endif
+
 int
 main (int   argc,
       char *argv[])
@@ -104,6 +148,9 @@ main (int   argc,
   g_test_add_func ("/goreecloud/session-context/container", test_container_context);
   g_test_add_func ("/goreecloud/session-context/elevated", test_elevated_context);
   g_test_add_func ("/goreecloud/session-context/unknown-fails-closed", test_unknown_values_fail_closed_to_local);
+#if DEVELOPMENT_BUILD
+  g_test_add_func ("/goreecloud/session-context/development-preview", test_development_preview_override);
+#endif
 
   return g_test_run ();
 }
