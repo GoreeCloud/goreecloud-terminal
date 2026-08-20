@@ -1,5 +1,6 @@
 ptyxis_sources = [
   'gdkhsla.c',
+  'goreecloud-session-context.c',
   'main.c',
   'ptyxis-add-button-list-item.c',
   'ptyxis-add-button-list-model.c',
