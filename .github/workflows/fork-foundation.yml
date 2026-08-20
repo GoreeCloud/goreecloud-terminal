@@ -66,7 +66,7 @@ jobs:
             gtk4-devel \
             json-glib-devel \
             libadwaita-devel \
-            libportal-devel \
+            libportal-gtk4-devel \
             meson \
             ninja-build \
             pkgconf-pkg-config \
