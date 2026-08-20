@@ -175,3 +175,118 @@ window.has-tab-bar .visual-bell-area {
   padding-top: 3px;
   padding-bottom: 3px;
 }
+
+/*
+ * GoreeCloud Glaze UI foundation
+ *
+ * This layer intentionally styles application chrome only. Terminal canvas
+ * colors remain owned by the active VTE palette so shell readability,
+ * accessibility, and user-selected terminal themes are not overridden.
+ */
+@define-color glaze_accent #48b8ff;
+@define-color glaze_accent_soft alpha(#48b8ff, 0.18);
+@define-color glaze_edge alpha(#9bdcff, 0.22);
+@define-color glaze_surface alpha(#10233f, 0.72);
+@define-color glaze_surface_strong alpha(#0b172b, 0.90);
+@define-color glaze_text_soft alpha(currentColor, 0.72);
+
+.ptyxis-window .main-header-bar {
+  background: linear-gradient(to bottom,
+                              alpha(#17365f, 0.78),
+                              alpha(#0c1b31, 0.86));
+  border-bottom: 1px solid @glaze_edge;
+  box-shadow: inset 0 1px alpha(white, 0.06),
+              0 4px 18px alpha(black, 0.12);
+}
+
+.ptyxis-window .main-header-bar button:not(.suggested-action):not(.destructive-action) {
+  border-radius: 10px;
+}
+
+.ptyxis-window .main-header-bar button:hover:not(.suggested-action):not(.destructive-action) {
+  background: @glaze_accent_soft;
+}
+
+.ptyxis-window .main-header-bar button:checked,
+.ptyxis-window .main-header-bar button:active {
+  background: alpha(#48b8ff, 0.26);
+  box-shadow: inset 0 0 0 1px alpha(#9bdcff, 0.22);
+}
+
+.ptyxis-window .window-contents {
+  background-color: transparent;
+}
+
+popover contents,
+.dialog-host > dialog,
+preferenceswindow .content {
+  border: 1px solid alpha(#9bdcff, 0.14);
+  box-shadow: 0 16px 36px alpha(black, 0.20);
+}
+
+popover contents {
+  border-radius: 14px;
+}
+
+.card,
+preferencesgroup > box > box {
+  border-radius: 14px;
+}
+
+preferencesgroup flowboxchild,
+preferencesgroup .card {
+  transition: 120ms ease;
+}
+
+preferencesgroup flowboxchild:hover {
+  box-shadow: inset 0 0 0 1px alpha(#48b8ff, 0.22);
+}
+
+findbar {
+  background: linear-gradient(to bottom,
+                              alpha(#102a4b, 0.94),
+                              alpha(#0b1a30, 0.94));
+  border-bottom: 1px solid @glaze_edge;
+}
+
+findbar entry {
+  border-radius: 10px;
+}
+
+popover.tab-menu listview row {
+  border-radius: 10px;
+}
+
+popover.tab-menu listview row:hover {
+  background: alpha(#48b8ff, 0.15);
+}
+
+popover.tab-menu listview row:active {
+  background: alpha(#48b8ff, 0.24);
+}
+
+button.palette {
+  border-radius: 14px;
+}
+
+button.palette.selected {
+  box-shadow: 0 0 0 2px @glaze_accent,
+              0 6px 16px alpha(#48b8ff, 0.16);
+}
+
+palettepreview > box {
+  border-radius: 12px;
+}
+
+/* Keep terminal DnD state legible while matching Glaze geometry. */
+vte-terminal:drop(active) {
+  box-shadow: inset 0 0 0 2px alpha(#48b8ff, 0.72);
+}
+
+/* Focus visibility is deliberately stronger than decorative Glaze edges. */
+.ptyxis-window button:focus-visible,
+.ptyxis-window entry:focus-visible,
+.ptyxis-window row:focus-visible {
+  outline: 2px solid alpha(#7fd6ff, 0.88);
+  outline-offset: 2px;
+}
