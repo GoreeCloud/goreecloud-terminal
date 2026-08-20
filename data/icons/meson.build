@@ -2,14 +2,13 @@ icondir = join_paths(get_option('datadir'), 'icons', 'hicolor')
 symbolicdir = join_paths(icondir, 'symbolic', 'apps')
 scalabledir = join_paths(icondir, 'scalable', 'apps')
 
-
 if app_is_generic
   icon_prefix = 'generic'
 else
-  icon_prefix = 'ptyxis'
+  icon_prefix = 'goreecloud-terminal'
 endif
 
-if get_option('development')
+if get_option('development') and app_is_generic
   icon_prefix = '@0@-devel'.format(icon_prefix)
 endif
 
