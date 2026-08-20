@@ -18,25 +18,25 @@ app_id = get_option('app-id')
 
 if get_option('development')
   if app_id == ''
-    app_id = 'org.gnome.Ptyxis.Devel'
+    app_id = 'com.goreecloud.Terminal.Devel'
   endif
   if app_schema_path == ''
-    app_schema_path = '/org/gnome/Ptyxis/Devel/'
+    app_schema_path = '/com/goreecloud/Terminal/Devel/'
   endif
 else
   if app_id == ''
-    app_id = 'org.gnome.Ptyxis'
+    app_id = 'com.goreecloud.Terminal'
   endif
   if app_schema_path == ''
-    app_schema_path = '/org/gnome/Ptyxis/'
+    app_schema_path = '/com/goreecloud/Terminal/'
   endif
 endif
 
 if app_schema_id == ''
   if get_option('development')
-    app_schema_id = 'org.gnome.Ptyxis.Devel'
+    app_schema_id = 'com.goreecloud.Terminal.Devel'
   else
-    app_schema_id = 'org.gnome.Ptyxis'
+    app_schema_id = 'com.goreecloud.Terminal'
   endif
 endif
 
@@ -84,9 +84,9 @@ config_h.set_quoted('GETTEXT_PACKAGE', 'ptyxis')
 config_h.set_quoted('LOCALEDIR', get_option('prefix') / get_option('localedir'))
 # LIBEXECDIR must be expanded in config.h
 config_h.set_quoted('LIBEXECDIR', get_option('prefix') / get_option('libexecdir'))
-config_h.set_quoted('PACKAGE_WEBSITE', 'https://gitlab.gnome.org/chergert/ptyxis')
+config_h.set_quoted('PACKAGE_WEBSITE', 'https://github.com/GoreeCloud/goreecloud-terminal')
 config_h.set_quoted('PACKAGE_ICON_NAME', app_id)
-config_h.set_quoted('PACKAGE_NAME', 'Ptyxis')
+config_h.set_quoted('PACKAGE_NAME', 'GoreeCloud Terminal')
 config_h.set10('DEVELOPMENT_BUILD', get_option('development'))
 config_h.set10('APP_IS_GENERIC', app_is_generic)
 config_h.set10('APP_IS_BUILDER', app_is_builder)
@@ -98,101 +98,40 @@ summary('Development Banner', get_option('development'))
 summary('Generic', app_is_generic)
 
 check_functions = [
-  ['HAVE_GRANTPT', 'grantpt'],
-  ['HAVE_POSIX_OPENPT', 'posix_openpt'],
-  ['HAVE_PTSNAME', 'ptsname'],
-  ['HAVE_PTSNAME_R', 'ptsname_r'],
-  ['HAVE_UNLOCKPT', 'unlockpt'],
+  'fchmod',
+  'setlocale',
+  'getuid',
+  'geteuid',
+  'getpwuid',
+  'setenv',
+  'unsetenv',
+  'setrlimit',
+  'getrlimit',
+  'prctl',
+  'setsid',
+  'setpgid',
+  'setpgrp',
+  'tcsetpgrp',
+  'statvfs',
 ]
-foreach func: check_functions
-  config_h.set(func[0], cc.has_function(func[1]))
+
+foreach check_function: check_functions
+  config_h.set10('HAVE_' + check_function.to_upper(), cc.has_function(check_function))
 endforeach
 
-project_c_args = []
-test_c_args = [
-  '-Wcast-align',
-  '-Wdeclaration-after-statement',
-  '-Werror=address',
-  '-Werror=array-bounds',
-  '-Werror=empty-body',
-  '-Werror=implicit',
-  '-Werror=implicit-function-declaration',
-  '-Werror=incompatible-pointer-types',
-  '-Werror=init-self',
-  '-Werror=int-conversion',
-  '-Werror=int-to-pointer-cast',
-  '-Werror=main',
-  '-Werror=misleading-indentation',
-  '-Werror=missing-braces',
-  '-Werror=missing-include-dirs',
-  '-Werror=nonnull',
-  '-Werror=overflow',
-  '-Werror=parenthesis',
-  '-Werror=pointer-arith',
-  '-Werror=pointer-to-int-cast',
-  '-Werror=redundant-decls',
-  '-Werror=return-type',
-  '-Werror=sequence-point',
-  '-Werror=shadow',
-  '-Werror=strict-prototypes',
-  '-Werror=trigraphs',
-  '-Werror=undef',
-  '-Werror=write-strings',
-  '-Wformat-nonliteral',
-  '-Wignored-qualifiers',
-  '-Wimplicit-function-declaration',
-  '-Wlogical-op',
-  '-Wmissing-format-attribute',
-  '-Wmissing-include-dirs',
-  '-Wmissing-noreturn',
-  '-Wnested-externs',
-  '-Wno-cast-function-type',
-  '-Wno-dangling-pointer',
-  '-Wno-missing-field-initializers',
-  '-Wno-sign-compare',
-  '-Wno-unused-parameter',
-  '-Wold-style-definition',
-  '-Wpointer-arith',
-  '-Wredundant-decls',
-  '-Wstrict-prototypes',
-  '-Wswitch-default',
-  '-Wswitch-enum',
-  '-Wundef',
-  '-Wuninitialized',
-  '-Wunused',
-  '-fno-strict-aliasing',
-  ['-Werror=format-security', '-Werror=format=2'],
-]
-if cc.has_multi_arguments('-Wmissing-declarations')
-  project_c_args += '-Wmissing-declarations'
-endif
-if get_option('buildtype') != 'plain'
-  test_c_args += '-fstack-protector-strong'
-endif
-foreach arg: test_c_args
-  if cc.has_multi_arguments(arg)
-    project_c_args += arg
-  endif
-endforeach
-add_project_arguments(project_c_args, language: 'c')
+configure_file(
+         output: 'config.h',
+  configuration: config_h,
+)
 
-foreach link_arg: test_link_args
-  if cc.has_link_argument(link_arg)
-    release_link_args += link_arg
-  endif
-endforeach
-
-subdir('data')
-subdir('agent')
 subdir('src')
+subdir('agent')
+subdir('data')
 subdir('po')
 subdir('man')
-subdir('testsuite')
-
-configure_file(output: 'config.h', configuration: config_h)
 
 gnome.post_install(
-     glib_compile_schemas: true,
-    gtk_update_icon_cache: true,
+  glib_compile_schemas: true,
+  gtk_update_icon_cache: true,
   update_desktop_database: true,
 )
