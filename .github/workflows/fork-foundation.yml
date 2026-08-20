@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - "agent/**"
 
 permissions:
   contents: read
@@ -37,7 +38,7 @@ jobs:
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
           grep -Fq "GPL-3.0-or-later" data/org.gnome.Ptyxis.metainfo.xml.in.in
 
-      - name: Record baseline identity
+      - name: Record source identity
         shell: bash
         run: |
           set -euo pipefail
@@ -76,7 +77,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure unchanged baseline
+      - name: Verify supported Meson options
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "option('development'" meson_options.txt
+
+      - name: Configure current source
         shell: bash
         run: |
           set -euo pipefail
