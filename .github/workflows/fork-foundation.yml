@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - "agent/**"
 
 permissions:
   contents: read
@@ -37,7 +38,7 @@ jobs:
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
           grep -Fq "GPL-3.0-or-later" data/org.gnome.Ptyxis.metainfo.xml.in.in
 
-      - name: Record baseline identity
+      - name: Record source identity
         shell: bash
         run: |
           set -euo pipefail
@@ -65,7 +66,7 @@ jobs:
             gtk4-devel \
             json-glib-devel \
             libadwaita-devel \
-            libportal-devel \
+            libportal-gtk4-devel \
             meson \
             ninja-build \
             pkgconf-pkg-config \
@@ -76,14 +77,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure unchanged baseline
+      - name: Verify supported Meson options
         shell: bash
         run: |
           set -euo pipefail
-          meson setup _build \
+          grep -Fq "option('development'" meson_options.txt
+
+      - name: Configure current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! meson setup _build \
             --buildtype=debugoptimized \
             --prefix=/usr \
-            -Ddevelopment=true
+            -Ddevelopment=true; then
+            printf '\n--- Meson configure log ---\n'
+            cat _build/meson-logs/meson-log.txt 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Upload Meson configure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meson-configure-diagnostics
+          path: _build/meson-logs/meson-log.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Compile
         shell: bash
