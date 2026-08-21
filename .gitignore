@@ -1,1 +1,9 @@
 .flatpak-builder
+_build/
+_deps/
+_run/
+subprojects/.wraplock
+subprojects/simdutf.wrap
+subprojects/simdutf/
+subprojects/fast_float.wrap
+subprojects/fast_float/
