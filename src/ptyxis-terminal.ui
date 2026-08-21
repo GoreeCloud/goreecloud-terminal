@@ -185,10 +185,17 @@
     </section>
     <section>
       <item>
+        <attribute name="id">copy-all</attribute>
+        <attribute name="label" translatable="yes">_Copy All</attribute>
+        <attribute name="description" translatable="yes">Copy all terminal text, including scrollback, without requiring a selection</attribute>
+        <attribute name="action">clipboard.copy-all</attribute>
+      </item>
+      <item>
         <attribute name="id">copy-clipboard</attribute>
-        <attribute name="label" translatable="yes">_Copy</attribute>
-        <attribute name="description" translatable="yes">Copy selection from terminal to clipboard</attribute>
+        <attribute name="label" translatable="yes">Copy _Selection</attribute>
+        <attribute name="description" translatable="yes">Copy the selected terminal text to the clipboard</attribute>
         <attribute name="action">clipboard.copy</attribute>
+        <attribute name="hidden-when">action-disabled</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">Copy as _HTML</attribute>
@@ -201,6 +208,14 @@
         <attribute name="label" translatable="yes">_Paste</attribute>
         <attribute name="description" translatable="yes">Paste from clipboard into the terminal</attribute>
         <attribute name="action">clipboard.paste</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="id">apt-update</attribute>
+        <attribute name="label" translatable="yes">Run sudo apt update -y</attribute>
+        <attribute name="description" translatable="yes">Send sudo apt update -y to the active terminal and execute it</attribute>
+        <attribute name="action">terminal.run-apt-update</attribute>
       </item>
     </section>
     <section>
