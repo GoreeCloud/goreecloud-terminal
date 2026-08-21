@@ -78,4 +78,25 @@ For each context, switch among representative terminal palettes and both desktop
 
 Record the exact commit SHA tested, distribution/runtime environment, display server, desktop appearance, scaling factor, and which real contexts were exercised. Screenshots may be attached to the pull request when they contain no terminal secrets, credentials, private host information, command history that should remain private, or other sensitive information.
 
+### 2026-08-21 development-preview runtime record
+
+Candidate source head: `df9df7ed72ac7f69b9e0890e3824967351f318f9` on `agent/wardveil-session-context`.
+
+Automated validation: GitHub Actions Fork Foundation run `32416020361` completed successfully for the exact candidate head. A local GNOME SDK 50 development build also compiled successfully, and the Meson test suite passed 24/24 tests with zero failures, including `ptyxis:goreecloud-session-context`.
+
+Local development environment: Zorin OS 17.3 Pro host; GNOME SDK 50 Flatpak development shell; Wayland graphical session; dark terminal appearance. The application was installed into a private development prefix under the repository and launched with the development-only preview override. The private development setup was used only to exercise the candidate source and did not represent a production package or workstation replacement.
+
+Observed visual-preview results:
+
+- Remote normal-window presentation passed: icon and `Remote` label rendered as a compact informational chip in the header, remained separate from VTE content, and did not collide with the title or controls.
+- Container normal-window presentation passed: container icon and `Container` label rendered with distinct caution treatment and preserved terminal-canvas layout.
+- Elevated normal-window presentation passed: superuser icon and `Elevated` label rendered with the strongest of the three context treatments without becoming an error dialog or destructive-action prompt.
+- Local preview passed: no session-context chip was displayed.
+- Remote narrow-window presentation passed: the title truncated gracefully while the complete Remote chip and window controls remained readable and non-overlapping.
+- Remote maximized presentation passed: header alignment, chip readability, and VTE content remained intact.
+- Remote fullscreen presentation passed: the application entered true fullscreen, retained the Remote context chip in the fullscreen header, hid normal title buttons as designed, exposed the fullscreen-exit control, and preserved terminal content and command execution.
+- The fullscreen terminal remained operational for ordinary host-shell commands and normal `sudo` authorization; no command interception or VTE rendering regression was observed during this check.
+
+This record is presentation evidence only. The following acceptance items remain open: real detector-driven Local/Remote/Container/Elevated transitions with the preview override unset, mixed-context tab switching, tooltip and accessibility inspection, keyboard-focus behavior, light-appearance validation, representative palette/transparency regression checks, and final product-identity integration. Milestone 3 remains Draft and no Stable or production acceptance is claimed.
+
 Milestone 3 remains Draft until the graphical checks, real process-context transitions, tab switching, accessibility behavior, and palette regression checks have been recorded for the exact candidate head.
