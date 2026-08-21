@@ -186,7 +186,7 @@
     <section>
       <item>
         <attribute name="id">copy-all</attribute>
-        <attribute name="label" translatable="yes">_Copy All</attribute>
+        <attribute name="label" translatable="yes">_Copy</attribute>
         <attribute name="description" translatable="yes">Copy all terminal text, including scrollback, without requiring a selection</attribute>
         <attribute name="action">clipboard.copy-all</attribute>
       </item>
@@ -222,7 +222,7 @@
       <item>
         <attribute name="id">select-all</attribute>
         <attribute name="label" translatable="yes">Select _All</attribute>
-        <attribute name="description" translatable="yes">Selection all text from terminal including scrollback</attribute>
+        <attribute name="description" translatable="yes">Select terminal text using VTE's standard selection behavior</attribute>
         <attribute name="action">terminal.select-all</attribute>
         <attribute name="target" type="b">true</attribute>
       </item>
