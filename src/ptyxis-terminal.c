@@ -27,6 +27,7 @@
 #include <pcre2.h>
 
 #include <adwaita.h>
+#include <gio/gio.h>
 
 #include <glib/gi18n.h>
 
@@ -253,6 +254,9 @@ ptyxis_terminal_setup_context_menu (VteTerminal           *terminal,
     }
 
   ptyxis_terminal_update_clipboard_actions (self);
+  gtk_widget_action_set_enabled (GTK_WIDGET (self),
+                                 "terminal.run-apt-update",
+                                 vte_terminal_get_input_enabled (terminal));
 
   vte_event_context_get_coordinates (context, &x, &y);
 
@@ -439,6 +443,70 @@ copy_clipboard_action (GtkWidget  *widget,
       if (ptyxis_settings_get_toast_on_copy_clipboard (settings))
         ptyxis_terminal_toast (self, 1, _("Copied to clipboard"));
     }
+}
+
+static void
+copy_all_clipboard_action (GtkWidget  *widget,
+                           const char *action_name,
+                           GVariant   *param)
+{
+  PtyxisTerminal *self = PTYXIS_TERMINAL (widget);
+  GdkClipboard *clipboard = gtk_widget_get_clipboard (widget);
+  g_autoptr(GOutputStream) stream = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *text = NULL;
+  gconstpointer data;
+  gsize size;
+
+  g_assert (PTYXIS_IS_TERMINAL (self));
+
+  stream = g_memory_output_stream_new_resizable ();
+
+  if (!vte_terminal_write_contents_sync (VTE_TERMINAL (self),
+                                         stream,
+                                         VTE_WRITE_DEFAULT,
+                                         NULL,
+                                         &error))
+    {
+      g_warning ("Failed to copy terminal contents: %s", error->message);
+      ptyxis_terminal_toast (self, 2, _("Unable to copy terminal contents"));
+      return;
+    }
+
+  data = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (stream));
+  size = g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (stream));
+
+  if (data == NULL || size == 0)
+    return;
+
+  text = g_strndup (data, size);
+  gdk_clipboard_set_text (clipboard, text);
+
+  if (ptyxis_settings_get_toast_on_copy_clipboard (
+        ptyxis_application_get_settings (PTYXIS_APPLICATION_DEFAULT)))
+    ptyxis_terminal_toast (self, 1, _("Copied all terminal text"));
+}
+
+static void
+run_apt_update_action (GtkWidget  *widget,
+                       const char *action_name,
+                       GVariant   *param)
+{
+  PtyxisTerminal *self = PTYXIS_TERMINAL (widget);
+  static const char command[] = "sudo apt update -y\r";
+
+  g_assert (PTYXIS_IS_TERMINAL (self));
+
+  if (!vte_terminal_get_input_enabled (VTE_TERMINAL (self)))
+    {
+      ptyxis_terminal_toast (self, 2, _("Terminal input is read-only"));
+      return;
+    }
+
+  vte_terminal_feed_child (VTE_TERMINAL (self), command, -1);
+
+  if (vte_terminal_get_scroll_on_keystroke (VTE_TERMINAL (self)))
+    ptyxis_terminal_scroll_to_bottom (self);
 }
 
 static void
@@ -1394,10 +1462,12 @@ ptyxis_terminal_class_init (PtyxisTerminalClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, ptyxis_terminal_drop_target_drop);
 
   gtk_widget_class_install_action (widget_class, "clipboard.copy", NULL, copy_clipboard_action);
+  gtk_widget_class_install_action (widget_class, "clipboard.copy-all", NULL, copy_all_clipboard_action);
   gtk_widget_class_install_action (widget_class, "clipboard.copy-as-html", NULL, copy_clipboard_action);
   gtk_widget_class_install_action (widget_class, "clipboard.copy-link", NULL, copy_link_address_action);
   gtk_widget_class_install_action (widget_class, "clipboard.paste", NULL, paste_clipboard_action);
   gtk_widget_class_install_action (widget_class, "terminal.open-link", NULL, open_link_action);
+  gtk_widget_class_install_action (widget_class, "terminal.run-apt-update", NULL, run_apt_update_action);
   gtk_widget_class_install_action (widget_class, "terminal.select-all", "b", select_all_action);
 
   for (guint i = 0; i < G_N_ELEMENTS (url_regexes); i++)
