@@ -1,0 +1,267 @@
+name: Flatpak Production No Host Filesystem Transition
+
+on:
+  push:
+    branches:
+      - main
+      - agent/terminal-50.2-rc.2
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-production-no-hostfs-transition-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  transition:
+    name: Validate production candidate repository update and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      APP_ID: com.goreecloud.Terminal
+      CANDIDATE_MANIFEST: com.goreecloud.Terminal.NoHostFS.generated.json
+      BASELINE_BUNDLE: goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak
+      BASELINE_SHA256: f6819b045319babfbde7e7cfb4c097ed441bc160727c513fd2432283d962cd64
+      BASELINE_OSTREE: b381917f3ba700c3b1b903423f8241fa80b640bdebdfebb438f47212559f8af7
+      BASELINE_URL: https://github.com/GoreeCloud/goreecloud-terminal/releases/download/50.2-rc.1/goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Generate exact production-identity permission candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/generate-flatpak-production-no-hostfs-candidate.py
+          python3 tools/generate-flatpak-production-no-hostfs-candidate.py --output "$CANDIDATE_MANIFEST"
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          from pathlib import Path
+
+          base = json.loads(Path('com.goreecloud.Terminal.json').read_text(encoding='utf-8'))
+          candidate = json.loads(Path(os.environ['CANDIDATE_MANIFEST']).read_text(encoding='utf-8'))
+          removed = '--filesystem=host'
+
+          assert base['app-id'] == candidate['app-id'] == 'com.goreecloud.Terminal'
+          assert base['finish-args'].count(removed) == 1
+          assert candidate['finish-args'] == [arg for arg in base['finish-args'] if arg != removed]
+          assert removed not in candidate['finish-args']
+
+          restored = copy.deepcopy(candidate)
+          restored['finish-args'] = copy.deepcopy(base['finish-args'])
+          assert restored == base, 'candidate changed fields outside finish-args'
+
+          status = json.loads(Path('release/status.json').read_text(encoding='utf-8'))
+          assert status['release_lifecycle'] == 'Release Candidate'
+          assert status['production_approved'] is False
+          assert status['stable_approved'] is False
+          PY
+
+      - name: Install Flatpak and build tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            curl \
+            elfutils \
+            flatpak \
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
+          flatpak --version
+          flatpak-builder --version
+
+      - name: Install declared GNOME runtime and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//50 \
+            org.gnome.Sdk//50
+
+      - name: Download and verify immutable published baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output "$BASELINE_BUNDLE" "$BASELINE_URL"
+          test -s "$BASELINE_BUNDLE"
+          printf '%s  %s\n' "$BASELINE_SHA256" "$BASELINE_BUNDLE" | sha256sum --check --strict
+
+      - name: Build exact-head production candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/goreecloud-terminal-production-no-hostfs-build"
+          state_dir="$RUNNER_TEMP/goreecloud-terminal-production-no-hostfs-state"
+          repo_dir="$RUNNER_TEMP/goreecloud-terminal-production-no-hostfs-repo"
+          rm -rf "$build_dir" "$state_dir" "$repo_dir"
+
+          flatpak-builder \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --state-dir="$state_dir" \
+            --repo="$repo_dir" \
+            "$build_dir" \
+            "$CANDIDATE_MANIFEST"
+
+          candidate_bundle="goreecloud-terminal-production-no-hostfs-${SOURCE_SHA}.flatpak"
+          flatpak build-bundle "$repo_dir" "$candidate_bundle" "$APP_ID"
+          test -s "$candidate_bundle"
+          sha256sum "$candidate_bundle" | tee "${candidate_bundle}.sha256"
+          printf '%s\n' "$candidate_bundle" > "$RUNNER_TEMP/candidate-bundle-path"
+
+      - name: Create baseline repository and install published RC
+        shell: bash
+        run: |
+          set -euo pipefail
+          transition_repo="$RUNNER_TEMP/goreecloud-terminal-transition-repo"
+          rm -rf "$transition_repo"
+          ostree init --repo="$transition_repo" --mode=archive-z2
+
+          flatpak build-import-bundle "$transition_repo" "$BASELINE_BUNDLE"
+          flatpak build-update-repo "$transition_repo"
+
+          flatpak --user remote-add --if-not-exists --no-gpg-verify \
+            goreecloud-transition "file://$transition_repo"
+          flatpak --user install -y --noninteractive goreecloud-transition "$APP_ID"
+
+          baseline_commit="$(flatpak --user info --show-commit "$APP_ID")"
+          test "$baseline_commit" = "$BASELINE_OSTREE"
+          test "$(flatpak --user info --show-origin "$APP_ID")" = 'goreecloud-transition'
+          printf '%s\n' "$baseline_commit" > "$RUNNER_TEMP/baseline-commit"
+          printf '%s\n' "$transition_repo" > "$RUNNER_TEMP/transition-repo"
+
+          data_dir="$HOME/.var/app/$APP_ID"
+          mkdir -p "$data_dir"
+          printf 'goreecloud-terminal-transition-marker\n' > "$data_dir/stable-transition-marker"
+
+      - name: Publish candidate into repository and perform repository-backed update
+        shell: bash
+        run: |
+          set -euo pipefail
+          transition_repo="$(cat "$RUNNER_TEMP/transition-repo")"
+          candidate_bundle="$(cat "$RUNNER_TEMP/candidate-bundle-path")"
+          baseline_commit="$(cat "$RUNNER_TEMP/baseline-commit")"
+
+          flatpak build-import-bundle "$transition_repo" "$candidate_bundle"
+          flatpak build-update-repo "$transition_repo"
+
+          flatpak --user update -y --noninteractive "$APP_ID"
+          candidate_commit="$(flatpak --user info --show-commit "$APP_ID")"
+          test -n "$candidate_commit"
+          test "$candidate_commit" != "$baseline_commit"
+          printf '%s\n' "$candidate_commit" > "$RUNNER_TEMP/candidate-commit"
+
+          permissions="$(flatpak --user info --show-permissions "$APP_ID")"
+          printf '%s\n' "$permissions"
+          if printf '%s\n' "$permissions" | grep -Fq 'filesystems=host'; then
+            printf 'Updated candidate unexpectedly retained host filesystem access\n' >&2
+            exit 1
+          fi
+
+          api_status="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" api status)"
+          printf '%s\n' "$api_status" | grep -Fq '"product":"GoreeCloud Terminal"'
+          printf '%s\n' "$api_status" | grep -Fq '"release_lifecycle":"Release Candidate"'
+          test -f "$HOME/.var/app/$APP_ID/stable-transition-marker"
+
+      - name: Roll back through repository to exact published baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_commit="$(cat "$RUNNER_TEMP/baseline-commit")"
+          candidate_commit="$(cat "$RUNNER_TEMP/candidate-commit")"
+
+          test "$candidate_commit" != "$baseline_commit"
+          flatpak --user update -y --noninteractive --commit="$baseline_commit" "$APP_ID"
+          restored_commit="$(flatpak --user info --show-commit "$APP_ID")"
+          test "$restored_commit" = "$BASELINE_OSTREE"
+          test -f "$HOME/.var/app/$APP_ID/stable-transition-marker"
+
+          restored_api="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" api status)"
+          printf '%s\n' "$restored_api" | grep -Fq '"release_candidate":"50.2-rc.1"'
+
+      - name: Record privacy-safe transition evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_bundle="$(cat "$RUNNER_TEMP/candidate-bundle-path")"
+          candidate_sha="$(sha256sum "$candidate_bundle" | awk '{print $1}')"
+          candidate_commit="$(cat "$RUNNER_TEMP/candidate-commit")"
+
+          SOURCE_SHA="$SOURCE_SHA" \
+          BASELINE_SHA256="$BASELINE_SHA256" \
+          BASELINE_OSTREE="$BASELINE_OSTREE" \
+          CANDIDATE_SHA256="$candidate_sha" \
+          CANDIDATE_OSTREE="$candidate_commit" \
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = {
+              'schema_version': 1,
+              'source_sha': os.environ['SOURCE_SHA'],
+              'application_id': 'com.goreecloud.Terminal',
+              'baseline': {
+                  'release': '50.2-rc.1',
+                  'bundle_sha256': os.environ['BASELINE_SHA256'],
+                  'ostree_commit': os.environ['BASELINE_OSTREE'],
+              },
+              'candidate': {
+                  'kind': 'production-identity-no-host-filesystem-acceptance-candidate',
+                  'bundle_sha256': os.environ['CANDIDATE_SHA256'],
+                  'ostree_commit': os.environ['CANDIDATE_OSTREE'],
+                  'host_filesystem_permission': False,
+              },
+              'repository_backed_update_passed': True,
+              'exact_rollback_passed': True,
+              'application_data_marker_preserved': True,
+              'production_approved': False,
+              'stable_approved': False,
+          }
+          Path('flatpak-production-transition-evidence.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          cat flatpak-production-transition-evidence.json
+
+      - name: Remove test installation without deleting application data
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak --user uninstall -y --noninteractive "$APP_ID"
+          if flatpak --user info "$APP_ID" >/dev/null 2>&1; then
+            printf 'Application remained installed after test removal\n' >&2
+            exit 1
+          fi
+          test -f "$HOME/.var/app/$APP_ID/stable-transition-marker"
+
+      - name: Upload production candidate and transition evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-production-transition-${{ env.SOURCE_SHA }}
+          path: |
+            goreecloud-terminal-production-no-hostfs-${{ env.SOURCE_SHA }}.flatpak
+            goreecloud-terminal-production-no-hostfs-${{ env.SOURCE_SHA }}.flatpak.sha256
+            flatpak-production-transition-evidence.json
+          if-no-files-found: error
+          retention-days: 30
