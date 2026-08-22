@@ -162,14 +162,19 @@ ptyxis_window_dressing_create_session_context_chip (PtyxisWindowDressing *self,
       return;
     }
 
-  self->session_context_icon = GTK_IMAGE (gtk_image_new ());
+  self->session_context_icon = GTK_IMAGE (g_object_new (GTK_TYPE_IMAGE,
+                                                       "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
+                                                       NULL));
   gtk_image_set_pixel_size (self->session_context_icon, 16);
 
-  self->session_context_label = GTK_LABEL (gtk_label_new (NULL));
+  self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,
+                                                                 "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
+                                                                 NULL));
   gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
   gtk_label_set_max_width_chars (self->session_context_label, 16);
 
   self->session_context_chip = g_object_new (GTK_TYPE_BOX,
+                                              "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
                                               "orientation", GTK_ORIENTATION_HORIZONTAL,
                                               "spacing", 6,
                                               "valign", GTK_ALIGN_CENTER,
