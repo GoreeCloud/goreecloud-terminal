@@ -63,6 +63,19 @@ tools/validate-runtime-identity.sh \
 
 Live mode additionally verifies that `goreecloud-terminal` and `ptyxis` are discoverable through `PATH`, that `goreecloud-terminal --version` completes, and that the expected GSettings schema is registered when `gsettings` is available.
 
+## Supported-workstation evidence collector
+
+The runtime-identity harness is not the complete workstation acceptance authority. For the published `50.2-rc.1` production Flatpak, use the separate read-only evidence collector documented in `docs/supported-workstation-acceptance.md`:
+
+```bash
+python3 tools/collect-workstation-acceptance.py \
+  --bundle /path/to/published-50.2-rc.1.flatpak \
+  --manual-status /path/to/workstation-manual-status.json \
+  --output workstation-acceptance-evidence.json
+```
+
+The collector binds workstation evidence to the exact published bundle SHA-256 and installed OSTree commit, validates the Release Candidate local API contract, records only normalized non-sensitive package/OS/session information, and accepts a fixed status-only manual checklist. It is read-only and has no authority to install packages, alter settings, connect to remote systems, deploy the application, or promote lifecycle state.
+
 ## Manual graphical acceptance
 
 Automated identity checks must be followed by manual runtime validation on a supported GoreeCloud Linux workstation.
@@ -86,18 +99,18 @@ Required checks include:
 
 Acceptance evidence should record:
 
-- exact source commit;
-- build configuration;
-- package or installation method;
+- exact release/source identity;
+- exact package identity;
 - application ID under test;
-- workstation distribution and version;
-- harness output;
-- manual checks completed;
-- failures or regressions observed;
-- rollback result when applicable.
+- non-sensitive workstation distribution and version;
+- sanitized machine-check results;
+- fixed manual pass/fail/pending statuses;
+- rollback/recovery acceptance status when applicable.
 
-Do not record reusable credentials, private keys, passwords, shell history containing sensitive values, or private terminal content.
+The checked-in collector intentionally does not accept arbitrary free-form notes. Detailed troubleshooting information should remain private during testing and must be separately sanitized before any public issue or long-term evidence record is created.
+
+Do not record reusable credentials, private keys, passwords, shell history, terminal contents, private SSH configuration, profile contents, usernames, hostnames, private addresses, or private host inventories.
 
 ## Production boundary
 
-The runtime identity harness is an acceptance tool, not a production-readiness declaration. Stable or production approval remains blocked until the automated and manual checks applicable to the target package and workstation have been completed and recorded.
+The runtime identity harness and workstation evidence collector are acceptance tools, not production-readiness declarations. Even a complete workstation evidence record does not by itself authorize Stable because the separate second-distinct-package repository-backed update/rollback and post-rollback data-compatibility gates remain required.
