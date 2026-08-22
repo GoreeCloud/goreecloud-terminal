@@ -101,10 +101,35 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             elfutils \
             flatpak \
-            flatpak-builder
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
           flatpak --version
           flatpak-builder --version
           eu-strip --version
+          rsvg-convert --version
+
+      - name: Validate packaged icon source
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon='data/icons/goreecloud-terminal-devel.svg'
+          output="$RUNNER_TEMP/goreecloud-terminal-devel-icon.png"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          icon = Path('data/icons/goreecloud-terminal-devel.svg')
+          assert icon.is_file()
+          root = ElementTree.parse(icon).getroot()
+          assert root.tag.endswith('svg')
+          assert root.attrib.get('viewBox') == '0 0 512 512'
+          PY
+
+          rsvg-convert --width=128 --height=128 --output="$output" "$icon"
+          test -s "$output"
+          file "$output" | grep -Fq 'PNG image data, 128 x 128'
 
       - name: Install declared GNOME runtime and SDK
         shell: bash
