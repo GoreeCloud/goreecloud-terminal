@@ -52,7 +52,7 @@ jobs:
           grep -Fq "app_name = 'GoreeCloud Terminal'" data/meson.build
           grep -Fq "GoreeCloud-maintained terminal" data/org.gnome.Ptyxis.metainfo.xml.in.in
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal/issues" data/org.gnome.Ptyxis.metainfo.xml.in.in
-          grep -Fq "The current native executable remains named `ptyxis`" docs/product-identity.md
+          grep -Fq 'The current native executable remains named `ptyxis`' docs/product-identity.md
 
       - name: Record source identity
         shell: bash
