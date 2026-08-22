@@ -47,17 +47,17 @@ require_development_app_id() {
     die "only com.goreecloud.Terminal.Devel is accepted by this development lifecycle harness"
 }
 
+is_sha256() {
+  printf '%s\n' "$1" | grep -Eq '^[0-9a-fA-F]{64}$'
+}
+
 verify_sha256() {
   local file="$1"
   local expected="$2"
   local actual
 
   [ -f "$file" ] || die "bundle not found: $file"
-  case "$expected" in
-    [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]*) ;;
-    *) die "invalid SHA-256 syntax for $file" ;;
-  esac
-  [ "${#expected}" -eq 64 ] || die "SHA-256 must contain exactly 64 hexadecimal characters for $file"
+  is_sha256 "$expected" || die "SHA-256 must contain exactly 64 hexadecimal characters for $file"
 
   expected="$(printf '%s' "$expected" | tr 'A-F' 'a-f')"
   actual="$(sha256sum "$file" | awk '{print $1}')"
@@ -84,11 +84,8 @@ validate_installed_identity() {
   esac
 
   commit="$(installed_commit)"
-  case "$commit" in
-    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
-    *) die "installed commit is not hexadecimal" ;;
-  esac
-  [ "${#commit}" -eq 64 ] || die "installed commit is not a 64-character OSTree commit"
+  printf '%s\n' "$commit" | grep -Eq '^[0-9a-f]{64}$' || \
+    die "installed commit is not a 64-character lowercase hexadecimal OSTree commit"
 
   version_output="$(flatpak_user run --command=goreecloud-terminal "$app_id" --version 2>&1)"
   printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal' || \
