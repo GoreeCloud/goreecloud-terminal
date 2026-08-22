@@ -2,7 +2,7 @@
 
 ## Status
 
-GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, configuration migration/acceptance tooling, GoreeCloud administration workflows, and an initial Flatpak package-acceptance layer. Production acceptance remains separate from source and CI validation.
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, configuration migration/acceptance tooling, GoreeCloud administration workflows, Flatpak package acceptance, and exact-artifact lifecycle acceptance tooling. Production acceptance remains separate from source and CI validation.
 
 ## Canonical upstream
 
@@ -62,6 +62,7 @@ A fork-to-native transition is optional. Mature terminal-emulation, PTY, accessi
 - `agent/ssh-launch-workflows`: Milestone 4 standard OpenSSH launch workflow layer.
 - `agent/host-profiles-workspaces`: optional non-secret OpenSSH-alias profile and workspace-organization layer.
 - `agent/flatpak-packaging-acceptance`: Milestone 5 development Flatpak packaging and package smoke-acceptance layer.
+- `agent/flatpak-lifecycle-acceptance`: Milestone 5 exact-artifact reinstall, upgrade-transition, and rollback acceptance layer.
 
 The active development model uses narrowly scoped stacked branches and draft pull requests so each layer can be reviewed and validated independently before integration.
 
@@ -156,13 +157,18 @@ Current source state:
 - a first-party development Flatpak manifest is defined as `com.goreecloud.Terminal.Devel.json`;
 - the package uses GNOME Platform/SDK 50 and the isolated `com.goreecloud.Terminal.Devel` identity so acceptance testing cannot collide with a future production identity;
 - the manifest uses `goreecloud-terminal` as the canonical command and enables the inherited Flatpak-specific libc compatibility path for `ptyxis-agent`;
-- external Flatpak support dependencies are pinned by exact commit or checksum;
+- external Flatpak support dependencies are pinned by exact commit or checksum, bundled libraries use the Flatpak `/app/lib` layout, and the GoreeCloud application build disables implicit Meson dependency downloads;
 - terminal-specific Flatpak permissions are explicit and documented, including the broad host-filesystem and Flatpak host-integration permissions that require later minimization review rather than being treated as invisible defaults;
-- `.github/workflows/flatpak-acceptance.yml` is designed to build an exact-head bundle, install it in CI, inspect identity/runtime metadata, run non-graphical canonical-launcher smoke checks, uninstall it, verify removal, calculate SHA-256, and retain the exact `.flatpak` bundle as temporary acceptance evidence;
+- `.github/workflows/flatpak-acceptance.yml` builds an exact-head bundle, validates application icon composition, installs it in CI, inspects identity/runtime metadata, runs non-graphical canonical-launcher smoke checks, uninstalls it, verifies removal, calculates SHA-256, validates an exact-artifact reinstall lifecycle, and retains the exact `.flatpak` bundle as temporary acceptance evidence;
+- `tools/validate-flatpak-lifecycle.sh` accepts only the isolated development application identity and requires explicit local bundles plus caller-supplied SHA-256 values before installation;
+- reinstall mode verifies exact-artifact install, packaged smoke behavior, identical OSTree commit after reinstall, and clean removal without `--delete-data`;
+- transition mode requires cryptographically distinct baseline/candidate bundles and distinct installed OSTree commits, then requires rollback to restore the exact recorded baseline commit;
+- `tools/test-flatpak-lifecycle.sh` validates lifecycle fail-closed behavior with a fake Flatpak backend, including production-ID refusal, hash mismatch refusal, identical-artifact transition refusal, pre-existing-installation refusal, exact rollback, and cleanup after smoke failure;
+- a real cross-version upgrade/rollback claim is intentionally pending a second distinct accepted package candidate; fake-backend transition tests do not substitute for that evidence;
 - native distribution packaging remains a later option and must not force unsafe replacement of host desktop libraries merely to satisfy GoreeCloud Terminal dependencies;
-- graphical workstation acceptance, real host/SSH/container behavior, package upgrade/rollback, permission minimization, and Stable release authorization remain open.
+- graphical workstation acceptance, real host/SSH/container behavior, permission minimization, real cross-version package transition, data compatibility after rollback, and Stable release authorization remain open.
 
-See `docs/flatpak-packaging-and-acceptance.md`.
+See `docs/flatpak-packaging-and-acceptance.md` and `docs/flatpak-upgrade-and-rollback.md`.
 
 ### Milestone 6 — Selective Native Evolution
 
@@ -178,4 +184,4 @@ Renaming them is not required merely to make the product visibly GoreeCloud Term
 
 ## Production boundary
 
-Source import, successful CI, a generated Flatpak bundle, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, permission, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, host-profile/workspace, and runtime validation.
+Source import, successful CI, a generated Flatpak bundle, successful package reinstall, fake-backend lifecycle tests, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, permission, real cross-version upgrade, exact-artifact rollback, supported-workstation, settings-migration, SSH-workflow, host-profile/workspace, data-compatibility, and runtime validation.
