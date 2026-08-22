@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - agent/flatpak-permission-minimization
+      - agent/flatpak-no-host-filesystem-candidate
   pull_request:
 
 permissions:
@@ -21,6 +22,7 @@ jobs:
     timeout-minutes: 10
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CANDIDATE_MANIFEST: com.goreecloud.Terminal.Devel.NoHostFS.generated.json
 
     steps:
       - name: Check out exact source
@@ -41,7 +43,36 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile tools/validate-flatpak-permission-review.py
+          python3 -m py_compile tools/generate-flatpak-permission-candidate.py
           python3 tools/validate-flatpak-permission-review.py
+
+      - name: Validate isolated candidate derivation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e "$CANDIDATE_MANIFEST"
+          python3 tools/generate-flatpak-permission-candidate.py --output "$CANDIDATE_MANIFEST"
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          from pathlib import Path
+
+          base = json.loads(Path('com.goreecloud.Terminal.Devel.json').read_text(encoding='utf-8'))
+          candidate = json.loads(Path(os.environ['CANDIDATE_MANIFEST']).read_text(encoding='utf-8'))
+          removed = '--filesystem=host'
+
+          assert candidate['finish-args'] == [arg for arg in base['finish-args'] if arg != removed]
+          assert removed not in candidate['finish-args']
+
+          restored = copy.deepcopy(candidate)
+          restored['finish-args'] = copy.deepcopy(base['finish-args'])
+          assert restored == base
+          PY
+
+          rm -f "$CANDIDATE_MANIFEST"
+          test ! -e "$CANDIDATE_MANIFEST"
 
       - name: Validate review remains non-authoritative for Stable
         shell: bash
@@ -53,10 +84,14 @@ jobs:
 
           review = json.loads(Path('release/flatpak-permission-review.json').read_text(encoding='utf-8'))
           status = json.loads(Path('release/status.json').read_text(encoding='utf-8'))
+          experiment = review['experiments'][0]
 
           assert review['permission_set_minimized'] is False
           assert review['production_approved'] is False
           assert review['stable_approved'] is False
+          assert experiment['ci_authoritative_for_stable'] is False
+          assert experiment['production_approved'] is False
+          assert experiment['stable_approved'] is False
           assert status['production_approved'] is False
           assert status['stable_approved'] is False
           assert 'Flatpak permission minimization review' in status['stable_blockers']
@@ -68,5 +103,7 @@ jobs:
           set -euo pipefail
           grep -Fq 'Permission minimization is not complete' docs/flatpak-permission-minimization.md
           grep -Fq 'highest-priority minimization candidate' docs/flatpak-permission-minimization.md
+          grep -Fq 'Development-only no-host-filesystem candidate' docs/flatpak-permission-minimization.md
+          grep -Fq 'canonical production and development manifests remain unchanged' docs/flatpak-permission-minimization.md
           grep -Fq 'does not prove that the current manifest is minimized' docs/flatpak-permission-minimization.md
           grep -Fq 'permission-minimization contract' docs/flatpak-packaging-and-acceptance.md
