@@ -2,7 +2,7 @@
 
 ## Status
 
-GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, configuration migration/acceptance tooling, and GoreeCloud administration workflow development. Production acceptance remains separate from source and CI validation.
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, configuration migration/acceptance tooling, GoreeCloud administration workflows, and an initial Flatpak package-acceptance layer. Production acceptance remains separate from source and CI validation.
 
 ## Canonical upstream
 
@@ -61,6 +61,7 @@ A fork-to-native transition is optional. Mature terminal-emulation, PTY, accessi
 - `agent/settings-migration-rollback`: explicit fail-closed Ptyxis-to-GoreeCloud settings migration and rollback layer.
 - `agent/ssh-launch-workflows`: Milestone 4 standard OpenSSH launch workflow layer.
 - `agent/host-profiles-workspaces`: optional non-secret OpenSSH-alias profile and workspace-organization layer.
+- `agent/flatpak-packaging-acceptance`: Milestone 5 development Flatpak packaging and package smoke-acceptance layer.
 
 The active development model uses narrowly scoped stacked branches and draft pull requests so each layer can be reviewed and validated independently before integration.
 
@@ -111,7 +112,7 @@ Current source state:
 - canonical `goreecloud-terminal` CLI and man page are implemented while inherited `ptyxis` remains available for compatibility;
 - repository-facing README identity is GoreeCloud Terminal;
 - inherited gettext domain and compatibility runtime/helper remain intentionally Ptyxis-named pending separate migration review;
-- final About-dialog attribution/presentation review and packaging acceptance remain open.
+- final About-dialog attribution/presentation review and production packaging acceptance remain open.
 
 See `docs/product-identity.md`.
 
@@ -150,7 +151,24 @@ See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md
 
 Produce installable Linux builds, complete functional/security testing, validate upgrades and rollback, and perform workstation acceptance testing.
 
-Status: staged native installation and acceptance tooling exist, but supported package production, package upgrade/removal/rollback validation, and final workstation acceptance remain open.
+Current source state:
+
+- a first-party development Flatpak manifest is defined as `com.goreecloud.Terminal.Devel.json`;
+- the package uses GNOME Platform/SDK 50 and the isolated `com.goreecloud.Terminal.Devel` identity so acceptance testing cannot collide with a future production identity;
+- the manifest uses `goreecloud-terminal` as the canonical command and enables the inherited Flatpak-specific libc compatibility path for `ptyxis-agent`;
+- external Flatpak support dependencies are pinned by exact commit or checksum;
+- terminal-specific Flatpak permissions are explicit and documented, including the broad host-filesystem and Flatpak host-integration permissions that require later minimization review rather than being treated as invisible defaults;
+- `.github/workflows/flatpak-acceptance.yml` is designed to build an exact-head bundle, install it in CI, inspect identity/runtime metadata, run non-graphical canonical-launcher smoke checks, uninstall it, verify removal, calculate SHA-256, and retain the exact `.flatpak` bundle as temporary acceptance evidence;
+- native distribution packaging remains a later option and must not force unsafe replacement of host desktop libraries merely to satisfy GoreeCloud Terminal dependencies;
+- graphical workstation acceptance, real host/SSH/container behavior, package upgrade/rollback, permission minimization, and Stable release authorization remain open.
+
+See `docs/flatpak-packaging-and-acceptance.md`.
+
+### Milestone 6 — Selective Native Evolution
+
+Evaluate inherited components individually and replace only those for which a GoreeCloud-native implementation provides a documented material benefit.
+
+Status: no broad rewrite is authorized merely for branding or ownership. Mature terminal-emulation and security-sensitive foundations remain inherited unless a later controlled evaluation justifies replacement.
 
 ## Compatibility boundary
 
@@ -160,4 +178,4 @@ Renaming them is not required merely to make the product visibly GoreeCloud Term
 
 ## Production boundary
 
-Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, host-profile/workspace, and runtime validation.
+Source import, successful CI, a generated Flatpak bundle, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, permission, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, host-profile/workspace, and runtime validation.

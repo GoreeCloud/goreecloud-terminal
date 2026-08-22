@@ -32,7 +32,7 @@ The canonical GoreeCloud runtime identities are:
 
 The inherited runtime executable remains `ptyxis` and the helper remains `ptyxis-agent` as compatibility-sensitive implementation details. The installed `goreecloud-terminal` launcher delegates ordinary arguments to `ptyxis`, giving GoreeCloud Terminal a first-party CLI without prematurely breaking upstream-sensitive launch, helper, packaging, or rollback behavior.
 
-A later packaging migration may remove or rename compatibility entry points only after launch, D-Bus, host-helper, container, upgrade, and rollback behavior are validated.
+A later compatibility migration may remove or rename inherited entry points only after launch, D-Bus, host-helper, container, upgrade, and rollback behavior are validated.
 
 See `docs/product-identity.md` for the complete identity and migration contract.
 
@@ -129,22 +129,6 @@ The current development stack includes GoreeCloud-specific context-menu actions 
 
 See `docs/context-menu-actions.md`.
 
-## Upstream capabilities retained
-
-GoreeCloud Terminal continues to inherit and maintain major Ptyxis capabilities including:
-
-- GTK 4 and libadwaita desktop integration;
-- VTE-based terminal rendering;
-- Podman, Toolbox, Distrobox, and related container workflows;
-- configurable profiles and keyboard shortcuts;
-- palette management and light/dark support;
-- tabs, tab overview, pinned tabs, and saved sessions;
-- foreground-process tracking for remote and elevated contexts;
-- transparent terminal backgrounds;
-- terminal inspection tools;
-- out-of-process `ptyxis-agent` PTY/helper architecture;
-- accessibility support inherited from GTK and VTE.
-
 ## Build and test
 
 The repository's GitHub Actions foundation uses Fedora Rawhide for native validation. A representative local development build is:
@@ -167,6 +151,36 @@ DESTDIR="$PWD/_install" meson install -C _build
 
 The development build should generate GoreeCloud application, D-Bus, AppStream, icon, and GSettings artifacts under the `com.goreecloud.Terminal.Devel` identity, install the `goreecloud-terminal` launcher, and retain the current compatibility executable/helper pair.
 
+### Development Flatpak
+
+Milestone 5 adds the first installable package acceptance target:
+
+```text
+com.goreecloud.Terminal.Devel.json
+```
+
+It uses GNOME Platform/SDK 50 and the isolated `com.goreecloud.Terminal.Devel` identity. The dedicated `Flatpak Acceptance` workflow builds an exact-head `.flatpak` bundle, installs and inspects that bundle in CI, runs non-graphical launcher smoke checks, verifies removal, calculates a SHA-256 digest, and retains the exact development bundle temporarily as acceptance evidence.
+
+The Flatpak permission baseline is explicit and terminal-oriented, including host filesystem, network, display, and Flatpak host-integration permissions. Those permissions are not treated as permanently approved merely because upstream Ptyxis uses them; GoreeCloud runtime acceptance must verify their necessity and later permission-minimization review remains required.
+
+See `docs/flatpak-packaging-and-acceptance.md`.
+
+## Upstream capabilities retained
+
+GoreeCloud Terminal continues to inherit and maintain major Ptyxis capabilities including:
+
+- GTK 4 and libadwaita desktop integration;
+- VTE-based terminal rendering;
+- Podman, Toolbox, Distrobox, and related container workflows;
+- configurable profiles and keyboard shortcuts;
+- palette management and light/dark support;
+- tabs, tab overview, pinned tabs, and saved sessions;
+- foreground-process tracking for remote and elevated contexts;
+- transparent terminal backgrounds;
+- terminal inspection tools;
+- out-of-process `ptyxis-agent` PTY/helper architecture;
+- accessibility support inherited from GTK and VTE.
+
 ## Security and privacy boundaries
 
 Terminal software is inherently security-sensitive because it launches shells, executes commands, interacts with credentials, enters remote systems, and can operate with elevated privileges.
@@ -179,13 +193,15 @@ GoreeCloud-specific features therefore follow these boundaries:
 - Wardveil context is informational and must not become an authorization mechanism;
 - `sudo` remains responsible for privilege authentication;
 - terminal content and clipboard behavior are not treated as telemetry;
-- source validation must be kept distinct from runtime and production acceptance;
+- Flatpak permissions are explicit and reviewed rather than silently expanded for convenience;
+- source validation and package CI must be kept distinct from runtime and production acceptance;
 - inherited upstream security and compatibility fixes are reviewed through controlled synchronization rather than merged blindly.
 
 ## Validation and release boundary
 
-A green source build is only one acceptance layer. Stable or production approval additionally requires supported-workstation validation for:
+A green source build or generated package is only one acceptance layer. Stable or production approval additionally requires supported-workstation validation for:
 
+- exact package installation and removal;
 - desktop and `goreecloud-terminal` command-line launch;
 - compatibility `ptyxis` launch;
 - D-Bus activation;
@@ -197,12 +213,12 @@ A green source build is only one acceptance layer. Stable or production approval
 - workspace/profile metadata behavior and permissions;
 - container and elevated-session behavior;
 - accessibility;
-- package installation and removal;
+- Flatpak permission behavior and minimization;
 - upgrade and rollback;
 - Glaze UI light/dark presentation;
 - Wardveil runtime context transitions.
 
-Until those gates are recorded, development branches and pull requests remain acceptance candidates rather than Stable releases.
+Until those gates are recorded, development branches, pull requests, and package artifacts remain acceptance candidates rather than Stable releases.
 
 ## Upstream attribution
 
