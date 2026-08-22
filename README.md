@@ -30,7 +30,7 @@ The canonical GoreeCloud runtime identities are:
 - Development GSettings namespace: `com.goreecloud.Terminal.Devel`
 - Canonical command-line launcher: `goreecloud-terminal`
 
-The inherited runtime executable remains `ptyxis` and the helper remains `ptyxis-agent` as compatibility-sensitive implementation details. The installed `goreecloud-terminal` launcher delegates to `ptyxis` with arguments unchanged, giving GoreeCloud Terminal a first-party CLI without prematurely breaking upstream-sensitive launch, helper, packaging, or rollback behavior.
+The inherited runtime executable remains `ptyxis` and the helper remains `ptyxis-agent` as compatibility-sensitive implementation details. The installed `goreecloud-terminal` launcher delegates ordinary arguments to `ptyxis`, giving GoreeCloud Terminal a first-party CLI without prematurely breaking upstream-sensitive launch, helper, packaging, or rollback behavior.
 
 A later packaging migration may remove or rename compatibility entry points only after launch, D-Bus, host-helper, container, upgrade, and rollback behavior are validated.
 
@@ -51,6 +51,28 @@ ptyxis
 ```
 
 Both currently reach the same inherited native runtime. New GoreeCloud documentation and desktop actions should prefer `goreecloud-terminal` unless a compatibility test specifically requires the inherited executable name.
+
+### Standard OpenSSH workflows
+
+Milestone 4 begins with optional first-party launch conveniences that still use the system OpenSSH client and the user's normal OpenSSH configuration.
+
+Open an SSH session in a new GoreeCloud Terminal window:
+
+```bash
+goreecloud-terminal ssh server-alias
+```
+
+Open an SSH session in a new tab:
+
+```bash
+goreecloud-terminal ssh-tab server-alias
+```
+
+`server-alias` may be an ordinary hostname, address, `user@hostname`, or a `Host` alias from `~/.ssh/config`. Additional arguments are passed to `ssh` without GoreeCloud reinterpretation.
+
+GoreeCloud Terminal does not store SSH passwords or private keys and does not replace OpenSSH host configuration, host-key verification, authentication, forwarding, proxy, or policy behavior.
+
+See `docs/administration-workflows.md`.
 
 ## GoreeCloud layers
 
@@ -119,6 +141,7 @@ Terminal software is inherently security-sensitive because it launches shells, e
 GoreeCloud-specific features therefore follow these boundaries:
 
 - no reusable credentials, private keys, tokens, or passwords are committed to source;
+- OpenSSH remains responsible for SSH configuration and authentication;
 - Wardveil context is informational and must not become an authorization mechanism;
 - `sudo` remains responsible for privilege authentication;
 - terminal content and clipboard behavior are not treated as telemetry;

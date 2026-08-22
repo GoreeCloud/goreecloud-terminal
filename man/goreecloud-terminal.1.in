@@ -5,14 +5,37 @@ goreecloud-terminal \- launch GoreeCloud Terminal
 .B goreecloud-terminal
 .RI [OPTION]...
 [\-\- PROGRAM ARGUMENTS]
+.br
+.B goreecloud-terminal ssh
+.I TARGET
+.RI [SSH_ARGUMENT ...]
+.br
+.B goreecloud-terminal ssh-tab
+.I TARGET
+.RI [SSH_ARGUMENT ...]
 .SH DESCRIPTION
 .B goreecloud-terminal
 is the canonical command-line launcher for GoreeCloud Terminal.
-It forwards all arguments unchanged to the inherited
+.PP
+For ordinary arguments, it forwards the command line unchanged to the inherited
 .B ptyxis
 runtime so GoreeCloud can provide a first-party command name without prematurely breaking compatibility-sensitive runtime, helper, packaging, D-Bus, or rollback behavior.
 .PP
 GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The upstream runtime foundation and GPL attribution remain preserved.
+.SH SSH WORKFLOWS
+The
+.B ssh
+subcommand opens a new GoreeCloud Terminal window running the system
+.BR ssh (1)
+client.
+.PP
+The
+.B ssh-tab
+subcommand opens the OpenSSH session as a new tab in the existing GoreeCloud Terminal instance.
+.PP
+TARGET may be a hostname, address, user@hostname value, or a Host alias configured through standard OpenSSH configuration such as ~/.ssh/config. Remaining arguments are passed to the system ssh command without GoreeCloud reinterpretation.
+.PP
+OpenSSH remains responsible for host configuration, host-key verification, authentication, keys, agents, ports, proxy settings, forwarding, and connection policy. GoreeCloud Terminal does not store SSH passwords or private keys and does not replace OpenSSH configuration.
 .SH COMPATIBILITY
 The inherited
 .B ptyxis
@@ -22,9 +45,13 @@ New GoreeCloud documentation and normal user workflows should prefer
 .B goreecloud-terminal
 unless a compatibility test specifically requires the inherited command.
 .SH OPTIONS
-All command-line options and program arguments are passed directly to the
+Except for the GoreeCloud
+.B ssh
+and
+.B ssh-tab
+subcommands, command-line options and program arguments are passed directly to the
 .B ptyxis
-runtime. For the complete current option set, see:
+runtime. For the inherited option set, see:
 .PP
 .BR ptyxis (1)
 .SH EXAMPLES
@@ -45,6 +72,26 @@ Run a command in a terminal:
 .nf
 goreecloud-terminal -- bash -lc 'printf "hello from GoreeCloud Terminal\\n"'
 .fi
+.PP
+Open a standard OpenSSH session in a new window using an OpenSSH Host alias:
+.PP
+.nf
+goreecloud-terminal ssh server-alias
+.fi
+.PP
+Open the same style of session in a new tab:
+.PP
+.nf
+goreecloud-terminal ssh-tab server-alias
+.fi
+.PP
+Pass an additional OpenSSH option:
+.PP
+.nf
+goreecloud-terminal ssh server-alias -p 2222
+.fi
+.SH SECURITY
+Do not place reusable passwords, private-key material, tokens, or other secrets directly in command-line arguments. Standard OpenSSH and operating-system credential controls remain authoritative.
 .SH PROJECT
 GoreeCloud repository:
 .br
@@ -54,4 +101,6 @@ Canonical upstream Ptyxis source:
 .br
 https://gitlab.gnome.org/chergert/ptyxis
 .SH SEE ALSO
-.BR ptyxis (1)
+.BR ptyxis (1),
+.BR ssh (1),
+.BR ssh_config (5)
