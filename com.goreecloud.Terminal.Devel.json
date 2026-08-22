@@ -39,6 +39,7 @@
       "builddir": true,
       "config-opts": [
         "--buildtype=release",
+        "--libdir=lib",
         "-Dbackend-gtk3=disabled",
         "-Dbackend-gtk4=enabled",
         "-Dbackend-qt5=disabled",
@@ -58,6 +59,9 @@
     {
       "name": "fast_float",
       "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_INSTALL_LIBDIR=lib"
+      ],
       "sources": [
         {
           "type": "git",
@@ -70,6 +74,9 @@
     {
       "name": "simdutf",
       "buildsystem": "cmake-ninja",
+      "config-opts": [
+        "-DCMAKE_INSTALL_LIBDIR=lib"
+      ],
       "sources": [
         {
           "type": "git",
@@ -84,6 +91,7 @@
       "buildsystem": "meson",
       "config-opts": [
         "--buildtype=release",
+        "--libdir=lib",
         "-Dgtk3=false",
         "-Dgtk4=true",
         "-Dglade=false",
@@ -104,6 +112,8 @@
       "builddir": true,
       "config-opts": [
         "--buildtype=release",
+        "--libdir=lib",
+        "--wrap-mode=nodownload",
         "-Ddevelopment=true",
         "-Dlibc-compat=true"
       ],
