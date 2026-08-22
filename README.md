@@ -54,7 +54,7 @@ Both currently reach the same inherited native runtime. New GoreeCloud documenta
 
 ### Standard OpenSSH workflows
 
-Milestone 4 begins with optional first-party launch conveniences that still use the system OpenSSH client and the user's normal OpenSSH configuration.
+Milestone 4 includes optional first-party launch conveniences that still use the system OpenSSH client and the user's normal OpenSSH configuration.
 
 Open an SSH session in a new GoreeCloud Terminal window:
 
@@ -68,11 +68,44 @@ Open an SSH session in a new tab:
 goreecloud-terminal ssh-tab server-alias
 ```
 
-`server-alias` may be an ordinary hostname, address, `user@hostname`, or a `Host` alias from `~/.ssh/config`. Additional arguments are passed to `ssh` without GoreeCloud reinterpretation.
+Arguments after the GoreeCloud subcommand are passed to `ssh` unchanged, so normal OpenSSH ordering applies. For example:
+
+```bash
+goreecloud-terminal ssh -p 2222 server-alias
+```
+
+`server-alias` may be an ordinary hostname, address, `user@hostname`, or a `Host` alias from `~/.ssh/config`.
 
 GoreeCloud Terminal does not store SSH passwords or private keys and does not replace OpenSSH host configuration, host-key verification, authentication, forwarding, proxy, or policy behavior.
 
-See `docs/administration-workflows.md`.
+### Host profiles and workspaces
+
+GoreeCloud Terminal can optionally organize OpenSSH `Host` aliases using a private local metadata file with three TAB-separated fields:
+
+```text
+WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
+```
+
+The metadata layer stores organization only. It does not duplicate hostnames, credentials, key paths, ports, proxy settings, or authentication policy from OpenSSH configuration.
+
+List workspaces and profiles:
+
+```bash
+goreecloud-terminal workspaces
+goreecloud-terminal profiles
+goreecloud-terminal profiles Infrastructure
+```
+
+Launch a configured profile:
+
+```bash
+goreecloud-terminal profile primary-vps
+goreecloud-terminal profile-tab primary-vps
+```
+
+Malformed metadata, duplicate profile IDs, option-like aliases, unknown profiles/workspaces, and missing configuration fail before the terminal runtime starts.
+
+See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md`.
 
 ## GoreeCloud layers
 
@@ -142,6 +175,7 @@ GoreeCloud-specific features therefore follow these boundaries:
 
 - no reusable credentials, private keys, tokens, or passwords are committed to source;
 - OpenSSH remains responsible for SSH configuration and authentication;
+- host profiles/workspaces remain non-secret organizational metadata and do not grant access;
 - Wardveil context is informational and must not become an authorization mechanism;
 - `sudo` remains responsible for privilege authentication;
 - terminal content and clipboard behavior are not treated as telemetry;
@@ -159,7 +193,9 @@ A green source build is only one acceptance layer. Stable or production approval
 - settings persistence and any settings migration;
 - terminal rendering and input;
 - clipboard and selection behavior;
-- SSH, container, and elevated-session behavior;
+- direct and profile-based SSH behavior;
+- workspace/profile metadata behavior and permissions;
+- container and elevated-session behavior;
 - accessibility;
 - package installation and removal;
 - upgrade and rollback;

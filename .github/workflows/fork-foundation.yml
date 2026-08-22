@@ -37,15 +37,18 @@ jobs:
           test -f docs/runtime-identity-acceptance.md
           test -f docs/settings-migration-and-rollback.md
           test -f docs/administration-workflows.md
+          test -f docs/host-profiles-and-workspaces.md
           test -f man/goreecloud-terminal.1.in
           test -x tools/validate-runtime-identity.sh
           test -x tools/migrate-ptyxis-settings.sh
           test -x tools/test-settings-migration.sh
           test -x tools/test-ssh-launch-workflows.sh
+          test -x tools/test-host-profiles-workspaces.sh
           bash -n tools/validate-runtime-identity.sh
           bash -n tools/migrate-ptyxis-settings.sh
           bash -n tools/test-settings-migration.sh
           bash -n tools/test-ssh-launch-workflows.sh
+          bash -n tools/test-host-profiles-workspaces.sh
           sh -n data/goreecloud-terminal
           grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
           grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
@@ -65,9 +68,15 @@ jobs:
           grep -Fq "app_name = 'GoreeCloud Terminal'" data/meson.build
           grep -Fq "'goreecloud-terminal'" data/meson.build
           grep -Fq 'ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"' data/goreecloud-terminal
+          grep -Fq 'GORECLOUD_TERMINAL_PROFILES_FILE' data/goreecloud-terminal
+          grep -Fq 'profiles.tsv' data/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" "$@"' data/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$@"' data/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$ssh_alias" "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$ssh_alias" "$@"' data/goreecloud-terminal
+          grep -Fq 'duplicate profile ID' data/goreecloud-terminal
+          grep -Fq 'SSH Host alias must be one non-option token' data/goreecloud-terminal
           grep -Fq 'Exec=goreecloud-terminal' data/org.gnome.Ptyxis.desktop.in.in
           grep -Fq 'Exec=@bindir@/goreecloud-terminal --gapplication-service' data/org.gnome.Ptyxis.service.in
           grep -Fq 'return _("GoreeCloud Terminal");' src/ptyxis-util.c
@@ -83,7 +92,10 @@ jobs:
           grep -Fq 'target_path="/com/goreecloud/Terminal/Devel/"' tools/migrate-ptyxis-settings.sh
           grep -Fq 'migration refuses to write when the target already contains custom values' docs/settings-migration-and-rollback.md
           grep -Fq 'OpenSSH remains the SSH protocol implementation' docs/administration-workflows.md
-          grep -Fq 'goreecloud-terminal ssh HOST' docs/administration-workflows.md
+          grep -Fq 'goreecloud-terminal ssh -p 2222 server-alias' docs/administration-workflows.md
+          grep -Fq 'workspace label, unique profile ID, and OpenSSH `Host` alias' GORECLOUD_FORK.md
+          grep -Fq 'A GoreeCloud Terminal profile is therefore an interface shortcut, not an authorization record.' docs/host-profiles-and-workspaces.md
+          grep -Fq 'Wardveil runtime presentation must continue to rely on verified runtime/process context.' docs/host-profiles-and-workspaces.md
 
       - name: Test settings migration safety model
         shell: bash
@@ -96,6 +108,12 @@ jobs:
         run: |
           set -euo pipefail
           tools/test-ssh-launch-workflows.sh
+
+      - name: Test host profiles and workspaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-host-profiles-workspaces.sh
 
       - name: Record source identity
         shell: bash
@@ -194,15 +212,19 @@ jobs:
           test -f _install/usr/share/man/man1/goreecloud-terminal.1
           test -f _install/usr/share/man/man1/ptyxis.1
           grep -Fq 'ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'GORECLOUD_TERMINAL_PROFILES_FILE' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'profiles.tsv' _install/usr/bin/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" "$@"' _install/usr/bin/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$@"' _install/usr/bin/goreecloud-terminal
           grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$ssh_alias" "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$ssh_alias" "$@"' _install/usr/bin/goreecloud-terminal
           grep -Fq 'Name=GoreeCloud Terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
           grep -Fq 'Exec=goreecloud-terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
           grep -Fq '<id>com.goreecloud.Terminal.Devel</id>' _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
           grep -Fq 'Name=com.goreecloud.Terminal.Devel' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
           grep -Fq 'Exec=/usr/bin/goreecloud-terminal --gapplication-service' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
-          grep -Fq 'goreecloud-terminal ssh' _install/usr/share/man/man1/goreecloud-terminal.1
+          grep -Fq 'goreecloud-terminal profile' _install/usr/share/man/man1/goreecloud-terminal.1
           grep -Fq 'GoreeCloud Terminal' _install/usr/share/man/man1/ptyxis.1
           find _install/usr/share/icons -type f -name 'com.goreecloud.Terminal.Devel*' -print -quit | grep -q .
 
