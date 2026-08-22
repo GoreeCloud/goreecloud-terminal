@@ -105,5 +105,5 @@ jobs:
           grep -Fq 'highest-priority minimization candidate' docs/flatpak-permission-minimization.md
           grep -Fq 'Development-only no-host-filesystem candidate' docs/flatpak-permission-minimization.md
           grep -Fq 'canonical production and development manifests remain unchanged' docs/flatpak-permission-minimization.md
-          grep -Fq 'does not prove that the current manifest is minimized' docs/flatpak-permission-minimization.md
+          grep -Fq 'do not prove that the current manifest is minimized' docs/flatpak-permission-minimization.md
           grep -Fq 'permission-minimization contract' docs/flatpak-packaging-and-acceptance.md
