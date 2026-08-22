@@ -175,6 +175,7 @@ ptyxis_window_dressing_create_session_context_chip (PtyxisWindowDressing *self,
 
   self->session_context_chip = g_object_new (GTK_TYPE_BOX,
                                               "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
+                                              "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
                                               "orientation", GTK_ORIENTATION_HORIZONTAL,
                                               "spacing", 6,
                                               "valign", GTK_ALIGN_CENTER,
