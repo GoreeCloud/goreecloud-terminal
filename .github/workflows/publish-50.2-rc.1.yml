@@ -1,0 +1,503 @@
+name: Publish GoreeCloud Terminal 50.2-rc.1
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/publish-50.2-rc.1.yml
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-50.2-rc.1.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-goreecloud-terminal-50.2-rc.1
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: 50.2-rc.1
+  RELEASE_TITLE: GoreeCloud Terminal 50.2-rc.1
+  RELEASE_SOURCE_SHA: ae5d10511a2aed4a504b189165e268a1e9c1040f
+  APP_ID: com.goreecloud.Terminal
+  RC_ID: 50.2-rc.1
+
+jobs:
+  validate-release-artifact:
+    name: Validate exact tagged-source release artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out exact approved release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify release source is still authoritative
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SOURCE_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$RELEASE_SOURCE_SHA" origin/main
+          test -f release/50.2-rc.1.md
+          test -f com.goreecloud.Terminal.json
+          printf 'RELEASE_SOURCE_SHA=%s\n' "$RELEASE_SOURCE_SHA"
+          printf 'WORKFLOW_SOURCE_SHA=%s\n' "$GITHUB_SHA"
+
+      - name: Validate release source contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-privacy-shield-adapter.py
+          tools/test-local-api.sh
+          tools/validate-release-readiness.py
+
+      - name: Validate production manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          prod = json.loads(Path('com.goreecloud.Terminal.json').read_text())
+          dev = json.loads(Path('com.goreecloud.Terminal.Devel.json').read_text())
+
+          assert prod['app-id'] == 'com.goreecloud.Terminal'
+          assert prod['runtime'] == 'org.gnome.Platform'
+          assert prod['runtime-version'] == '50'
+          assert prod['sdk'] == 'org.gnome.Sdk'
+          assert prod['command'] == 'goreecloud-terminal'
+          assert set(prod['finish-args']) == set(dev['finish-args'])
+
+          pm = {m['name']: m for m in prod['modules']}
+          dm = {m['name']: m for m in dev['modules']}
+          for name in ('libportal', 'fast_float', 'simdutf', 'vte'):
+              assert pm[name]['sources'] == dm[name]['sources']
+
+          opts = set(pm['goreecloud-terminal']['config-opts'])
+          assert '-Ddevelopment=false' in opts
+          assert '-Ddevelopment=true' not in opts
+          assert '--wrap-mode=nodownload' in opts
+          assert '-Dlibc-compat=true' in opts
+          print('Production release manifest contract validated')
+          PY
+
+      - name: Install controlled release-build tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            elfutils \
+            flatpak \
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
+          command -v gh
+          gh --version
+          flatpak --version
+          flatpak-builder --version
+          eu-strip --version
+          rsvg-convert --version
+
+      - name: Validate production icon source
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon='data/icons/goreecloud-terminal.svg'
+          output="$RUNNER_TEMP/goreecloud-terminal-release-icon.png"
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          icon = Path('data/icons/goreecloud-terminal.svg')
+          assert icon.is_file()
+          root = ElementTree.parse(icon).getroot()
+          assert root.tag.endswith('svg')
+          assert root.attrib.get('viewBox') == '0 0 512 512'
+          PY
+          rsvg-convert --width=128 --height=128 --output="$output" "$icon"
+          test -s "$output"
+          file "$output" | grep -Fq 'PNG image data, 128 x 128'
+
+      - name: Install declared GNOME runtime and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//50 \
+            org.gnome.Sdk//50
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Platform\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Sdk\t50'
+
+      - name: Build exact release-source production Flatpak
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/goreecloud-terminal-release-build"
+          state_dir="$RUNNER_TEMP/goreecloud-terminal-release-state"
+          repo_dir="$RUNNER_TEMP/goreecloud-terminal-release-repo"
+          rm -rf "$build_dir" "$state_dir" "$repo_dir"
+          flatpak-builder \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --state-dir="$state_dir" \
+            --repo="$repo_dir" \
+            "$build_dir" \
+            com.goreecloud.Terminal.json
+          test -d "$repo_dir"
+          printf '%s\n' "$repo_dir" > "$RUNNER_TEMP/release-repo-path"
+
+      - name: Build and identify exact release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_dir="$(cat "$RUNNER_TEMP/release-repo-path")"
+          bundle="goreecloud-terminal-${RC_ID}-${RELEASE_SOURCE_SHA}.flatpak"
+          flatpak build-bundle "$repo_dir" "$bundle" "$APP_ID"
+          test -s "$bundle"
+          sha256sum "$bundle" | tee "${bundle}.sha256"
+          printf '%s\n' "$bundle" > "$RUNNER_TEMP/release-bundle-path"
+
+      - name: Install and inspect exact release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/release-bundle-path")"
+          if flatpak --user info "$APP_ID" >/dev/null 2>&1; then
+            echo 'Production GoreeCloud Terminal identity unexpectedly pre-installed' >&2
+            exit 1
+          fi
+          flatpak --user install -y --noninteractive "$bundle"
+          flatpak --user info "$APP_ID"
+          test "$(flatpak --user info --show-runtime "$APP_ID")" = 'org.gnome.Platform/x86_64/50'
+          flatpak --user info --show-ref "$APP_ID" | grep -Fq 'app/com.goreecloud.Terminal/'
+          flatpak --user info --show-commit "$APP_ID" | grep -Eq '^[0-9a-f]{64}$'
+
+      - name: Run exact release non-graphical smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_output="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" --version 2>&1)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal'
+
+          api_output="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" api status)"
+          API_OUTPUT="$api_output" python3 - <<'PY'
+          import json
+          import os
+
+          obj = json.loads(os.environ['API_OUTPUT'])
+          assert obj['release_lifecycle'] == 'Release Candidate'
+          assert obj['release_candidate'] == '50.2-rc.1'
+          assert obj['identity']['production_application_id'] == 'com.goreecloud.Terminal'
+          assert obj['api']['read_only'] is True
+          assert obj['privacy']['terminal_content_included'] is False
+          assert obj['privacy']['credentials_included'] is False
+          PY
+
+          ssh_help="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" ssh --help 2>&1)"
+          printf '%s\n' "$ssh_help" | grep -Fq 'Standard OpenSSH authentication and configuration remain'
+          profile_help="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" profile --help 2>&1)"
+          printf '%s\n' "$profile_help" | grep -Fq 'WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS'
+
+      - name: Validate ordinary removal preserves application data
+        shell: bash
+        run: |
+          set -euo pipefail
+          data_dir="$HOME/.var/app/$APP_ID"
+          marker="$data_dir/.goreecloud-release-removal-probe"
+          mkdir -p "$data_dir"
+          printf 'preserve\n' > "$marker"
+
+          flatpak --user uninstall -y --noninteractive "$APP_ID"
+          if flatpak --user info "$APP_ID" >/dev/null 2>&1; then
+            echo 'Release bundle remained installed after ordinary removal' >&2
+            exit 1
+          fi
+          test -f "$marker"
+          grep -Fxq 'preserve' "$marker"
+
+      - name: Record pre-publication artifact evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/release-bundle-path")"
+          bundle_sha="$(awk '{print $1}' "${bundle}.sha256")"
+          repo_dir="$(cat "$RUNNER_TEMP/release-repo-path")"
+          app_commit="$(ostree --repo="$repo_dir" rev-parse "app/$APP_ID/x86_64/master")"
+          cp release/50.2-rc.1.md release-notes.md
+          RELEASE_SOURCE_SHA="$RELEASE_SOURCE_SHA" WORKFLOW_SOURCE_SHA="$GITHUB_SHA" RC_ID="$RC_ID" APP_ID="$APP_ID" BUNDLE="$bundle" BUNDLE_SHA="$bundle_sha" APP_COMMIT="$app_commit" GITHUB_RUN_ID="$GITHUB_RUN_ID" python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = {
+              'schema_version': 1,
+              'release_tag': os.environ['RC_ID'],
+              'release_lifecycle': 'Release Candidate',
+              'release_source_sha': os.environ['RELEASE_SOURCE_SHA'],
+              'workflow_source_sha': os.environ['WORKFLOW_SOURCE_SHA'],
+              'workflow_run_id': os.environ['GITHUB_RUN_ID'],
+              'application_id': os.environ['APP_ID'],
+              'bundle': os.environ['BUNDLE'],
+              'bundle_sha256': os.environ['BUNDLE_SHA'],
+              'ostree_commit': os.environ['APP_COMMIT'],
+              'production_approved': False,
+              'stable_approved': False,
+              'publication_state': 'pre-publication-validated',
+          }
+          Path('release-publication-evidence.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(evidence, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload exact release-publication inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-release-publication-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}
+          path: |
+            goreecloud-terminal-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}.flatpak
+            goreecloud-terminal-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}.flatpak.sha256
+            release-publication-evidence.json
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Create immutable tag and publish verified prerelease
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - validate-release-artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Download exact validated release-publication inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: goreecloud-terminal-release-publication-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}
+          path: release-inputs
+
+      - name: Verify downloaded artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-inputs
+          bundle="goreecloud-terminal-${RC_ID}-${RELEASE_SOURCE_SHA}.flatpak"
+          test -s "$bundle"
+          test -s "${bundle}.sha256"
+          expected="$(awk '{print $1}' "${bundle}.sha256")"
+          actual="$(sha256sum "$bundle" | awk '{print $1}')"
+          test "$actual" = "$expected"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          obj = json.loads(Path('release-publication-evidence.json').read_text())
+          assert obj['release_tag'] == '50.2-rc.1'
+          assert obj['release_lifecycle'] == 'Release Candidate'
+          assert obj['release_source_sha'] == 'ae5d10511a2aed4a504b189165e268a1e9c1040f'
+          assert obj['application_id'] == 'com.goreecloud.Terminal'
+          assert obj['production_approved'] is False
+          assert obj['stable_approved'] is False
+          assert obj['publication_state'] == 'pre-publication-validated'
+          PY
+
+      - name: Fail closed on pre-existing publication identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Release tag ${RELEASE_TAG} already exists before this publication run" >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release ${RELEASE_TAG} already exists before this publication run" >&2
+            exit 1
+          fi
+
+      - name: Create and verify immutable release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${RELEASE_TAG}" \
+            -f sha="${RELEASE_SOURCE_SHA}" >/dev/null
+          tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+          test "$tag_sha" = "$RELEASE_SOURCE_SHA"
+          printf 'TAG=%s\nTAG_SHA=%s\n' "$RELEASE_TAG" "$tag_sha"
+
+      - name: Create draft prerelease record
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-inputs
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$RELEASE_TITLE" \
+            --notes-file release-notes.md \
+            --prerelease \
+            --draft
+          release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json databaseId,isDraft,isPrerelease,name,tagName,url)"
+          RELEASE_JSON="$release_json" python3 - <<'PY'
+          import json
+          import os
+
+          obj = json.loads(os.environ['RELEASE_JSON'])
+          assert obj['isDraft'] is True
+          assert obj['isPrerelease'] is True
+          assert obj['name'] == 'GoreeCloud Terminal 50.2-rc.1'
+          assert obj['tagName'] == '50.2-rc.1'
+          assert isinstance(obj['databaseId'], int) and obj['databaseId'] > 0
+          print(obj['url'])
+          PY
+
+      - name: Finalize release evidence and upload draft assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-inputs
+          bundle="goreecloud-terminal-${RC_ID}-${RELEASE_SOURCE_SHA}.flatpak"
+          release_id="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json databaseId --jq '.databaseId')"
+          release_url="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')"
+          RELEASE_ID="$release_id" RELEASE_URL="$release_url" python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path('release-publication-evidence.json')
+          obj = json.loads(path.read_text())
+          obj['github_release_id'] = int(os.environ['RELEASE_ID'])
+          obj['github_release_url'] = os.environ['RELEASE_URL']
+          obj['publication_state'] = 'draft-assets-uploaded'
+          path.write_text(json.dumps(obj, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          gh release upload "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            "$bundle" \
+            "${bundle}.sha256" \
+            release-publication-evidence.json
+
+      - name: Verify draft assets before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-inputs
+          bundle="goreecloud-terminal-${RC_ID}-${RELEASE_SOURCE_SHA}.flatpak"
+          release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets,isDraft,isPrerelease,tagName)"
+          RELEASE_JSON="$release_json" BUNDLE="$bundle" python3 - <<'PY'
+          import json
+          import os
+
+          obj = json.loads(os.environ['RELEASE_JSON'])
+          assert obj['isDraft'] is True
+          assert obj['isPrerelease'] is True
+          assert obj['tagName'] == '50.2-rc.1'
+          names = {asset['name'] for asset in obj['assets']}
+          expected = {
+              os.environ['BUNDLE'],
+              os.environ['BUNDLE'] + '.sha256',
+              'release-publication-evidence.json',
+          }
+          assert expected <= names, (expected, names)
+          PY
+
+          verify_dir="$RUNNER_TEMP/draft-release-download"
+          rm -rf "$verify_dir"
+          mkdir -p "$verify_dir"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir "$verify_dir" \
+            --pattern "$bundle" \
+            --pattern "${bundle}.sha256" \
+            --pattern release-publication-evidence.json
+          expected="$(awk '{print $1}' "${bundle}.sha256")"
+          actual="$(sha256sum "$verify_dir/$bundle" | awk '{print $1}')"
+          test "$actual" = "$expected"
+
+      - name: Publish verified prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease=true
+          release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json databaseId,isDraft,isPrerelease,name,tagName,url)"
+          RELEASE_JSON="$release_json" python3 - <<'PY'
+          import json
+          import os
+
+          obj = json.loads(os.environ['RELEASE_JSON'])
+          assert obj['isDraft'] is False
+          assert obj['isPrerelease'] is True
+          assert obj['name'] == 'GoreeCloud Terminal 50.2-rc.1'
+          assert obj['tagName'] == '50.2-rc.1'
+          print('Published:', obj['url'])
+          print('Release ID:', obj['databaseId'])
+          PY
+
+      - name: Verify published tag and downloadable artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-inputs
+          bundle="goreecloud-terminal-${RC_ID}-${RELEASE_SOURCE_SHA}.flatpak"
+          tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+          test "$tag_sha" = "$RELEASE_SOURCE_SHA"
+
+          verify_dir="$RUNNER_TEMP/published-release-download"
+          rm -rf "$verify_dir"
+          mkdir -p "$verify_dir"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir "$verify_dir" \
+            --pattern "$bundle" \
+            --pattern "${bundle}.sha256" \
+            --pattern release-publication-evidence.json
+          expected="$(awk '{print $1}' "${bundle}.sha256")"
+          actual="$(sha256sum "$verify_dir/$bundle" | awk '{print $1}')"
+          test "$actual" = "$expected"
+          printf 'PUBLISHED_RELEASE_TAG=%s\n' "$RELEASE_TAG"
+          printf 'PUBLISHED_RELEASE_SOURCE_SHA=%s\n' "$tag_sha"
+          printf 'PUBLISHED_BUNDLE_SHA256=%s\n' "$actual"
+
+      - name: Preserve published release history on any post-publication failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')"
+            if [ "$is_draft" = 'true' ]; then
+              echo 'Publication failed before public release; removing unpublished draft and its exact tag for a clean retry.'
+              gh release delete "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+              exit 0
+            fi
+            echo 'A public release now exists. Preserving published history for explicit correction/withdrawal.'
+            exit 0
+          fi
+
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+            if [ "$tag_sha" = "$RELEASE_SOURCE_SHA" ]; then
+              echo 'Removing unpublished exact tag after pre-release failure.'
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${RELEASE_TAG}"
+            else
+              echo 'Unexpected tag target; preserving it for investigation.' >&2
+            fi
+          fi
