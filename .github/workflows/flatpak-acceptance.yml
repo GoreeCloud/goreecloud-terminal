@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - agent/flatpak-packaging-acceptance
+      - agent/flatpak-lifecycle-acceptance
   pull_request:
 
 permissions:
@@ -219,6 +220,17 @@ jobs:
           fi
 
           printf 'Development Flatpak removal validated\n'
+
+      - name: Validate exact-artifact reinstall lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/flatpak-bundle-path")"
+          expected_sha="$(awk '{print $1}' "${bundle}.sha256")"
+
+          tools/validate-flatpak-lifecycle.sh reinstall \
+            --bundle "$bundle" \
+            --sha256 "$expected_sha"
 
       - name: Upload exact development bundle
         uses: actions/upload-artifact@v4
