@@ -87,6 +87,14 @@ The fixed checks cover:
 
 Issues #20 and #23 through #28 separate the major workstation sub-gates. Issue #18 is the parent supported-workstation acceptance boundary.
 
+## Flatpak permission-minimization sub-gate
+
+Issue #20 is governed by `release/flatpak-permission-review.json` and `docs/flatpak-permission-minimization.md`.
+
+The source-level review may identify candidate permission reductions, but the manual `flatpak_permission_minimization` check must remain `pending` until the final proposed permission set is exercised on the supported workstation. The broad `--filesystem=host` grant is the highest-priority minimization candidate in the current review; no source-only or CI result may convert that finding into a claim that the permission can safely be removed.
+
+A permission-reduced rebuild is a new package candidate. It must not be substituted for the published `50.2-rc.1` artifact when validating the immutable release itself, and any future candidate must carry its own exact source, bundle hash, OSTree commit, and acceptance evidence.
+
 ## Privacy boundary
 
 The collector does not read or record:
