@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate the GoreeCloud Terminal Flatpak permission-review contract.
 
-This is a source-review guardrail. It does not alter Flatpak permissions and cannot
-establish supported-workstation, production, or Stable acceptance.
+This is a source-review guardrail. It does not alter canonical Flatpak permissions and
+cannot establish supported-workstation, production, or Stable acceptance.
 """
 
 from __future__ import annotations
@@ -34,6 +34,8 @@ ALLOWED_DISPOSITIONS = {
     "highest-priority-minimization-candidate",
 }
 
+EXPERIMENT_ID = "no-host-filesystem-development-candidate"
+
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -54,7 +56,7 @@ def main() -> int:
     assert len(prod_permissions) == len(set(prod_permissions)), "duplicate production finish-arg"
     assert len(dev_permissions) == len(set(dev_permissions)), "duplicate development finish-arg"
     assert set(prod_permissions) == set(dev_permissions), "production/development permission drift"
-    assert set(prod_permissions) == EXPECTED_PERMISSIONS, "manifest permission set changed without review"
+    assert set(prod_permissions) == EXPECTED_PERMISSIONS, "canonical manifest permission set changed without review"
 
     assert review["schema_version"] == 1
     assert review["product"] == "GoreeCloud Terminal"
@@ -90,6 +92,28 @@ def main() -> int:
     assert by_name["--share=network"]["disposition"] == "retain-required-capability"
     assert by_name["--socket=wayland"]["disposition"] == "retain-required-capability"
 
+    experiments = review.get("experiments")
+    assert isinstance(experiments, list) and len(experiments) == 1, "exactly one permission experiment is expected"
+    experiment = experiments[0]
+    assert experiment["id"] == EXPERIMENT_ID
+    assert experiment["scope"] == "development-only"
+    assert experiment["base_manifest"] == "com.goreecloud.Terminal.Devel.json"
+    assert experiment["generated_manifest"] == "com.goreecloud.Terminal.Devel.NoHostFS.generated.json"
+    assert experiment["removed_permissions"] == ["--filesystem=host"]
+    assert experiment["added_permissions"] == []
+    assert experiment["canonical_manifests_changed"] is False
+    assert experiment["status"] == "source-supported-ci-candidate"
+    assert experiment["ci_authoritative_for_stable"] is False
+    assert experiment["production_approved"] is False
+    assert experiment["stable_approved"] is False
+
+    findings = experiment.get("source_findings")
+    assert isinstance(findings, list) and len(findings) >= 5
+    assert all(isinstance(finding, str) and finding.strip() for finding in findings)
+
+    expected_candidate_checks = by_name["--filesystem=host"]["required_acceptance"]
+    assert experiment["required_workstation_acceptance"] == expected_candidate_checks
+
     completion_rule = review["completion_rule"]
     assert "supported workstation" in completion_rule.lower()
     assert "source review and ci alone cannot" in completion_rule.lower()
@@ -104,6 +128,8 @@ def main() -> int:
         "--filesystem=host",
         "--talk-name=org.freedesktop.Flatpak",
         "one permission change at a time",
+        "Development-only no-host-filesystem candidate",
+        "canonical production and development manifests remain unchanged",
         "production_approved` and `stable_approved` remain `false`",
     ):
         assert marker in docs, f"missing documentation marker: {marker}"

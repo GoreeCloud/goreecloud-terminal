@@ -4,7 +4,7 @@
   "release_candidate": "50.2-rc.1",
   "review_date": "2026-08-22",
   "review_source": {
-    "goreecloud_main": "fd11e8a9277f2344c7bb4a760da30579ce60f98a",
+    "goreecloud_main": "1ef24e461716f5d0339802ea770f08fdf7870754",
     "flathub_repository": "flathub/app.devsuite.Ptyxis",
     "flathub_manifest_blob": "5ad04fbce39b16f24c212ba884d514eca81e382c"
   },
@@ -52,7 +52,7 @@
     {
       "permission": "--filesystem=host",
       "disposition": "highest-priority-minimization-candidate",
-      "reason": "This is the broadest filesystem grant and receives special scrutiny. Current Flathub Ptyxis carries the same permission, but its Flathub lint exception describes host-filesystem access as predating the rule rather than proving current necessity. GoreeCloud must test whether narrower filesystem exposure preserves general-purpose terminal workflows before retaining broad read-write host access.",
+      "reason": "This is the broadest filesystem grant and receives special scrutiny. Current Flathub Ptyxis carries the same permission, but its Flathub lint exception describes host-filesystem access as predating the rule rather than proving current necessity. GoreeCloud source review now supports an isolated development-only candidate that removes this permission, but supported-workstation behavior remains authoritative before any canonical manifest change.",
       "required_acceptance": [
         "working-directory-behavior",
         "local-shell-and-pty",
@@ -117,6 +117,41 @@
         "container-workflows",
         "process-context-detection"
       ]
+    }
+  ],
+  "experiments": [
+    {
+      "id": "no-host-filesystem-development-candidate",
+      "scope": "development-only",
+      "base_manifest": "com.goreecloud.Terminal.Devel.json",
+      "generated_manifest": "com.goreecloud.Terminal.Devel.NoHostFS.generated.json",
+      "removed_permissions": [
+        "--filesystem=host"
+      ],
+      "added_permissions": [],
+      "canonical_manifests_changed": false,
+      "status": "source-supported-ci-candidate",
+      "source_findings": [
+        "The Flatpak UI launches ptyxis-agent on the host through flatpak-spawn --host and org.freedesktop.Flatpak access.",
+        "The host-side session container validates the requested working directory with host-side filesystem checks before spawning the shell or command.",
+        "Command-line and preserved working directories are marshaled as URI/path metadata to the host-side spawn path instead of requiring the UI process to traverse the target directory.",
+        "External link opening uses the desktop portal.",
+        "Terminal drag and drop recognizes document-portal formats and can recover document-portal host-path metadata for shell insertion.",
+        "User palettes are stored under the application's XDG user-data directory rather than requiring unrestricted host filesystem visibility."
+      ],
+      "required_workstation_acceptance": [
+        "working-directory-behavior",
+        "local-shell-and-pty",
+        "external-mounts",
+        "file-links-and-open-actions",
+        "drag-and-drop",
+        "profile-working-directories",
+        "container-workflows",
+        "upstream-ptyxis-coexistence"
+      ],
+      "ci_authoritative_for_stable": false,
+      "production_approved": false,
+      "stable_approved": false
     }
   ],
   "completion_rule": "Permission minimization is incomplete until the supported workstation validates any proposed narrower manifest against all affected behaviors. Source review and CI alone cannot set permission_set_minimized true.",
