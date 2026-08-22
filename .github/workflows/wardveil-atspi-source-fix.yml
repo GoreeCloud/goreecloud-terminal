@@ -22,53 +22,57 @@ jobs:
           ref: agent/wardveil-atspi-accessibility-fix
           fetch-depth: 0
 
-      - name: Apply exact Wardveil accessibility patch
+      - name: Normalize Wardveil accessibility semantics
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("src/ptyxis-window-dressing.c")
           text = path.read_text(encoding="utf-8")
+          original = text
 
-          replacements = [
-              (
+          if "gtk_image_new ()" in text:
+              text = text.replace(
                   "  self->session_context_icon = GTK_IMAGE (gtk_image_new ());",
                   "  self->session_context_icon = GTK_IMAGE (g_object_new (GTK_TYPE_IMAGE,\n"
                   "                                                       \"accessible-role\", GTK_ACCESSIBLE_ROLE_NONE,\n"
                   "                                                       NULL));",
-                  "decorative icon role",
-              ),
-              (
+                  1,
+              )
+
+          if "gtk_label_new (NULL)" in text:
+              text = text.replace(
                   "  self->session_context_label = GTK_LABEL (gtk_label_new (NULL));",
                   "  self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,\n"
-                  "                                                                 \"accessible-role\", GTK_ACCESSIBLE_ROLE_NONE,\n"
-                  "                                                                 NULL));",
-                  "decorative label role",
-              ),
-              (
-                  "  self->session_context_chip = g_object_new (GTK_TYPE_BOX,\n",
-                  "  self->session_context_chip = g_object_new (GTK_TYPE_BOX,\n"
-                  "                                              \"accessible-role\", GTK_ACCESSIBLE_ROLE_GROUP,\n",
-                  "semantic group role",
-              ),
-          ]
+                  "                                                       \"accessible-role\", GTK_ACCESSIBLE_ROLE_NONE,\n"
+                  "                                                       NULL));",
+                  1,
+              )
 
-          changed = False
-          for old, new, description in replacements:
-              if old in text:
-                  if text.count(old) != 1:
-                      raise SystemExit(f"expected one {description} source pattern, found {text.count(old)}")
-                  text = text.replace(old, new, 1)
-                  changed = True
-              elif new not in text:
-                  raise SystemExit(f"neither old nor corrected {description} source pattern was found")
+          chip_pattern = re.compile(
+              r'(  self->session_context_chip = g_object_new \(GTK_TYPE_BOX,\n)'
+              r'(?:[ \t]+\"accessible-role\", GTK_ACCESSIBLE_ROLE_GROUP,\n)*'
+          )
+          text, count = chip_pattern.subn(
+              r'\1                                              "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,\n',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one Wardveil session-context chip constructor, found {count}")
 
-          if changed:
+          if text.count('"accessible-role", GTK_ACCESSIBLE_ROLE_GROUP') != 1:
+              raise SystemExit("Wardveil chip must contain exactly one semantic group role")
+          if text.count('"accessible-role", GTK_ACCESSIBLE_ROLE_NONE') != 2:
+              raise SystemExit("Wardveil decorative children must contain exactly two non-semantic roles")
+
+          if text != original:
               path.write_text(text, encoding="utf-8")
           else:
-              print("Wardveil AT-SPI source fix is already applied")
+              print("Wardveil AT-SPI source semantics already normalized")
           PY
 
           python3 tools/test-wardveil-accessibility-contract.py
@@ -85,5 +89,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/ptyxis-window-dressing.c
           git diff --cached --check
-          git commit -m "Fix Wardveil AT-SPI accessible semantics"
+          git commit -m "Normalize Wardveil AT-SPI accessible semantics"
           git push origin HEAD:agent/wardveil-atspi-accessibility-fix
