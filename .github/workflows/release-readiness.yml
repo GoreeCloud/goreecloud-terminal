@@ -1,0 +1,99 @@
+name: Release Readiness
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+      - "release/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-readiness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-readiness:
+    name: Validate Release Candidate source contracts
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Validate syntax and machine-readable contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            tools/validate-privacy-shield-adapter.py \
+            tools/validate-release-readiness.py
+          sh -n data/goreecloud-terminal
+          bash -n tools/test-local-api.sh
+          python3 -m json.tool release/status.json >/dev/null
+          python3 -m json.tool privacy-shield/adapter.json >/dev/null
+          python3 -m json.tool com.goreecloud.Terminal.json >/dev/null
+
+      - name: Validate Privacy Shield adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-privacy-shield-adapter.py
+
+      - name: Validate local API
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-local-api.sh
+
+      - name: Validate Release Candidate source readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-release-readiness.py
+
+      - name: Record non-secret readiness evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$SOURCE_SHA" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          status = json.loads(Path('release/status.json').read_text())
+          evidence = {
+              'schema_version': 1,
+              'source_sha': os.environ['SOURCE_SHA'],
+              'product': status['product'],
+              'release_lifecycle': status['release_lifecycle'],
+              'release_candidate': status['release_candidate'],
+              'production_approved': status['production_approved'],
+              'stable_approved': status['stable_approved'],
+              'stable_blocker_count': len(status['stable_blockers']),
+          }
+          Path('release-readiness-evidence.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          cat release-readiness-evidence.json
+
+      - name: Upload Release Candidate source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-release-readiness-${{ env.SOURCE_SHA }}
+          path: release-readiness-evidence.json
+          if-no-files-found: error
+          retention-days: 30

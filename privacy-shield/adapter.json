@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "adapter": {
+    "id": "terminal",
+    "product": "GoreeCloud Terminal",
+    "runtime_authority": "GoreeCloud/goreecloud-terminal",
+    "contract_version": 1
+  },
+  "capabilities": [
+    "telemetry-minimization",
+    "data-minimization"
+  ],
+  "privacy": {
+    "local_first": true,
+    "raw_private_activity_exported_for_status": false,
+    "remote_tracker_learning": false,
+    "remote_tracker_telemetry": false
+  },
+  "acceptance": {
+    "runtime_acceptance_required": true,
+    "production_approved": false
+  }
+}

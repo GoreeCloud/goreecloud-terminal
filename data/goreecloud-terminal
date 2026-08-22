@@ -21,6 +21,23 @@ fi
 
 tab="$(printf '\t')"
 
+print_api_usage() {
+  cat <<'EOF'
+Usage:
+  goreecloud-terminal api status
+
+The GoreeCloud Terminal API is a versioned, read-only local CLI status contract.
+It does not expose terminal contents, commands, credentials, host aliases, or
+identifiers and does not open a network listener.
+EOF
+}
+
+print_api_status() {
+  cat <<'EOF'
+{"schema_version":1,"product":"GoreeCloud Terminal","repository":"GoreeCloud/goreecloud-terminal","release_lifecycle":"Release Candidate","release_candidate":"50.2-rc.1","upstream_foundation":"Ptyxis 50.2","identity":{"production_application_id":"com.goreecloud.Terminal","development_application_id":"com.goreecloud.Terminal.Devel","canonical_launcher":"goreecloud-terminal"},"api":{"transport":"local-cli","read_only":true},"privacy":{"terminal_content_included":false,"commands_included":false,"credentials_included":false,"host_aliases_included":false,"identifiers_included":false},"privacy_shield_capabilities":["telemetry-minimization","data-minimization"],"wardveil":{"presentation_available":true,"authorization_authority":false}}
+EOF
+}
+
 print_ssh_usage() {
   cat <<'EOF'
 Usage:
@@ -171,6 +188,25 @@ resolve_profile_alias() {
 }
 
 case "${1:-}" in
+  api)
+    shift
+    case "${1:-}" in
+      status)
+        [ "$#" -eq 1 ] || { print_api_usage >&2; exit 64; }
+        print_api_status
+        exit 0
+        ;;
+      -h|--help|'')
+        print_api_usage
+        exit 0
+        ;;
+      *)
+        print_api_usage >&2
+        exit 64
+        ;;
+    esac
+    ;;
+
   ssh|ssh-tab)
     mode="$1"
     shift
