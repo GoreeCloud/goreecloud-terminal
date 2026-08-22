@@ -81,9 +81,13 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          sudo apt-get install -y --no-install-recommends \
+            elfutils \
+            flatpak \
+            flatpak-builder
           flatpak --version
           flatpak-builder --version
+          eu-strip --version
 
       - name: Install declared GNOME runtime and SDK
         shell: bash
