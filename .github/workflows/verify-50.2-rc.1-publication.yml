@@ -105,7 +105,9 @@ jobs:
           assert evidence['production_approved'] is False
           assert evidence['stable_approved'] is False
           assert evidence['github_release_id'] == metadata['databaseId']
-          assert evidence['github_release_url'] == metadata['url']
+          assert evidence['publication_state'] == 'draft-assets-uploaded'
+          assert evidence['github_release_url'].startswith('https://github.com/GoreeCloud/goreecloud-terminal/releases/')
+          assert metadata['url'] == 'https://github.com/GoreeCloud/goreecloud-terminal/releases/tag/50.2-rc.1'
           assert len(evidence['ostree_commit']) == 64
 
           verification = {
@@ -116,7 +118,8 @@ jobs:
               'release_lifecycle': evidence['release_lifecycle'],
               'release_source_sha': evidence['release_source_sha'],
               'github_release_id': evidence['github_release_id'],
-              'github_release_url': evidence['github_release_url'],
+              'github_release_url': metadata['url'],
+              'publication_record_url_at_asset_upload': evidence['github_release_url'],
               'application_id': evidence['application_id'],
               'bundle': evidence['bundle'],
               'bundle_sha256': evidence['bundle_sha256'],
