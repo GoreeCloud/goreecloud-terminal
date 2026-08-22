@@ -1,0 +1,206 @@
+name: Flatpak No Host Filesystem Candidate
+
+on:
+  push:
+    branches:
+      - main
+      - agent/flatpak-no-host-filesystem-candidate
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-no-hostfs-candidate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    name: Build and smoke-test no-host-filesystem candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CANDIDATE_MANIFEST: com.goreecloud.Terminal.Devel.NoHostFS.generated.json
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Generate and validate isolated permission candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/generate-flatpak-permission-candidate.py
+          python3 tools/generate-flatpak-permission-candidate.py --output "$CANDIDATE_MANIFEST"
+
+          python3 - <<'PY'
+          import copy
+          import json
+          import os
+          from pathlib import Path
+
+          base_path = Path('com.goreecloud.Terminal.Devel.json')
+          candidate_path = Path(os.environ['CANDIDATE_MANIFEST'])
+          base = json.loads(base_path.read_text(encoding='utf-8'))
+          candidate = json.loads(candidate_path.read_text(encoding='utf-8'))
+
+          removed = '--filesystem=host'
+          expected = [arg for arg in base['finish-args'] if arg != removed]
+
+          assert base['finish-args'].count(removed) == 1
+          assert candidate['finish-args'] == expected
+          assert removed not in candidate['finish-args']
+          assert candidate['app-id'] == 'com.goreecloud.Terminal.Devel'
+
+          restored = copy.deepcopy(candidate)
+          restored['finish-args'] = copy.deepcopy(base['finish-args'])
+          assert restored == base, 'candidate changed fields outside finish-args'
+
+          review = json.loads(Path('release/flatpak-permission-review.json').read_text(encoding='utf-8'))
+          experiment = next(item for item in review['experiments'] if item['id'] == 'no-host-filesystem-development-candidate')
+          assert experiment['scope'] == 'development-only'
+          assert experiment['removed_permissions'] == [removed]
+          assert experiment['added_permissions'] == []
+          assert experiment['canonical_manifests_changed'] is False
+          assert experiment['production_approved'] is False
+          assert experiment['stable_approved'] is False
+          PY
+
+      - name: Install Flatpak tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            elfutils \
+            flatpak \
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
+          flatpak --version
+          flatpak-builder --version
+          eu-strip --version
+          rsvg-convert --version
+
+      - name: Validate packaged icon source
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon='data/icons/goreecloud-terminal-devel.svg'
+          output="$RUNNER_TEMP/goreecloud-terminal-devel-icon.png"
+          rsvg-convert --width=128 --height=128 --output="$output" "$icon"
+          test -s "$output"
+          file "$output" | grep -Fq 'PNG image data, 128 x 128'
+
+      - name: Install declared GNOME runtime and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//50 \
+            org.gnome.Sdk//50
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Platform\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Sdk\t50'
+
+      - name: Build exact-head candidate and export repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/goreecloud-terminal-no-hostfs-build"
+          state_dir="$RUNNER_TEMP/goreecloud-terminal-no-hostfs-state"
+          repo_dir="$RUNNER_TEMP/goreecloud-terminal-no-hostfs-repo"
+
+          rm -rf "$build_dir" "$state_dir" "$repo_dir"
+
+          flatpak-builder \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --state-dir="$state_dir" \
+            --repo="$repo_dir" \
+            "$build_dir" \
+            "$CANDIDATE_MANIFEST"
+
+          test -d "$repo_dir"
+          printf '%s\n' "$repo_dir" > "$RUNNER_TEMP/flatpak-no-hostfs-repo-path"
+
+      - name: Build development-only candidate bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_dir="$(cat "$RUNNER_TEMP/flatpak-no-hostfs-repo-path")"
+          bundle="goreecloud-terminal-devel-no-hostfs-${SOURCE_SHA}.flatpak"
+
+          flatpak build-bundle \
+            "$repo_dir" \
+            "$bundle" \
+            com.goreecloud.Terminal.Devel
+
+          test -s "$bundle"
+          sha256sum "$bundle" | tee "${bundle}.sha256"
+          printf '%s\n' "$bundle" > "$RUNNER_TEMP/flatpak-no-hostfs-bundle-path"
+
+      - name: Install and inspect candidate permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/flatpak-no-hostfs-bundle-path")"
+
+          flatpak --user install -y --noninteractive "$bundle"
+          flatpak --user info com.goreecloud.Terminal.Devel
+          test "$(flatpak --user info --show-runtime com.goreecloud.Terminal.Devel)" = 'org.gnome.Platform/x86_64/50'
+          flatpak --user info --show-ref com.goreecloud.Terminal.Devel | grep -Fq 'app/com.goreecloud.Terminal.Devel/'
+          flatpak --user info --show-commit com.goreecloud.Terminal.Devel | grep -Eq '^[0-9a-f]{64}$'
+
+          permissions="$(flatpak --user info --show-permissions com.goreecloud.Terminal.Devel)"
+          printf '%s\n' "$permissions"
+          if printf '%s\n' "$permissions" | grep -Fq 'filesystems=host'; then
+            printf 'Candidate unexpectedly retained host filesystem access\n' >&2
+            exit 1
+          fi
+
+      - name: Run non-graphical candidate smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version_output="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel --version 2>&1)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal'
+
+          ssh_help="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel ssh --help 2>&1)"
+          printf '%s\n' "$ssh_help" | grep -Fq 'Standard OpenSSH authentication and configuration remain'
+
+          profile_help="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel profile --help 2>&1)"
+          printf '%s\n' "$profile_help" | grep -Fq 'WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS'
+
+      - name: Validate clean candidate removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak --user uninstall -y --noninteractive com.goreecloud.Terminal.Devel
+          if flatpak --user info com.goreecloud.Terminal.Devel >/dev/null 2>&1; then
+            printf 'No-host-filesystem candidate remained installed after uninstall\n' >&2
+            exit 1
+          fi
+
+      - name: Upload development-only candidate bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-no-hostfs-candidate-${{ env.SOURCE_SHA }}
+          path: |
+            goreecloud-terminal-devel-no-hostfs-${{ env.SOURCE_SHA }}.flatpak
+            goreecloud-terminal-devel-no-hostfs-${{ env.SOURCE_SHA }}.flatpak.sha256
+          if-no-files-found: error
+          retention-days: 14
