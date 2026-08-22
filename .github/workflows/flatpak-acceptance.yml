@@ -93,8 +93,8 @@ jobs:
           sudo flatpak install -y --noninteractive flathub \
             org.gnome.Platform//50 \
             org.gnome.Sdk//50
-          flatpak list --system --runtime --columns=application,branch | grep -Fx 'org.gnome.Platform\t50'
-          flatpak list --system --runtime --columns=application,branch | grep -Fx 'org.gnome.Sdk\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Platform\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Sdk\t50'
 
       - name: Build exact-head Flatpak and export repository
         shell: bash
