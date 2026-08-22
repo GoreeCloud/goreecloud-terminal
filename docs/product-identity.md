@@ -14,18 +14,23 @@ GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. Produ
 | Application ID | `com.goreecloud.Terminal` | `com.goreecloud.Terminal.Devel` |
 | GSettings schema prefix | `com.goreecloud.Terminal` | `com.goreecloud.Terminal.Devel` |
 | GSettings path | `/com/goreecloud/Terminal/` | `/com/goreecloud/Terminal/Devel/` |
+| Canonical CLI launcher | `goreecloud-terminal` | `goreecloud-terminal` |
+| Compatibility runtime binary | `ptyxis` | `ptyxis` |
 | Repository | `GoreeCloud/goreecloud-terminal` | `GoreeCloud/goreecloud-terminal` |
 | License | GPL-3.0-or-later | GPL-3.0-or-later |
 
 The application ID is the authority for installed desktop files, D-Bus activation, icons, AppStream metadata, and the default GSettings namespace.
 
+The canonical user-facing command is `goreecloud-terminal`. It is a deliberately thin launcher that executes the inherited `ptyxis` runtime with the original arguments unchanged. This establishes a GoreeCloud-owned command-line entry point without forcing a premature rename of compatibility-sensitive native binaries.
+
 ## Upstream compatibility boundary
 
-The current native executable remains named `ptyxis`, and the helper remains `ptyxis-agent`. Those names are retained temporarily as compatibility-sensitive implementation details inherited from upstream. They are not the canonical user-facing GoreeCloud product name.
+The current native executable remains named `ptyxis`, and the helper remains `ptyxis-agent`. Those names are retained as compatibility-sensitive implementation details inherited from upstream. They are not the canonical user-facing GoreeCloud product name.
 
-Renaming executable and helper entry points is a separate packaging/runtime migration because it can affect:
+The installed `goreecloud-terminal` launcher delegates directly to `ptyxis` and preserves argument behavior. Desktop launch and desktop actions use the GoreeCloud launcher, while D-Bus activation and internal helper relationships may continue to invoke compatibility runtime names where required.
 
-- desktop `Exec=` entries;
+Removing or renaming the compatibility executable and helper entry points is a separate packaging/runtime migration because it can affect:
+
 - shell scripts and command-line habits;
 - D-Bus activation;
 - host/Flatpak helper discovery;
@@ -65,13 +70,16 @@ Source/CI acceptance must verify at minimum:
 - desktop-file validation passes;
 - inherited gettext catalogs still compile;
 - native compilation and tests pass;
+- `goreecloud-terminal` is installed and executable;
+- the GoreeCloud launcher forwards arguments to the inherited runtime without modification;
 - the staged executable and helper remain available under their current compatibility names.
 
 Runtime acceptance must additionally verify:
 
 - launch from the desktop application menu;
 - D-Bus activation and single-instance behavior;
-- direct CLI launch;
+- direct `goreecloud-terminal` CLI launch;
+- direct compatibility `ptyxis` launch;
 - new-window and new-tab desktop actions;
 - preferences persistence under the GoreeCloud schema namespace;
 - default-terminal integration;
