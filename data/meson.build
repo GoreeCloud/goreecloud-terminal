@@ -3,7 +3,7 @@ if app_is_builder
 elif app_is_generic
   app_name = 'Terminal'
 else
-  app_name = 'Ptyxis'
+  app_name = 'GoreeCloud Terminal'
 endif
 
 desktop_config = configuration_data()
