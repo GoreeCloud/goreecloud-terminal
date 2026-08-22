@@ -129,7 +129,10 @@ else
   fail "missing Ptyxis compatibility man page"
 fi
 
-require_contains "$launcher" 'exec ptyxis "$@"'
+require_contains "$launcher" 'ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"'
+require_contains "$launcher" 'exec "$ptyxis_bin" "$@"'
+require_contains "$launcher" 'exec "$ptyxis_bin" --new-window -- ssh "$@"'
+require_contains "$launcher" 'exec "$ptyxis_bin" --tab -- ssh "$@"'
 require_contains "$desktop_file" 'Name=GoreeCloud Terminal'
 require_contains "$desktop_file" 'Exec=goreecloud-terminal'
 require_contains "$metainfo_file" "<id>${app_id}</id>"
