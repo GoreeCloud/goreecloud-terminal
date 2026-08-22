@@ -134,6 +134,11 @@ wrong_sha='0000000000000000000000000000000000000000000000000000000000000000'
 expect_failure run_validator reinstall --bundle "$baseline" --sha256 "$wrong_sha"
 test ! -f "$fake_state/commit"
 
+# A 64-character value containing non-hexadecimal data must also fail before installation.
+malformed_sha="${baseline_sha%?}z"
+expect_failure run_validator reinstall --bundle "$baseline" --sha256 "$malformed_sha"
+test ! -f "$fake_state/commit"
+
 # Transition mode must reject cryptographically identical artifacts.
 expect_failure run_validator transition \
   --baseline "$baseline" --baseline-sha256 "$baseline_sha" \
