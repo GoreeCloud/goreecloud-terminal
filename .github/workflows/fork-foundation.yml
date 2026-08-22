@@ -35,9 +35,14 @@ jobs:
           test -f GORECLOUD_FORK.md
           test -f docs/product-identity.md
           test -f docs/runtime-identity-acceptance.md
+          test -f docs/settings-migration-and-rollback.md
           test -f man/goreecloud-terminal.1.in
           test -x tools/validate-runtime-identity.sh
+          test -x tools/migrate-ptyxis-settings.sh
+          test -x tools/test-settings-migration.sh
           bash -n tools/validate-runtime-identity.sh
+          bash -n tools/migrate-ptyxis-settings.sh
+          bash -n tools/test-settings-migration.sh
           grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
           grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
@@ -66,6 +71,16 @@ jobs:
           grep -Fq 'Canonical CLI launcher | `goreecloud-terminal`' docs/product-identity.md
           grep -Fq 'Compatibility runtime binary | `ptyxis`' docs/product-identity.md
           grep -Fq 'tools/validate-runtime-identity.sh' docs/runtime-identity-acceptance.md
+          grep -Fq 'source_path="/org/gnome/Ptyxis/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'target_path="/com/goreecloud/Terminal/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'target_path="/com/goreecloud/Terminal/Devel/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'migration refuses to write when the target already contains custom values' docs/settings-migration-and-rollback.md
+
+      - name: Test settings migration safety model
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-settings-migration.sh
 
       - name: Record source identity
         shell: bash
