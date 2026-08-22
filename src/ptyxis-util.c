@@ -327,7 +327,7 @@ ptyxis_app_name (void)
 #elif APP_IS_GENERIC
   return _("Terminal");
 #else
-  return _("Ptyxis");
+  return _("GoreeCloud Terminal");
 #endif
 }
 
