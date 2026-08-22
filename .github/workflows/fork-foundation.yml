@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   provenance:
-    name: Provenance and license
+    name: Provenance, license, and identity
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -33,10 +33,35 @@ jobs:
           set -euo pipefail
           test -f COPYING
           test -f GORECLOUD_FORK.md
+          test -f docs/product-identity.md
+          test -f man/goreecloud-terminal.1.in
           grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
           grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
           grep -Fq "GPL-3.0-or-later" data/org.gnome.Ptyxis.metainfo.xml.in.in
+
+      - name: Validate GoreeCloud product identity source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "app_id = 'com.goreecloud.Terminal'" meson.build
+          grep -Fq "app_id = 'com.goreecloud.Terminal.Devel'" meson.build
+          grep -Fq "app_schema_id = 'com.goreecloud.Terminal'" meson.build
+          grep -Fq "app_schema_id = 'com.goreecloud.Terminal.Devel'" meson.build
+          grep -Fq "PACKAGE_NAME', 'GoreeCloud Terminal'" meson.build
+          grep -Fq "PACKAGE_WEBSITE', 'https://github.com/GoreeCloud/goreecloud-terminal'" meson.build
+          grep -Fq "app_name = 'GoreeCloud Terminal'" data/meson.build
+          grep -Fq "'goreecloud-terminal'" data/meson.build
+          grep -Fq 'exec ptyxis "$@"' data/goreecloud-terminal
+          grep -Fq 'Exec=goreecloud-terminal' data/org.gnome.Ptyxis.desktop.in.in
+          grep -Fq 'Exec=@bindir@/goreecloud-terminal --gapplication-service' data/org.gnome.Ptyxis.service.in
+          grep -Fq 'return _("GoreeCloud Terminal");' src/ptyxis-util.c
+          grep -Fq "GoreeCloud-maintained terminal" data/org.gnome.Ptyxis.metainfo.xml.in.in
+          grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal/issues" data/org.gnome.Ptyxis.metainfo.xml.in.in
+          grep -Fq ".TH \"GOREECLOUD TERMINAL\"" man/ptyxis.1.in
+          grep -Fq ".TH \"GOREECLOUD-TERMINAL\"" man/goreecloud-terminal.1.in
+          grep -Fq 'Canonical CLI launcher | `goreecloud-terminal`' docs/product-identity.md
+          grep -Fq 'Compatibility runtime binary | `ptyxis`' docs/product-identity.md
 
       - name: Record source identity
         shell: bash
@@ -95,6 +120,9 @@ jobs:
             cat _build/meson-logs/meson-log.txt 2>/dev/null || true
             exit 1
           fi
+          grep -Fq '#define APP_ID "com.goreecloud.Terminal.Devel"' _build/config.h
+          grep -Fq '#define APP_SCHEMA_ID "com.goreecloud.Terminal.Devel"' _build/config.h
+          grep -Fq '#define PACKAGE_NAME "GoreeCloud Terminal"' _build/config.h
 
       - name: Upload Meson configure diagnostics
         if: failure()
@@ -122,5 +150,21 @@ jobs:
         run: |
           set -euo pipefail
           DESTDIR="$PWD/_install" meson install -C _build
+          test -x _install/usr/bin/goreecloud-terminal
           test -x _install/usr/bin/ptyxis
           test -x _install/usr/libexec/ptyxis-agent
+          test -f _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          test -f _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
+          test -f _install/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Devel.gschema.xml
+          test -f _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          test -f _install/usr/share/man/man1/goreecloud-terminal.1
+          test -f _install/usr/share/man/man1/ptyxis.1
+          grep -Fq 'exec ptyxis "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'Name=GoreeCloud Terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq 'Exec=goreecloud-terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq '<id>com.goreecloud.Terminal.Devel</id>' _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
+          grep -Fq 'Name=com.goreecloud.Terminal.Devel' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'Exec=/usr/bin/goreecloud-terminal --gapplication-service' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'goreecloud-terminal' _install/usr/share/man/man1/goreecloud-terminal.1
+          grep -Fq 'GoreeCloud Terminal' _install/usr/share/man/man1/ptyxis.1
+          find _install/usr/share/icons -type f -name 'com.goreecloud.Terminal.Devel*' -print -quit | grep -q .

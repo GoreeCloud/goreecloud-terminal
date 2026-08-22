@@ -1,0 +1,57 @@
+.TH "GOREECLOUD-TERMINAL" 1 "21 August 2026"
+.SH NAME
+goreecloud-terminal \- launch GoreeCloud Terminal
+.SH SYNOPSIS
+.B goreecloud-terminal
+.RI [OPTION]...
+[\-\- PROGRAM ARGUMENTS]
+.SH DESCRIPTION
+.B goreecloud-terminal
+is the canonical command-line launcher for GoreeCloud Terminal.
+It forwards all arguments unchanged to the inherited
+.B ptyxis
+runtime so GoreeCloud can provide a first-party command name without prematurely breaking compatibility-sensitive runtime, helper, packaging, D-Bus, or rollback behavior.
+.PP
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The upstream runtime foundation and GPL attribution remain preserved.
+.SH COMPATIBILITY
+The inherited
+.B ptyxis
+command remains installed during the current development and migration stage. Existing scripts and workflows may continue using it.
+.PP
+New GoreeCloud documentation and normal user workflows should prefer
+.B goreecloud-terminal
+unless a compatibility test specifically requires the inherited command.
+.SH OPTIONS
+All command-line options and program arguments are passed directly to the
+.B ptyxis
+runtime. For the complete current option set, see:
+.PP
+.BR ptyxis (1)
+.SH EXAMPLES
+Open GoreeCloud Terminal:
+.PP
+.nf
+goreecloud-terminal
+.fi
+.PP
+Open a new window:
+.PP
+.nf
+goreecloud-terminal --new-window
+.fi
+.PP
+Run a command in a terminal:
+.PP
+.nf
+goreecloud-terminal -- bash -lc 'printf "hello from GoreeCloud Terminal\\n"'
+.fi
+.SH PROJECT
+GoreeCloud repository:
+.br
+https://github.com/GoreeCloud/goreecloud-terminal
+.PP
+Canonical upstream Ptyxis source:
+.br
+https://gitlab.gnome.org/chergert/ptyxis
+.SH SEE ALSO
+.BR ptyxis (1)

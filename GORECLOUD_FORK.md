@@ -2,7 +2,7 @@
 
 ## Status
 
-GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. This repository is in the fork-foundation phase; the imported application remains substantially upstream Ptyxis until GoreeCloud-specific product identity, Glaze UI, Wardveil Security, and workflow changes are implemented and validated.
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, and GoreeCloud terminal workflow development. Production acceptance remains separate from source and CI validation.
 
 ## Canonical upstream
 
@@ -30,7 +30,7 @@ upstream https://gitlab.gnome.org/chergert/ptyxis.git
 
 The imported source includes the GNU General Public License, version 3, in `COPYING`, while upstream application metadata declares `GPL-3.0-or-later`. Existing copyright, contributor, translator, license, and attribution records must be preserved unless a later legal review establishes that a particular item may be changed.
 
-GoreeCloud rebranding does not authorize removal of upstream copyright or licensing obligations. Product-facing Ptyxis branding may be replaced during the product-identity milestone where legally permitted, while required attribution remains available in appropriate legal, About, acknowledgments, source, or history surfaces.
+GoreeCloud rebranding does not authorize removal of upstream copyright or licensing obligations. Product-facing Ptyxis branding may be replaced where legally permitted, while required attribution remains available in legal, About, acknowledgments, source, history, and maintained-fork documentation surfaces.
 
 ## Development lifecycle
 
@@ -51,8 +51,14 @@ A fork-to-native transition is optional. Mature terminal-emulation, PTY, accessi
 ## Branch model
 
 - `main`: controlled GoreeCloud integration branch. The initial `main` import preserves the unchanged Ptyxis baseline.
-- `agent/fork-foundation`: Milestone 0 development and validation branch.
-- Future feature branches should remain narrowly scoped and merge through reviewed pull requests.
+- `agent/fork-foundation`: Milestone 0 governance and CI foundation.
+- `agent/terminal-artwork`: GoreeCloud Terminal artwork layer.
+- `agent/glaze-ui-foundation`: Glaze UI application-chrome layer.
+- `agent/wardveil-session-context`: Wardveil session-context layer.
+- `agent/terminal-context-menu-actions`: GoreeCloud terminal context-menu workflow layer.
+- `agent/product-identity-foundation`: canonical GoreeCloud application-ID, metadata, and repository-facing identity layer.
+
+The active development model uses narrowly scoped stacked branches and draft pull requests so each layer can be reviewed and validated independently before integration.
 
 Direct GoreeCloud feature development should not occur on an upstream-tracking remote branch.
 
@@ -85,18 +91,43 @@ After review, integrate through a dedicated branch and pull request with build/t
 
 Preserve upstream history and licensing, document provenance and maintenance rules, establish GitHub validation, and prove the unchanged source baseline can be built and tested.
 
+Status: source foundation implemented on the stacked development chain; integration to `main` remains pending review and acceptance.
+
 ### Milestone 1 — Product Identity
 
-Introduce GoreeCloud Terminal naming, application identifiers, official artwork, package metadata, About presentation, and controlled upstream attribution.
+Introduce GoreeCloud Terminal naming, application identifiers, official artwork, package metadata, repository presentation, About presentation, and controlled upstream attribution.
+
+Current source state:
+
+- official GoreeCloud Terminal artwork is integrated;
+- canonical production application ID is `com.goreecloud.Terminal`;
+- canonical development application ID is `com.goreecloud.Terminal.Devel`;
+- GoreeCloud GSettings namespaces are defined;
+- desktop and AppStream metadata identify GoreeCloud Terminal;
+- repository-facing README identity is GoreeCloud Terminal;
+- inherited gettext domain and compatibility executables remain intentionally Ptyxis-named pending separate migration review;
+- final About-dialog/runtime presentation and packaging acceptance remain open.
+
+See `docs/product-identity.md`.
 
 ### Milestone 2 — Glaze UI
 
 Adopt the stable GoreeCloud Glaze UI baseline across application chrome and controls while preserving terminal readability, accessibility, performance, and native GTK behavior.
 
+Status: initial source foundation implemented and awaiting complete stacked-branch runtime/integration acceptance.
+
 ### Milestone 3 — Wardveil Security
 
 Introduce clear and non-disruptive security context for SSH, elevated/root, container, and other sensitive terminal environments.
 
+Status: typed source model and initial graphical runtime evidence are implemented; detector-driven transition, accessibility, palette, and final integrated-product acceptance remain open.
+
+## Compatibility boundary
+
+The executable `ptyxis`, helper `ptyxis-agent`, inherited gettext domain `ptyxis`, and several internal source filenames remain compatibility-sensitive implementation details. They do not define the canonical product name.
+
+Renaming them is not required merely to make the product visibly GoreeCloud Terminal. Any later rename must be justified by practical benefit and validated against desktop launch, D-Bus activation, Flatpak/host helper behavior, shell usage, packaging, upgrades, and rollback.
+
 ## Production boundary
 
-Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, and supported-workstation validation.
+Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, and runtime validation.

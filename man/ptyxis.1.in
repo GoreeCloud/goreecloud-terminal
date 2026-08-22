@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH Ptyxis 1 "16 January 2026"
+.TH "GOREECLOUD TERMINAL" 1 "21 August 2026"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -16,7 +16,7 @@
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
 .SH NAME
-ptyxis \- a container-oriented terminal
+ptyxis \- GoreeCloud Terminal compatibility command
 
 .SH SYNOPSIS
 .B ptyxis
@@ -26,10 +26,16 @@ ptyxis \- a container-oriented terminal
 
 .SH DESCRIPTION
 .B ptyxis
-is a container-oriented terminal, designed for the GNOME desktop.
-It provides tight integration with podman, toolbox, distrobox,
-and jhbuild to simplify container-based development and system
-management.
+is the current compatibility command for GoreeCloud Terminal, a GoreeCloud-maintained
+open-source fork of Ptyxis for Linux workstations. GoreeCloud Terminal preserves the
+container-oriented GTK and VTE terminal foundation inherited from upstream Ptyxis while
+adding GoreeCloud product identity, Glaze UI, Wardveil Security context presentation,
+and GoreeCloud terminal workflows.
+
+The command remains named
+.B ptyxis
+for compatibility during the current development stage. The canonical product name is
+GoreeCloud Terminal.
 .br
 
 .TP
@@ -42,7 +48,7 @@ Show the preferences window.
 
 .TP
 .BR \-\-new\-window
-Open a new window in an existing instance of Ptyxis. If Ptyxis
+Open a new window in an existing instance of GoreeCloud Terminal. If GoreeCloud Terminal
 is not running, a new instance is started.
 
 May be combined with
@@ -56,7 +62,7 @@ options.
 .TP
 .BR \-\-tab
 Open a new tab in the most-recently-used window of an existing
-Ptyxis instance. If Ptyxis is not running, a new instance is
+GoreeCloud Terminal instance. If GoreeCloud Terminal is not running, a new instance is
 started.
 
 May be combined with
@@ -116,7 +122,7 @@ preferences dialog.
 
 .TP
 .BR \-s ", " \-\-standalone
-Start a new instance of Ptyxis, in single instance mode,
+Start a new instance of GoreeCloud Terminal, in single instance mode,
 ignoring any instances already running.
 
 Single instance mode is implied when running a
@@ -137,7 +143,7 @@ Show a summary of options.
 Other standard GNOME options not listed here are also supported.
 
 .SH PALETTE FILES
-Ptyxis supports custom color palettes defined in INI-style files with a
+GoreeCloud Terminal supports custom color palettes defined in INI-style files with a
 .B .palette
 extension. Palette files can be placed in
 .B ~/.local/share/@app_id@/palettes/
@@ -159,7 +165,7 @@ nor
 sections are present, color keys may be placed directly in the
 .B [Palette]
 section. The same colors will be used for both light and dark themes, with
-Ptyxis automatically determining which theme to use based on the system
+GoreeCloud Terminal automatically determining which theme to use based on the system
 color scheme.
 
 .TP
@@ -184,7 +190,7 @@ section supports the following keys:
 .B Primary
 (Optional) Boolean value (true/false). If set to true, marks this palette
 to be included in the initial set of palettes shown to the user. This is
-generally used for a limited set of palettes shipped with Ptyxis.
+generally used for a limited set of palettes shipped with GoreeCloud Terminal.
 
 .TP
 .B UseSystemAccent
@@ -322,10 +328,15 @@ Color14=#00ffff
 Color15=#ffffff
 .fi
 
-.SH SEE ALSO
-For further information, visit the website
+.SH UPSTREAM
+GoreeCloud Terminal is based on Ptyxis. The canonical upstream repository is
 https://gitlab.gnome.org/chergert/ptyxis/
 
+.SH SEE ALSO
+For GoreeCloud Terminal source, maintained-fork documentation, and current development,
+visit
+https://github.com/GoreeCloud/goreecloud-terminal
+
 .SH BUGS
-Bug reports can be found and filed at
-https://gitlab.gnome.org/chergert/ptyxis/issues
+GoreeCloud Terminal bug reports can be found and filed at
+https://github.com/GoreeCloud/goreecloud-terminal/issues

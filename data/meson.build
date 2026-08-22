@@ -3,8 +3,14 @@ if app_is_builder
 elif app_is_generic
   app_name = 'Terminal'
 else
-  app_name = 'Ptyxis'
+  app_name = 'GoreeCloud Terminal'
 endif
+
+install_data(
+  'goreecloud-terminal',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
 
 desktop_config = configuration_data()
 desktop_config.set('APP_ID', app_id)
