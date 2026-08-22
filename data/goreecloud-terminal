@@ -1,4 +1,63 @@
 #!/bin/sh
+set -eu
+
 # Canonical GoreeCloud Terminal command-line entry point.
+#
 # The inherited ptyxis binary remains the compatibility-sensitive runtime.
-exec ptyxis "$@"
+# GoreeCloud SSH conveniences launch the system OpenSSH client inside that
+# runtime; credentials and SSH configuration remain owned by OpenSSH and the
+# operating system.
+ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"
+
+print_ssh_usage() {
+  cat <<'EOF'
+Usage:
+  goreecloud-terminal ssh TARGET [SSH_ARGUMENT ...]
+  goreecloud-terminal ssh-tab TARGET [SSH_ARGUMENT ...]
+
+Commands:
+  ssh      Open a new GoreeCloud Terminal window running standard OpenSSH.
+  ssh-tab  Open a new tab in the current GoreeCloud Terminal instance running
+           standard OpenSSH.
+
+TARGET may be a hostname, user@hostname, address, or Host alias configured in
+~/.ssh/config. Remaining arguments are passed to the system ssh command.
+
+Examples:
+  goreecloud-terminal ssh server-alias
+  goreecloud-terminal ssh user@example.internal
+  goreecloud-terminal ssh server-alias -p 2222
+  goreecloud-terminal ssh-tab server-alias
+
+GoreeCloud Terminal does not store SSH passwords, private keys, or replacement
+host configuration. Standard OpenSSH authentication and configuration remain
+authoritative.
+EOF
+}
+
+case "${1:-}" in
+  ssh|ssh-tab)
+    mode="$1"
+    shift
+
+    if [ "$#" -eq 0 ]; then
+      print_ssh_usage >&2
+      exit 64
+    fi
+
+    case "$1" in
+      -h|--help)
+        print_ssh_usage
+        exit 0
+        ;;
+    esac
+
+    if [ "$mode" = "ssh-tab" ]; then
+      exec "$ptyxis_bin" --tab -- ssh "$@"
+    fi
+
+    exec "$ptyxis_bin" --new-window -- ssh "$@"
+    ;;
+esac
+
+exec "$ptyxis_bin" "$@"
