@@ -1,45 +1,78 @@
-# GoreeCloud Terminal — Glaze UI Foundation
+# GoreeCloud Terminal — Glaze UI 1.4 Native Adoption
 
-This document records the first Glaze UI integration layer for GoreeCloud Terminal.
+## Target
 
-## Scope
+GoreeCloud Terminal targets **Glaze UI 1.4.0 Stable**. The canonical GoreeCloud Glaze reference reviewed for this RC is revision:
 
-The initial Glaze UI layer is intentionally limited to application chrome and supporting interface surfaces. It does not override the VTE terminal canvas palette, shell text colors, ANSI colors, or user-selected terminal palettes.
+```text
+883d40ff51d02885650024723c01d229de456285
+```
 
-The foundation covers:
+Terminal is a native Linux GTK/libadwaita application. Glaze UI is therefore mapped into native semantic surfaces rather than copying web CSS or requiring a browser rendering layer.
 
-- application header-bar treatment;
-- buttons and active/hover states;
-- popovers and menus;
-- search/find interface;
-- preference cards and palette selection surfaces;
-- focus visibility;
-- drag-and-drop terminal boundary feedback;
-- consistent rounded geometry and subtle glass-like edge treatment.
+## Supported form factor
 
-## Design principles
+- Desktop: supported and primary.
+- Phone: unsupported in this RC.
+- Tablet: unsupported in this RC.
+- TV: unsupported in this RC.
 
-GoreeCloud Terminal must remain a terminal first. Glaze UI presentation must not reduce terminal readability, interfere with shell output, weaken accessibility, or make privileged and remote-session state harder to recognize.
+## Semantic mapping
 
-The interface therefore applies Glaze UI primarily to surrounding application chrome while leaving terminal content under the control of VTE and the active terminal palette.
+GoreeCloud Terminal maps Glaze semantics as follows:
 
-## Foundation tokens
+- **Canvas** — application/window background and terminal-adjacent layout.
+- **Solid** — accessibility/high-contrast fallbacks and native surfaces requiring opaque presentation.
+- **Raised** — preferences cards and raised native controls.
+- **Functional Glass** — header, search, popover, and tab-overview application chrome where translucency does not reduce readability.
+- **Clear Glass** — not consumed by Terminal in this RC.
+- **Overlay** — menus, popovers, dialogs, and transient native surfaces.
+- **Focus** — strong focus-visible outlines independent of decorative glass edges.
+- **Status** — Wardveil context chips and other typed state presentation.
+- **Motion** — restrained application-chrome transitions that honor reduced-motion preference.
+- **Targets** — interactive palette/theme controls retain at least 44×44 CSS-pixel-equivalent target geometry where Terminal adds custom sizing.
 
-The first implementation uses the following source-level visual tokens in `src/style.css`:
+## Terminal canvas boundary
 
-- `glaze_accent` — primary GoreeCloud interactive accent;
-- `glaze_accent_soft` — low-emphasis interactive surface;
-- `glaze_edge` — subtle glass/surface boundary;
-- `glaze_surface` — translucent application surface;
-- `glaze_surface_strong` — stronger elevated surface;
-- `glaze_text_soft` — secondary text treatment.
+VTE owns terminal glyph rendering, palette colors, selection, cursor, and terminal canvas behavior. Glaze UI styles application chrome around the terminal but must not override the active terminal palette merely to create a branded visual effect.
 
-These are implementation tokens rather than a replacement for platform accessibility behavior. Native GTK/libadwaita state handling remains authoritative where appropriate.
+This boundary protects readability, user-selected terminal themes, ANSI color meaning, and VTE accessibility behavior.
 
-## Accessibility boundary
+## Native controls
 
-Focus states are intentionally stronger than decorative borders. User terminal palettes remain untouched. Destructive and suggested actions retain libadwaita semantic styling rather than being recolored as ordinary GoreeCloud controls.
+GTK/libadwaita widgets remain native controls. GoreeCloud styling may shape geometry, emphasis, surface treatment, and focus presentation, but does not replace native input semantics with custom web-style widgets.
 
-## Next integration work
+## Light and dark presentation
 
-The next Glaze UI phases should cover tab presentation, preferences information architecture, dialogs, empty states, session-status presentation, and Wardveil Security states for SSH, elevated privileges, and other security-sensitive contexts.
+The base Glaze treatment is optimized for the dark terminal shell while `src/style.css` contains an explicit light color-scheme mapping for headers and find surfaces. Final visual acceptance must verify both modes with real terminal palettes and transparency settings.
+
+## Reduced motion
+
+GTK 4.22 supports the CSS media preference used by the RC source. Under `prefers-reduced-motion: reduce`, GoreeCloud-added preference-card transitions are disabled. Terminal/runtime motion inherited from GTK, libadwaita, or VTE remains subject to their native accessibility behavior.
+
+## Increased contrast
+
+Under `prefers-contrast: more`, GoreeCloud glass surfaces fall back to solid native backgrounds with stronger borders and focus outlines. This deliberately prefers legibility over decorative translucency.
+
+## Accessibility source invariants
+
+The Glaze layer must preserve:
+
+- keyboard navigation and native focus order;
+- visible focus treatment;
+- minimum custom target sizing;
+- native semantic widget roles;
+- readable text/icons independent of translucency;
+- reduced-motion preference;
+- increased-contrast preference;
+- no reliance on color alone for Wardveil context meaning.
+
+Source conformance does not replace real assistive-technology acceptance. Mixed-tab Wardveil presentation, source order, focus traversal, resize behavior, light/dark palettes, and real high-contrast behavior remain Stable acceptance gates.
+
+## Performance and dependency boundary
+
+The native mapping uses local GTK CSS and local artwork. It does not require blur shaders, remote assets, browser engines, remote fonts, analytics, or network access. Terminal rendering remains on the inherited VTE path.
+
+## RC boundary
+
+Glaze UI 1.4 source conformance is an RC requirement. Supported-workstation appearance and accessibility acceptance are still required before Stable promotion.

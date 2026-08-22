@@ -6,6 +6,9 @@ goreecloud-terminal \- launch GoreeCloud Terminal
 .RI [OPTION]...
 [\-\- PROGRAM ARGUMENTS]
 .br
+.B goreecloud-terminal api
+.B status
+.br
 .B goreecloud-terminal ssh
 .RI [OPENSSH_ARGUMENT ...]
 .br
@@ -33,6 +36,17 @@ For ordinary arguments, it forwards the command line unchanged to the inherited
 runtime so GoreeCloud can provide a first-party command name without prematurely breaking compatibility-sensitive runtime, helper, packaging, D-Bus, or rollback behavior.
 .PP
 GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The upstream runtime foundation and GPL attribution remain preserved.
+.SH LOCAL API
+The supported GoreeCloud Terminal API is:
+.PP
+.nf
+goreecloud-terminal api status
+.fi
+.PP
+It returns schema-versioned JSON containing static product, release, identity, Privacy Shield, and Wardveil integration metadata. The API is read-only and local to the CLI. It does not open a network listener, enumerate sessions or profiles, or include terminal contents, commands, credentials, host aliases, or identifiers.
+.PP
+.B goreecloud-terminal api --help
+prints the supported API usage. Unknown API operations fail before the inherited terminal runtime is launched.
 .SH SSH WORKFLOWS
 The
 .B ssh
@@ -90,13 +104,13 @@ Duplicate profile IDs, malformed rows, aliases containing whitespace, aliases be
 .SH COMPATIBILITY
 The inherited
 .B ptyxis
-command remains installed during the current development and migration stage. Existing scripts and workflows may continue using it.
+command remains installed during the current migration stage. Existing scripts and workflows may continue using it.
 .PP
 New GoreeCloud documentation and normal user workflows should prefer
 .B goreecloud-terminal
 unless a compatibility test specifically requires the inherited command.
 .SH OPTIONS
-Except for the GoreeCloud administration subcommands documented above, command-line options and program arguments are passed directly to the
+Except for the GoreeCloud subcommands documented above, command-line options and program arguments are passed directly to the
 .B ptyxis
 runtime. For the inherited option set, see:
 .PP
@@ -108,16 +122,10 @@ Open GoreeCloud Terminal:
 goreecloud-terminal
 .fi
 .PP
-Open a new window:
+Read the local API status contract:
 .PP
 .nf
-goreecloud-terminal --new-window
-.fi
-.PP
-Run a command in a terminal:
-.PP
-.nf
-goreecloud-terminal -- bash -lc 'printf "hello from GoreeCloud Terminal\\n"'
+goreecloud-terminal api status
 .fi
 .PP
 Open a standard OpenSSH session using an OpenSSH Host alias:
@@ -147,6 +155,8 @@ goreecloud-terminal profiles Infrastructure
 Do not place reusable passwords, private-key material, tokens, or other secrets directly in command-line arguments or GoreeCloud Terminal profile metadata. Standard OpenSSH and operating-system credential controls remain authoritative.
 .PP
 Workspace labels and aliases may reveal infrastructure organization even when they are not credentials. Protect the profile file as private local configuration.
+.SH RELEASE STATUS
+The source line identifies Release Candidate 50.2-rc.1. Release Candidate status is not Stable or production approval. See release/status.json and docs/release-readiness.md for the authoritative source acceptance boundary.
 .SH PROJECT
 GoreeCloud repository:
 .br

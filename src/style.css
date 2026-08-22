@@ -290,3 +290,57 @@ vte-terminal:drop(active) {
   outline: 2px solid alpha(#7fd6ff, 0.88);
   outline-offset: 2px;
 }
+
+/* Glaze UI 1.4 native accessibility and color-scheme mappings. */
+@media (prefers-color-scheme: light) {
+  .ptyxis-window .main-header-bar {
+    background: linear-gradient(to bottom,
+                                alpha(#eff8ff, 0.98),
+                                alpha(#dfefff, 0.96));
+    border-bottom-color: alpha(#0f6ea8, 0.22);
+    box-shadow: 0 1px 2px alpha(#123a55, 0.10);
+  }
+
+  findbar {
+    background: linear-gradient(to bottom,
+                                alpha(#f7fbff, 0.98),
+                                alpha(#e9f4fb, 0.96));
+    border-bottom-color: alpha(#0f6ea8, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  preferencesgroup flowboxchild,
+  preferencesgroup .card {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .ptyxis-window .main-header-bar,
+  findbar,
+  popover > arrow,
+  popover > contents,
+  taboverview > overview > stack {
+    background: @window_bg_color;
+    box-shadow: none;
+  }
+
+  .ptyxis-window .main-header-bar,
+  findbar {
+    border-bottom: 2px solid currentColor;
+  }
+
+  popover > arrow,
+  popover > contents,
+  taboverview > overview > stack {
+    border: 2px solid currentColor;
+  }
+
+  .ptyxis-window button:focus-visible,
+  .ptyxis-window entry:focus-visible,
+  .ptyxis-window preferencesgroup flowboxchild:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+  }
+}
