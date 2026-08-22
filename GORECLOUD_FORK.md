@@ -2,7 +2,7 @@
 
 ## Status
 
-GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, and GoreeCloud terminal workflow development. Production acceptance remains separate from source and CI validation.
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The repository has progressed beyond the unchanged fork baseline into GoreeCloud product identity, official artwork, Glaze UI, Wardveil Security context presentation, configuration migration/acceptance tooling, and GoreeCloud administration workflow development. Production acceptance remains separate from source and CI validation.
 
 ## Canonical upstream
 
@@ -56,7 +56,10 @@ A fork-to-native transition is optional. Mature terminal-emulation, PTY, accessi
 - `agent/glaze-ui-foundation`: Glaze UI application-chrome layer.
 - `agent/wardveil-session-context`: Wardveil session-context layer.
 - `agent/terminal-context-menu-actions`: GoreeCloud terminal context-menu workflow layer.
-- `agent/product-identity-foundation`: canonical GoreeCloud application-ID, metadata, and repository-facing identity layer.
+- `agent/product-identity-foundation`: canonical GoreeCloud application-ID, metadata, CLI, and repository-facing identity layer.
+- `agent/runtime-identity-acceptance`: staged/installed identity acceptance harness layer.
+- `agent/settings-migration-rollback`: explicit fail-closed Ptyxis-to-GoreeCloud settings migration and rollback layer.
+- `agent/ssh-launch-workflows`: Milestone 4 standard OpenSSH launch workflow layer.
 
 The active development model uses narrowly scoped stacked branches and draft pull requests so each layer can be reviewed and validated independently before integration.
 
@@ -104,9 +107,10 @@ Current source state:
 - canonical development application ID is `com.goreecloud.Terminal.Devel`;
 - GoreeCloud GSettings namespaces are defined;
 - desktop and AppStream metadata identify GoreeCloud Terminal;
+- canonical `goreecloud-terminal` CLI and man page are implemented while inherited `ptyxis` remains available for compatibility;
 - repository-facing README identity is GoreeCloud Terminal;
-- inherited gettext domain and compatibility executables remain intentionally Ptyxis-named pending separate migration review;
-- final About-dialog/runtime presentation and packaging acceptance remain open.
+- inherited gettext domain and compatibility runtime/helper remain intentionally Ptyxis-named pending separate migration review;
+- final About-dialog attribution/presentation review and packaging acceptance remain open.
 
 See `docs/product-identity.md`.
 
@@ -122,6 +126,28 @@ Introduce clear and non-disruptive security context for SSH, elevated/root, cont
 
 Status: typed source model and initial graphical runtime evidence are implemented; detector-driven transition, accessibility, palette, and final integrated-product acceptance remain open.
 
+### Milestone 4 — GoreeCloud Administration Workflows
+
+Add optional host profiles, SSH launch workflows, workspace organization, and GoreeCloud infrastructure conveniences without replacing standard OpenSSH or shell configuration.
+
+Current source state:
+
+- `goreecloud-terminal ssh TARGET ...` launches the system OpenSSH client in a new GoreeCloud Terminal window;
+- `goreecloud-terminal ssh-tab TARGET ...` launches the same standard OpenSSH workflow in a new tab;
+- OpenSSH `Host` aliases serve as the first host-profile authority rather than duplicating host and credential configuration inside GoreeCloud Terminal;
+- additional SSH arguments pass to the system `ssh` command without GoreeCloud reinterpretation;
+- SSH credentials, private keys, agents, host-key policy, proxy configuration, forwarding, and authentication remain OpenSSH/operating-system responsibilities;
+- isolated argument-routing tests validate the source behavior without opening network connections or using credentials;
+- graphical host selection, workspace grouping, recent destinations, and real controlled-host runtime acceptance remain future layers.
+
+See `docs/administration-workflows.md`.
+
+### Milestone 5 — Packaging and Acceptance
+
+Produce installable Linux builds, complete functional/security testing, validate upgrades and rollback, and perform workstation acceptance testing.
+
+Status: staged native installation and acceptance tooling exist, but supported package production, package upgrade/removal/rollback validation, and final workstation acceptance remain open.
+
 ## Compatibility boundary
 
 The executable `ptyxis`, helper `ptyxis-agent`, inherited gettext domain `ptyxis`, and several internal source filenames remain compatibility-sensitive implementation details. They do not define the canonical product name.
@@ -130,4 +156,4 @@ Renaming them is not required merely to make the product visibly GoreeCloud Term
 
 ## Production boundary
 
-Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, and runtime validation.
+Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, and runtime validation.
