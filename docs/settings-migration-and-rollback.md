@@ -81,7 +81,7 @@ If validation fails, the tool automatically restores the target snapshot capture
 
 ## Why migration is fail-closed
 
-The tool intentionally does not merge into a non-empty GoreeCloud target. A merge could silently combine incompatible profile UUID lists, default-profile references, shortcuts, window state, or later GoreeCloud-specific settings.
+The migration refuses to write when the target already contains custom values. The tool intentionally does not merge into a non-empty GoreeCloud target. A merge could silently combine incompatible profile UUID lists, default-profile references, shortcuts, window state, or later GoreeCloud-specific settings.
 
 When target settings already exist, the administrator must decide which state is authoritative rather than allowing the migration tool to guess.
 
