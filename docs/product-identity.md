@@ -27,12 +27,12 @@ The canonical user-facing command is `goreecloud-terminal`. It is a deliberately
 
 The current native executable remains named `ptyxis`, and the helper remains `ptyxis-agent`. Those names are retained as compatibility-sensitive implementation details inherited from upstream. They are not the canonical user-facing GoreeCloud product name.
 
-The installed `goreecloud-terminal` launcher delegates directly to `ptyxis` and preserves argument behavior. Desktop launch and desktop actions use the GoreeCloud launcher, while D-Bus activation and internal helper relationships may continue to invoke compatibility runtime names where required.
+The installed `goreecloud-terminal` launcher delegates directly to `ptyxis` and preserves argument behavior. Desktop launch, desktop actions, and D-Bus service activation use the GoreeCloud launcher. The launcher then hands execution to the compatibility runtime, preserving the existing native process and helper boundary.
 
 Removing or renaming the compatibility executable and helper entry points is a separate packaging/runtime migration because it can affect:
 
 - shell scripts and command-line habits;
-- D-Bus activation;
+- D-Bus and single-instance behavior;
 - host/Flatpak helper discovery;
 - process detection and diagnostics;
 - packaging manifests;
@@ -72,12 +72,13 @@ Source/CI acceptance must verify at minimum:
 - native compilation and tests pass;
 - `goreecloud-terminal` is installed and executable;
 - the GoreeCloud launcher forwards arguments to the inherited runtime without modification;
+- desktop and D-Bus service launch paths resolve through `goreecloud-terminal`;
 - the staged executable and helper remain available under their current compatibility names.
 
 Runtime acceptance must additionally verify:
 
 - launch from the desktop application menu;
-- D-Bus activation and single-instance behavior;
+- D-Bus activation and single-instance behavior through the GoreeCloud launcher;
 - direct `goreecloud-terminal` CLI launch;
 - direct compatibility `ptyxis` launch;
 - new-window and new-tab desktop actions;
