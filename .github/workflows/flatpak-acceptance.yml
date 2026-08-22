@@ -19,12 +19,22 @@ jobs:
     name: Build and smoke-test development Flatpak
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out exact source
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
 
       - name: Validate manifest contract
         shell: bash
@@ -58,8 +68,15 @@ jobs:
           modules = {module["name"]: module for module in manifest["modules"]}
           assert {"libportal", "fast_float", "simdutf", "vte", "goreecloud-terminal"} <= modules.keys()
 
+          assert "--libdir=lib" in modules["libportal"]["config-opts"]
+          assert "-DCMAKE_INSTALL_LIBDIR=lib" in modules["fast_float"]["config-opts"]
+          assert "-DCMAKE_INSTALL_LIBDIR=lib" in modules["simdutf"]["config-opts"]
+          assert "--libdir=lib" in modules["vte"]["config-opts"]
+
           app = modules["goreecloud-terminal"]
           assert app["buildsystem"] == "meson"
+          assert "--libdir=lib" in app["config-opts"]
+          assert "--wrap-mode=nodownload" in app["config-opts"]
           assert "-Ddevelopment=true" in app["config-opts"]
           assert "-Dlibc-compat=true" in app["config-opts"]
           assert app["sources"] == [{"type": "dir", "path": "."}]
@@ -126,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           repo_dir="$(cat "$RUNNER_TEMP/flatpak-repo-path")"
-          bundle="goreecloud-terminal-devel-${GITHUB_SHA}.flatpak"
+          bundle="goreecloud-terminal-devel-${SOURCE_SHA}.flatpak"
 
           flatpak build-bundle \
             "$repo_dir" \
@@ -181,9 +198,9 @@ jobs:
       - name: Upload exact development bundle
         uses: actions/upload-artifact@v4
         with:
-          name: goreecloud-terminal-flatpak-${{ github.sha }}
+          name: goreecloud-terminal-flatpak-${{ env.SOURCE_SHA }}
           path: |
-            goreecloud-terminal-devel-${{ github.sha }}.flatpak
-            goreecloud-terminal-devel-${{ github.sha }}.flatpak.sha256
+            goreecloud-terminal-devel-${{ env.SOURCE_SHA }}.flatpak
+            goreecloud-terminal-devel-${{ env.SOURCE_SHA }}.flatpak.sha256
           if-no-files-found: error
           retention-days: 14
