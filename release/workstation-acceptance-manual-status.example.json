@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "checks": {
+    "desktop_launch_identity": "pending",
+    "dbus_single_instance": "pending",
+    "new_window_tab_preferences": "pending",
+    "local_shell_pty": "pending",
+    "working_directory_behavior": "pending",
+    "rendering_unicode_fonts": "pending",
+    "tabs_session_lifecycle": "pending",
+    "keyboard_shortcuts": "pending",
+    "selection_clipboard": "pending",
+    "context_menu_actions": "pending",
+    "sudo_workflows": "pending",
+    "glaze_light_dark": "pending",
+    "glaze_palette_transparency": "pending",
+    "glaze_focus_accessibility": "pending",
+    "wardveil_detector_transitions": "pending",
+    "wardveil_mixed_tabs": "pending",
+    "openssh_controlled_host": "pending",
+    "openssh_failure_disconnect": "pending",
+    "settings_persistence": "pending",
+    "settings_migration_rollback": "pending",
+    "flatpak_permission_minimization": "pending",
+    "upstream_ptyxis_coexistence": "pending",
+    "package_install_remove_reinstall": "pending",
+    "crash_recovery": "pending"
+  }
+}

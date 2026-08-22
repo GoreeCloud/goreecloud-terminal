@@ -1,0 +1,86 @@
+name: Supported Workstation Acceptance Contract
+
+on:
+  push:
+    branches:
+      - main
+      - agent/supported-workstation-acceptance
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supported-workstation-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Validate privacy-safe fail-closed workstation evidence contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Validate collector syntax and release binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            tools/collect-workstation-acceptance.py \
+            tools/test-workstation-acceptance.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          source = Path('tools/collect-workstation-acceptance.py').read_text(encoding='utf-8')
+          for marker in (
+              '50.2-rc.1',
+              'ae5d10511a2aed4a504b189165e268a1e9c1040f',
+              'com.goreecloud.Terminal',
+              'f6819b045319babfbde7e7cfb4c097ed441bc160727c513fd2432283d962cd64',
+              'b381917f3ba700c3b1b903423f8241fa80b640bdebdfebb438f47212559f8af7',
+          ):
+              assert marker in source
+
+          status = json.loads(Path('release/status.json').read_text(encoding='utf-8'))
+          assert status['release_lifecycle'] == 'Release Candidate'
+          assert status['release_candidate'] == '50.2-rc.1'
+          assert status['production_approved'] is False
+          assert status['stable_approved'] is False
+
+          template = json.loads(Path('release/workstation-acceptance-manual-status.example.json').read_text(encoding='utf-8'))
+          assert set(template) == {'schema_version', 'checks'}
+          assert template['schema_version'] == 1
+          assert template['checks']
+          assert set(template['checks'].values()) == {'pending'}
+          PY
+
+      - name: Run fail-closed workstation acceptance tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test-workstation-acceptance.py
+
+      - name: Validate documentation boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'The collector is intentionally read-only.' docs/supported-workstation-acceptance.md
+          grep -Fq 'workstation_acceptance_complete' docs/supported-workstation-acceptance.md
+          grep -Fq 'second genuinely distinct accepted package' docs/supported-workstation-acceptance.md
+          grep -Fq 'does not by itself authorize Stable or production deployment' docs/runtime-identity-acceptance.md
