@@ -28,10 +28,29 @@ The canonical GoreeCloud runtime identities are:
 - Development application ID: `com.goreecloud.Terminal.Devel`
 - Production GSettings namespace: `com.goreecloud.Terminal`
 - Development GSettings namespace: `com.goreecloud.Terminal.Devel`
+- Canonical command-line launcher: `goreecloud-terminal`
 
-The current executable remains `ptyxis` and the helper remains `ptyxis-agent` as compatibility-sensitive inherited implementation details. A later packaging migration may rename those entry points only after launch, D-Bus, host-helper, container, upgrade, and rollback behavior are validated.
+The inherited runtime executable remains `ptyxis` and the helper remains `ptyxis-agent` as compatibility-sensitive implementation details. The installed `goreecloud-terminal` launcher delegates to `ptyxis` with arguments unchanged, giving GoreeCloud Terminal a first-party CLI without prematurely breaking upstream-sensitive launch, helper, packaging, or rollback behavior.
+
+A later packaging migration may remove or rename compatibility entry points only after launch, D-Bus, host-helper, container, upgrade, and rollback behavior are validated.
 
 See `docs/product-identity.md` for the complete identity and migration contract.
+
+## Command-line usage
+
+After installation, the preferred user-facing command is:
+
+```bash
+goreecloud-terminal
+```
+
+Existing compatibility workflows may continue to use:
+
+```bash
+ptyxis
+```
+
+Both currently reach the same inherited native runtime. New GoreeCloud documentation and desktop actions should prefer `goreecloud-terminal` unless a compatibility test specifically requires the inherited executable name.
 
 ## GoreeCloud layers
 
@@ -91,7 +110,7 @@ To validate a staged install without installing onto the host:
 DESTDIR="$PWD/_install" meson install -C _build
 ```
 
-The development build should generate GoreeCloud application, D-Bus, AppStream, icon, and GSettings artifacts under the `com.goreecloud.Terminal.Devel` identity while retaining the current compatibility executables.
+The development build should generate GoreeCloud application, D-Bus, AppStream, icon, and GSettings artifacts under the `com.goreecloud.Terminal.Devel` identity, install the `goreecloud-terminal` launcher, and retain the current compatibility executable/helper pair.
 
 ## Security and privacy boundaries
 
@@ -110,7 +129,8 @@ GoreeCloud-specific features therefore follow these boundaries:
 
 A green source build is only one acceptance layer. Stable or production approval additionally requires supported-workstation validation for:
 
-- desktop and command-line launch;
+- desktop and `goreecloud-terminal` command-line launch;
+- compatibility `ptyxis` launch;
 - D-Bus activation;
 - application identity and icon resolution;
 - settings persistence and any settings migration;
