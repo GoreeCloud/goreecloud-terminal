@@ -18,20 +18,30 @@ def require(text: str, needle: str, description: str) -> None:
         raise SystemExit(f"missing {description}: {needle!r}")
 
 
+def require_count(text: str, needle: str, expected: int, description: str) -> None:
+    actual = text.count(needle)
+    if actual != expected:
+        raise SystemExit(
+            f"unexpected {description} count: expected {expected}, found {actual}: {needle!r}"
+        )
+
+
 def main() -> None:
     window = WINDOW_DRESSING.read_text(encoding="utf-8")
     context = SESSION_CONTEXT.read_text(encoding="utf-8")
     doc = DOC.read_text(encoding="utf-8")
 
-    require(
+    require_count(
         window,
         '"accessible-role", GTK_ACCESSIBLE_ROLE_GROUP',
+        1,
         "semantic group role on Wardveil session-context chip",
     )
-    require(
+    require_count(
         window,
         '"accessible-role", GTK_ACCESSIBLE_ROLE_NONE',
-        "non-semantic decorative child role",
+        2,
+        "non-semantic decorative child roles",
     )
     require(
         window,
@@ -42,6 +52,11 @@ def main() -> None:
         window,
         "gtk_widget_set_tooltip_text (self->session_context_chip,\n                               context->accessible_description)",
         "tooltip mapping",
+    )
+    require(
+        window,
+        "gtk_widget_set_visible (self->session_context_chip, context->show_indicator)",
+        "detector-driven visibility mapping",
     )
 
     for exact in (
