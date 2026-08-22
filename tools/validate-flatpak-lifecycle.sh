@@ -114,18 +114,29 @@ install_initial() {
   validate_installed_identity
 }
 
-reinstall_bundle() {
+remove_current_preserve_data() {
+  is_installed || die "$app_id is not installed before lifecycle replacement"
+  flatpak_user uninstall -y --noninteractive "$app_id"
+  if is_installed; then
+    die "$app_id remained installed after lifecycle replacement removal"
+  fi
+}
+
+replace_with_bundle() {
   local bundle="$1"
-  flatpak_user install -y --noninteractive --reinstall "$bundle"
+
+  # Flatpak 1.14.6 on the supported CI baseline does not replace an already
+  # installed app when a local single-file bundle is passed with --reinstall.
+  # Remove only the application ref, preserve ~/.var/app data, then install
+  # the already hash-verified exact local bundle.
+  remove_current_preserve_data
+  flatpak_user install -y --noninteractive "$bundle"
   validate_installed_identity
 }
 
 uninstall_and_verify() {
-  flatpak_user uninstall -y --noninteractive "$app_id"
+  remove_current_preserve_data
   installed_by_script=false
-  if is_installed; then
-    die "$app_id remained installed after lifecycle uninstall"
-  fi
 }
 
 mode="${1:-}"
@@ -181,10 +192,10 @@ case "$mode" in
 
     install_initial "$bundle"
     first_commit="$(installed_commit)"
-    reinstall_bundle "$bundle"
+    replace_with_bundle "$bundle"
     second_commit="$(installed_commit)"
     [ "$second_commit" = "$first_commit" ] || \
-      die "reinstall changed the exact installed OSTree commit"
+      die "exact-artifact replacement changed the installed OSTree commit"
 
     uninstall_and_verify
     printf 'Exact-artifact reinstall lifecycle validated\n'
@@ -209,18 +220,18 @@ case "$mode" in
     install_initial "$baseline"
     baseline_commit="$(installed_commit)"
 
-    reinstall_bundle "$candidate"
+    replace_with_bundle "$candidate"
     candidate_commit="$(installed_commit)"
     [ "$candidate_commit" != "$baseline_commit" ] || \
       die "candidate did not produce a distinct installed OSTree commit; refusing to claim upgrade acceptance"
 
-    reinstall_bundle "$baseline"
+    replace_with_bundle "$baseline"
     rollback_commit="$(installed_commit)"
     [ "$rollback_commit" = "$baseline_commit" ] || \
       die "rollback did not restore the exact baseline OSTree commit"
 
     uninstall_and_verify
-    printf 'Distinct-artifact transition and exact rollback validated\n'
+    printf 'Distinct-artifact replacement transition and exact rollback validated\n'
     printf 'Application ID: %s\n' "$app_id"
     printf 'Baseline commit: %s\n' "$baseline_commit"
     printf 'Candidate commit: %s\n' "$candidate_commit"

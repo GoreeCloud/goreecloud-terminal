@@ -38,10 +38,13 @@ jobs:
           bash -n tools/test-flatpak-lifecycle.sh
           grep -Fq 'com.goreecloud.Terminal.Devel' tools/validate-flatpak-lifecycle.sh
           grep -Fq 'only com.goreecloud.Terminal.Devel is accepted' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'remove_current_preserve_data' tools/validate-flatpak-lifecycle.sh
           grep -Fq 'transition mode requires two cryptographically distinct bundle artifacts' tools/validate-flatpak-lifecycle.sh
           grep -Fq 'refusing to claim upgrade acceptance' tools/validate-flatpak-lifecycle.sh
           grep -Fq 'rollback did not restore the exact baseline OSTree commit' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'Flatpak 1.14.6 local-bundle compatibility' docs/flatpak-upgrade-and-rollback.md
           grep -Fq 'real cross-version upgrade and rollback claim remains pending a second distinct accepted package candidate' docs/flatpak-upgrade-and-rollback.md
+          grep -Fq 'repository-backed `flatpak update` acceptance remains a separate future distribution-lifecycle gate' docs/flatpak-upgrade-and-rollback.md
 
       - name: Test lifecycle safety model
         shell: bash
