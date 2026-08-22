@@ -1,0 +1,146 @@
+name: Verify GoreeCloud Terminal 50.2-rc.1 Publication
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/verify-50.2-rc.1-publication.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-goreecloud-terminal-50.2-rc.1-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RELEASE_TAG: 50.2-rc.1
+  RELEASE_TITLE: GoreeCloud Terminal 50.2-rc.1
+  RELEASE_SOURCE_SHA: ae5d10511a2aed4a504b189165e268a1e9c1040f
+  APP_ID: com.goreecloud.Terminal
+  BUNDLE: goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak
+
+jobs:
+  verify-publication:
+    name: Verify immutable tag, prerelease, and downloadable artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Verify immutable tag source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+          test "$tag_sha" = "$RELEASE_SOURCE_SHA"
+          printf 'TAG_SHA=%s\n' "$tag_sha"
+
+      - name: Verify published prerelease metadata and expected assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_json="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json databaseId,isDraft,isPrerelease,name,tagName,url,assets)"
+          RELEASE_JSON="$release_json" python3 - <<'PY'
+          import json
+          import os
+
+          obj = json.loads(os.environ['RELEASE_JSON'])
+          assert obj['isDraft'] is False
+          assert obj['isPrerelease'] is True
+          assert obj['name'] == 'GoreeCloud Terminal 50.2-rc.1'
+          assert obj['tagName'] == '50.2-rc.1'
+          assert isinstance(obj['databaseId'], int) and obj['databaseId'] > 0
+          names = {asset['name'] for asset in obj['assets']}
+          expected = {
+              'goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak',
+              'goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak.sha256',
+              'release-publication-evidence.json',
+          }
+          assert expected <= names, (expected, names)
+          print('RELEASE_ID=' + str(obj['databaseId']))
+          print('RELEASE_URL=' + obj['url'])
+          for asset in sorted(obj['assets'], key=lambda item: item['name']):
+              print('ASSET=' + asset['name'])
+          PY
+          printf '%s\n' "$release_json" > "$RUNNER_TEMP/release-metadata.json"
+
+      - name: Download published release evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p published-release
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir published-release \
+            --pattern "$BUNDLE" \
+            --pattern "${BUNDLE}.sha256" \
+            --pattern release-publication-evidence.json
+          test -s "published-release/$BUNDLE"
+          test -s "published-release/${BUNDLE}.sha256"
+          test -s published-release/release-publication-evidence.json
+
+      - name: Independently verify published bundle checksum and evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(awk '{print $1}' "published-release/${BUNDLE}.sha256")"
+          actual="$(sha256sum "published-release/$BUNDLE" | awk '{print $1}')"
+          test "$actual" = "$expected"
+          RELEASE_METADATA="$RUNNER_TEMP/release-metadata.json" BUNDLE_SHA="$actual" python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = json.loads(Path('published-release/release-publication-evidence.json').read_text())
+          metadata = json.loads(Path(os.environ['RELEASE_METADATA']).read_text())
+
+          assert evidence['release_tag'] == '50.2-rc.1'
+          assert evidence['release_lifecycle'] == 'Release Candidate'
+          assert evidence['release_source_sha'] == 'ae5d10511a2aed4a504b189165e268a1e9c1040f'
+          assert evidence['application_id'] == 'com.goreecloud.Terminal'
+          assert evidence['bundle'] == 'goreecloud-terminal-50.2-rc.1-ae5d10511a2aed4a504b189165e268a1e9c1040f.flatpak'
+          assert evidence['bundle_sha256'] == os.environ['BUNDLE_SHA']
+          assert evidence['production_approved'] is False
+          assert evidence['stable_approved'] is False
+          assert evidence['github_release_id'] == metadata['databaseId']
+          assert evidence['publication_state'] == 'draft-assets-uploaded'
+          assert evidence['github_release_url'].startswith('https://github.com/GoreeCloud/goreecloud-terminal/releases/')
+          assert metadata['url'] == 'https://github.com/GoreeCloud/goreecloud-terminal/releases/tag/50.2-rc.1'
+          assert len(evidence['ostree_commit']) == 64
+
+          verification = {
+              'schema_version': 1,
+              'verification_result': 'passed',
+              'verification_run_id': os.environ['GITHUB_RUN_ID'],
+              'release_tag': evidence['release_tag'],
+              'release_lifecycle': evidence['release_lifecycle'],
+              'release_source_sha': evidence['release_source_sha'],
+              'github_release_id': evidence['github_release_id'],
+              'github_release_url': metadata['url'],
+              'publication_record_url_at_asset_upload': evidence['github_release_url'],
+              'application_id': evidence['application_id'],
+              'bundle': evidence['bundle'],
+              'bundle_sha256': evidence['bundle_sha256'],
+              'ostree_commit': evidence['ostree_commit'],
+              'publication_workflow_run_id': evidence['workflow_run_id'],
+              'publication_workflow_source_sha': evidence['workflow_source_sha'],
+              'production_approved': evidence['production_approved'],
+              'stable_approved': evidence['stable_approved'],
+              'independent_download_checksum_verified': True,
+              'tag_source_verified': True,
+              'public_prerelease_verified': True,
+          }
+          Path('verified-release-publication.json').write_text(
+              json.dumps(verification, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(verification, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload read-only verification record
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-goreecloud-terminal-50.2-rc.1-publication
+          path: verified-release-publication.json
+          if-no-files-found: error
+          retention-days: 30
