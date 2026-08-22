@@ -1,0 +1,4 @@
+#!/bin/sh
+# Canonical GoreeCloud Terminal command-line entry point.
+# The inherited ptyxis binary remains the compatibility-sensitive runtime.
+exec ptyxis "$@"
