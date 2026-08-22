@@ -1,0 +1,83 @@
+name: Wardveil AT-SPI Source Fix
+
+on:
+  push:
+    branches:
+      - agent/wardveil-atspi-accessibility-fix
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out corrective branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/wardveil-atspi-accessibility-fix
+          fetch-depth: 0
+
+      - name: Apply exact Wardveil accessibility patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/ptyxis-window-dressing.c")
+          text = path.read_text(encoding="utf-8")
+
+          old = '''  self->session_context_icon = GTK_IMAGE (gtk_image_new ());
+          gtk_image_set_pixel_size (self->session_context_icon, 16);
+
+          self->session_context_label = GTK_LABEL (gtk_label_new (NULL));
+          gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
+          gtk_label_set_max_width_chars (self->session_context_label, 16);
+
+          self->session_context_chip = g_object_new (GTK_TYPE_BOX,
+                                                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                                                      "spacing", 6,
+                                                      "valign", GTK_ALIGN_CENTER,
+                                                      NULL);
+          '''
+
+          new = '''  self->session_context_icon = GTK_IMAGE (g_object_new (GTK_TYPE_IMAGE,
+                                                       "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
+                                                       NULL));
+          gtk_image_set_pixel_size (self->session_context_icon, 16);
+
+          self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,
+                                                                 "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
+                                                                 NULL));
+          gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
+          gtk_label_set_max_width_chars (self->session_context_label, 16);
+
+          self->session_context_chip = g_object_new (GTK_TYPE_BOX,
+                                                      "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
+                                                      "orientation", GTK_ORIENTATION_HORIZONTAL,
+                                                      "spacing", 6,
+                                                      "valign", GTK_ALIGN_CENTER,
+                                                      NULL);
+          '''
+
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one exact source block, found {text.count(old)}")
+
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
+          python3 tools/test-wardveil-accessibility-contract.py
+
+      - name: Commit source fix and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/wardveil-atspi-source-fix.yml
+          git config user.name "GoreeCloud Automation"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ptyxis-window-dressing.c .github/workflows/wardveil-atspi-source-fix.yml
+          git diff --cached --check
+          git commit -m "Fix Wardveil AT-SPI accessible semantics"
+          git push origin HEAD:agent/wardveil-atspi-accessibility-fix
