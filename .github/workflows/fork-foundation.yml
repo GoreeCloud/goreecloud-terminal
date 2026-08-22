@@ -54,6 +54,7 @@ jobs:
           grep -Fq "'goreecloud-terminal'" data/meson.build
           grep -Fq 'exec ptyxis "$@"' data/goreecloud-terminal
           grep -Fq 'Exec=goreecloud-terminal' data/org.gnome.Ptyxis.desktop.in.in
+          grep -Fq 'Exec=@bindir@/goreecloud-terminal --gapplication-service' data/org.gnome.Ptyxis.service.in
           grep -Fq 'return _("GoreeCloud Terminal");' src/ptyxis-util.c
           grep -Fq "GoreeCloud-maintained terminal" data/org.gnome.Ptyxis.metainfo.xml.in.in
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal/issues" data/org.gnome.Ptyxis.metainfo.xml.in.in
@@ -162,7 +163,8 @@ jobs:
           grep -Fq 'Name=GoreeCloud Terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
           grep -Fq 'Exec=goreecloud-terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
           grep -Fq '<id>com.goreecloud.Terminal.Devel</id>' _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
-          grep -Fq 'com.goreecloud.Terminal.Devel' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'Name=com.goreecloud.Terminal.Devel' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'Exec=/usr/bin/goreecloud-terminal --gapplication-service' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
           grep -Fq 'goreecloud-terminal' _install/usr/share/man/man1/goreecloud-terminal.1
           grep -Fq 'GoreeCloud Terminal' _install/usr/share/man/man1/ptyxis.1
           find _install/usr/share/icons -type f -name 'com.goreecloud.Terminal.Devel*' -print -quit | grep -q .
