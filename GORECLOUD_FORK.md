@@ -60,6 +60,7 @@ A fork-to-native transition is optional. Mature terminal-emulation, PTY, accessi
 - `agent/runtime-identity-acceptance`: staged/installed identity acceptance harness layer.
 - `agent/settings-migration-rollback`: explicit fail-closed Ptyxis-to-GoreeCloud settings migration and rollback layer.
 - `agent/ssh-launch-workflows`: Milestone 4 standard OpenSSH launch workflow layer.
+- `agent/host-profiles-workspaces`: optional non-secret OpenSSH-alias profile and workspace-organization layer.
 
 The active development model uses narrowly scoped stacked branches and draft pull requests so each layer can be reviewed and validated independently before integration.
 
@@ -132,15 +133,18 @@ Add optional host profiles, SSH launch workflows, workspace organization, and Go
 
 Current source state:
 
-- `goreecloud-terminal ssh TARGET ...` launches the system OpenSSH client in a new GoreeCloud Terminal window;
-- `goreecloud-terminal ssh-tab TARGET ...` launches the same standard OpenSSH workflow in a new tab;
-- OpenSSH `Host` aliases serve as the first host-profile authority rather than duplicating host and credential configuration inside GoreeCloud Terminal;
-- additional SSH arguments pass to the system `ssh` command without GoreeCloud reinterpretation;
-- SSH credentials, private keys, agents, host-key policy, proxy configuration, forwarding, and authentication remain OpenSSH/operating-system responsibilities;
-- isolated argument-routing tests validate the source behavior without opening network connections or using credentials;
-- graphical host selection, workspace grouping, recent destinations, and real controlled-host runtime acceptance remain future layers.
+- `goreecloud-terminal ssh OPENSSH_ARGUMENT ...` launches the system OpenSSH client in a new GoreeCloud Terminal window while preserving normal OpenSSH argument ordering;
+- `goreecloud-terminal ssh-tab OPENSSH_ARGUMENT ...` launches the same standard OpenSSH workflow in a new tab;
+- optional `profiles.tsv` metadata stores only a workspace label, unique profile ID, and OpenSSH `Host` alias;
+- `goreecloud-terminal workspaces` and `goreecloud-terminal profiles [WORKSPACE]` expose user-controlled organization without redefining access-control boundaries;
+- `goreecloud-terminal profile PROFILE` and `profile-tab PROFILE` resolve only the stored OpenSSH alias and then launch the standard system `ssh` client;
+- malformed rows, duplicate profile IDs, option-like aliases, unknown profiles/workspaces, and missing profile configuration fail before the runtime starts;
+- OpenSSH remains authoritative for actual hostnames, usernames, ports, private keys, agents, host-key policy, proxy configuration, forwarding, and authentication;
+- isolated SSH and host-profile/workspace tests validate the source behavior without opening network connections or using credentials;
+- recent-destination persistence is intentionally not implemented because it would create additional privacy and retention obligations;
+- real controlled-host runtime acceptance and any future graphical host/workspace selector remain separate acceptance/development layers.
 
-See `docs/administration-workflows.md`.
+See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md`.
 
 ### Milestone 5 — Packaging and Acceptance
 
@@ -156,4 +160,4 @@ Renaming them is not required merely to make the product visibly GoreeCloud Term
 
 ## Production boundary
 
-Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, and runtime validation.
+Source import, successful CI, or successful local builds do not by themselves make GoreeCloud Terminal production-ready. Production acceptance requires later functional, security, accessibility, packaging, upgrade, rollback, supported-workstation, settings-migration, SSH-workflow, host-profile/workspace, and runtime validation.
