@@ -41,29 +41,34 @@ assert_args() {
 run_launcher --version
 assert_args $'--version\n'
 
-# The default SSH convenience opens a new window and preserves all OpenSSH args.
-run_launcher ssh server-alias -p 2222 -o StrictHostKeyChecking=yes
-assert_args $'--new-window\n--\nssh\nserver-alias\n-p\n2222\n-o\nStrictHostKeyChecking=yes\n'
+# The SSH convenience opens a new window and preserves valid OpenSSH argument ordering.
+run_launcher ssh -p 2222 -o StrictHostKeyChecking=yes server-alias
+assert_args $'--new-window\n--\nssh\n-p\n2222\n-o\nStrictHostKeyChecking=yes\nserver-alias\n'
 
-# user@host targets are passed directly to OpenSSH without interpretation.
+# user@host destinations are passed directly to OpenSSH without interpretation.
 run_launcher ssh admin@example.internal
 assert_args $'--new-window\n--\nssh\nadmin@example.internal\n'
 
 # Tab mode reuses Ptyxis tab routing while still executing standard OpenSSH.
-run_launcher ssh-tab goreecloud-vps-netbird
-assert_args $'--tab\n--\nssh\ngoreecloud-vps-netbird\n'
+run_launcher ssh-tab server-alias
+assert_args $'--tab\n--\nssh\nserver-alias\n'
+
+# Remote commands after the destination are preserved exactly.
+run_launcher ssh server-alias uname -a
+assert_args $'--new-window\n--\nssh\nserver-alias\nuname\n-a\n'
 
 # SSH subcommand help is local and must not start the runtime.
 rm -f "$capture"
 run_launcher ssh --help >"${tmp_dir}/help.txt"
 [[ ! -e "$capture" ]]
-grep -Fq 'goreecloud-terminal ssh TARGET' "${tmp_dir}/help.txt"
+grep -Fq 'goreecloud-terminal ssh [OPENSSH_ARGUMENT ...]' "${tmp_dir}/help.txt"
+grep -Fq 'options before the destination' "${tmp_dir}/help.txt"
 grep -Fq 'does not store SSH passwords' "${tmp_dir}/help.txt"
 
-# A missing target is a usage error and must not start Ptyxis.
+# A missing OpenSSH argument list is a usage error and must not start Ptyxis.
 rm -f "$capture"
 if run_launcher ssh >"${tmp_dir}/missing.out" 2>"${tmp_dir}/missing.err"; then
-  printf 'expected missing SSH target to fail\n' >&2
+  printf 'expected missing SSH arguments to fail\n' >&2
   exit 1
 fi
 [[ ! -e "$capture" ]]
