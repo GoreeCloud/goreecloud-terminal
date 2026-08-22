@@ -1,0 +1,39 @@
+name: Wardveil Accessibility Contract
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+    branches:
+      - main
+      - "agent/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wardveil-accessibility-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    name: Source accessibility contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate Wardveil accessibility contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test-wardveil-accessibility-contract.py
+
+      - name: Record source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git describe --always --tags --dirty
