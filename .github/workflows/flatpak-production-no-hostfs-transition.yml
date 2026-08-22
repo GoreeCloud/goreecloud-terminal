@@ -135,7 +135,7 @@ jobs:
           set -euo pipefail
           transition_repo="$RUNNER_TEMP/goreecloud-terminal-transition-repo"
           rm -rf "$transition_repo"
-          mkdir -p "$transition_repo"
+          ostree init --repo="$transition_repo" --mode=archive-z2
 
           flatpak build-import-bundle "$transition_repo" "$BASELINE_BUNDLE"
           flatpak build-update-repo "$transition_repo"
