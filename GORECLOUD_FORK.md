@@ -90,7 +90,7 @@ Typed Local, Remote, Container, and Elevated context presentation is implemented
 
 ### Milestone 4 — GoreeCloud Administration Workflows
 
-`ssh`/`ssh-tab` launch the standard system OpenSSH client. Optional profiles store only workspace label, local profile ID, and OpenSSH Host alias. OpenSSH remains authoritative for actual host/user/port/key/agent/proxy/forwarding/authentication policy. Malformed profile metadata fails before runtime launch, and recent-destination persistence remains intentionally absent.
+`ssh`/`ssh-tab` launch the standard system OpenSSH client. Optional profiles store only a workspace label, unique profile ID, and OpenSSH `Host` alias. OpenSSH remains authoritative for actual host/user/port/key/agent/proxy/forwarding/authentication policy. Malformed profile metadata fails before runtime launch, and recent-destination persistence remains intentionally absent.
 
 See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md`.
 
