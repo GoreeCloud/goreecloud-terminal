@@ -34,7 +34,10 @@ jobs:
           test -f COPYING
           test -f GORECLOUD_FORK.md
           test -f docs/product-identity.md
+          test -f docs/runtime-identity-acceptance.md
           test -f man/goreecloud-terminal.1.in
+          test -x tools/validate-runtime-identity.sh
+          bash -n tools/validate-runtime-identity.sh
           grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
           grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
           grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
@@ -62,6 +65,7 @@ jobs:
           grep -Fq ".TH \"GOREECLOUD-TERMINAL\"" man/goreecloud-terminal.1.in
           grep -Fq 'Canonical CLI launcher | `goreecloud-terminal`' docs/product-identity.md
           grep -Fq 'Compatibility runtime binary | `ptyxis`' docs/product-identity.md
+          grep -Fq 'tools/validate-runtime-identity.sh' docs/runtime-identity-acceptance.md
 
       - name: Record source identity
         shell: bash
@@ -168,3 +172,11 @@ jobs:
           grep -Fq 'goreecloud-terminal' _install/usr/share/man/man1/goreecloud-terminal.1
           grep -Fq 'GoreeCloud Terminal' _install/usr/share/man/man1/ptyxis.1
           find _install/usr/share/icons -type f -name 'com.goreecloud.Terminal.Devel*' -print -quit | grep -q .
+
+      - name: Run staged runtime identity harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-runtime-identity.sh \
+            --root "$PWD/_install" \
+            --app-id com.goreecloud.Terminal.Devel
