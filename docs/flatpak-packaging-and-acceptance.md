@@ -83,6 +83,19 @@ GoreeCloud Terminal must not use this permission to introduce background indexin
 
 `--talk-name=org.freedesktop.Flatpak` and the development capability are retained for the inherited host/helper integration used by Ptyxis. They must be validated against the actual packaged runtime and may not be repurposed as an authorization bypass.
 
+## Permission minimization review
+
+The current permission set is now governed by a dedicated permission-minimization contract:
+
+- `release/flatpak-permission-review.json` records the reviewed permission set, disposition, rationale, and affected supported-workstation checks for every permission;
+- `tools/validate-flatpak-permission-review.py` fails if production and development manifests drift, a permission appears without review, or the review record becomes incomplete;
+- `.github/workflows/flatpak-permission-contract.yml` binds that validation to the exact pull-request head; and
+- `docs/flatpak-permission-minimization.md` defines the source-review conclusions and controlled workstation procedure.
+
+The current eight-permission set matches the reviewed upstream Ptyxis Flatpak baseline, but upstream parity is not itself proof that GoreeCloud's package is minimally privileged. `--filesystem=host` is the highest-priority minimization candidate because it is the broadest grant and the current upstream lint exception is historical rather than a current proof of necessity.
+
+No permission is removed by the source-review contract. Permission minimization remains incomplete until a proposed narrower manifest is validated on the supported workstation against all affected terminal, host-agent, filesystem, display, OpenSSH, container, clipboard, and recovery behaviors.
+
 ## Build reproducibility boundary
 
 The manifest pins external support sources by checksum or exact Git commit where the reference packaging does so.

@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "product": "GoreeCloud Terminal",
+  "release_candidate": "50.2-rc.1",
+  "review_date": "2026-08-22",
+  "review_source": {
+    "goreecloud_main": "fd11e8a9277f2344c7bb4a760da30579ce60f98a",
+    "flathub_repository": "flathub/app.devsuite.Ptyxis",
+    "flathub_manifest_blob": "5ad04fbce39b16f24c212ba884d514eca81e382c"
+  },
+  "application_ids": {
+    "production": "com.goreecloud.Terminal",
+    "development": "com.goreecloud.Terminal.Devel"
+  },
+  "current_permissions": [
+    "--allow=devel",
+    "--device=dri",
+    "--filesystem=host",
+    "--share=ipc",
+    "--share=network",
+    "--socket=fallback-x11",
+    "--socket=wayland",
+    "--talk-name=org.freedesktop.Flatpak"
+  ],
+  "permission_set_minimized": false,
+  "production_approved": false,
+  "stable_approved": false,
+  "permissions": [
+    {
+      "permission": "--allow=devel",
+      "disposition": "retain-pending-supported-workstation",
+      "reason": "Inherited Ptyxis host/helper architecture currently carries development capability. Source and non-graphical CI do not prove that removing it preserves PTY, host-agent, process-monitoring, and container behavior.",
+      "required_acceptance": [
+        "local-shell-and-pty",
+        "host-agent",
+        "container-workflows",
+        "process-context-detection"
+      ]
+    },
+    {
+      "permission": "--device=dri",
+      "disposition": "retain-pending-supported-workstation",
+      "reason": "Graphics acceleration is part of the packaged GTK/VTE rendering path. Removal requires real rendering, performance, transparency, fullscreen, and fallback validation.",
+      "required_acceptance": [
+        "terminal-rendering",
+        "glaze-ui",
+        "transparency",
+        "fullscreen",
+        "graphics-fallback"
+      ]
+    },
+    {
+      "permission": "--filesystem=host",
+      "disposition": "highest-priority-minimization-candidate",
+      "reason": "This is the broadest filesystem grant and receives special scrutiny. Current Flathub Ptyxis carries the same permission, but its Flathub lint exception describes host-filesystem access as predating the rule rather than proving current necessity. GoreeCloud must test whether narrower filesystem exposure preserves general-purpose terminal workflows before retaining broad read-write host access.",
+      "required_acceptance": [
+        "working-directory-behavior",
+        "local-shell-and-pty",
+        "external-mounts",
+        "file-links-and-open-actions",
+        "drag-and-drop",
+        "profile-working-directories",
+        "container-workflows",
+        "upstream-ptyxis-coexistence"
+      ]
+    },
+    {
+      "permission": "--share=ipc",
+      "disposition": "retain-pending-supported-workstation",
+      "reason": "IPC sharing is part of the inherited graphical Flatpak baseline and can affect X11/graphics integration. It must not be removed without graphical fallback and session validation.",
+      "required_acceptance": [
+        "wayland",
+        "x11-fallback",
+        "terminal-rendering",
+        "clipboard-and-selection"
+      ]
+    },
+    {
+      "permission": "--share=network",
+      "disposition": "retain-required-capability",
+      "reason": "GoreeCloud Terminal is required to support normal network-aware shell workflows including OpenSSH. Network access does not replace OpenSSH authentication or host-key authority.",
+      "required_acceptance": [
+        "openssh-controlled-host",
+        "openssh-failure-and-disconnect",
+        "network-aware-shell-tools"
+      ]
+    },
+    {
+      "permission": "--socket=fallback-x11",
+      "disposition": "retain-pending-supported-workstation",
+      "reason": "The supported workstation acceptance model includes X11 fallback behavior. Removal is not justified until GoreeCloud explicitly drops that compatibility requirement or proves an alternate path.",
+      "required_acceptance": [
+        "x11-fallback",
+        "desktop-launch",
+        "clipboard-and-selection",
+        "rendering"
+      ]
+    },
+    {
+      "permission": "--socket=wayland",
+      "disposition": "retain-required-capability",
+      "reason": "Wayland is the primary graphical display path for the approved Linux workstation environment.",
+      "required_acceptance": [
+        "wayland",
+        "desktop-launch",
+        "rendering",
+        "clipboard-and-selection"
+      ]
+    },
+    {
+      "permission": "--talk-name=org.freedesktop.Flatpak",
+      "disposition": "retain-required-inherited-host-agent",
+      "reason": "Current Ptyxis Flatpak architecture uses Flatpak host spawning for ptyxis-agent so PTY creation, host process monitoring, and container interaction can occur on the host. Flathub also records a lint exception identifying this access as required for ptyxis-agent PTY setup on the host.",
+      "required_acceptance": [
+        "local-shell-and-pty",
+        "host-agent",
+        "container-workflows",
+        "process-context-detection"
+      ]
+    }
+  ],
+  "completion_rule": "Permission minimization is incomplete until the supported workstation validates any proposed narrower manifest against all affected behaviors. Source review and CI alone cannot set permission_set_minimized true.",
+  "privacy_rule": "Permission review evidence must not collect terminal contents, shell history, private SSH configuration, credentials, private keys, passwords, tokens, or unrelated host file contents."
+}

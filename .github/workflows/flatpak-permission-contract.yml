@@ -1,0 +1,72 @@
+name: Flatpak Permission Contract
+
+on:
+  push:
+    branches:
+      - main
+      - agent/flatpak-permission-minimization
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-permission-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Validate Flatpak permission review contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Validate permission review source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/validate-flatpak-permission-review.py
+          python3 tools/validate-flatpak-permission-review.py
+
+      - name: Validate review remains non-authoritative for Stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          review = json.loads(Path('release/flatpak-permission-review.json').read_text(encoding='utf-8'))
+          status = json.loads(Path('release/status.json').read_text(encoding='utf-8'))
+
+          assert review['permission_set_minimized'] is False
+          assert review['production_approved'] is False
+          assert review['stable_approved'] is False
+          assert status['production_approved'] is False
+          assert status['stable_approved'] is False
+          assert 'Flatpak permission minimization review' in status['stable_blockers']
+          PY
+
+      - name: Validate documentation boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Permission minimization is not complete' docs/flatpak-permission-minimization.md
+          grep -Fq 'highest-priority minimization candidate' docs/flatpak-permission-minimization.md
+          grep -Fq 'does not prove that the current manifest is minimized' docs/flatpak-permission-minimization.md
+          grep -Fq 'permission-minimization contract' docs/flatpak-packaging-and-acceptance.md
