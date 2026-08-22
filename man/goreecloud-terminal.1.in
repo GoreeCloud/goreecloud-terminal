@@ -1,0 +1,171 @@
+.TH "GOREECLOUD-TERMINAL" 1 "21 August 2026"
+.SH NAME
+goreecloud-terminal \- launch GoreeCloud Terminal
+.SH SYNOPSIS
+.B goreecloud-terminal
+.RI [OPTION]...
+[\-\- PROGRAM ARGUMENTS]
+.br
+.B goreecloud-terminal api
+.B status
+.br
+.B goreecloud-terminal ssh
+.RI [OPENSSH_ARGUMENT ...]
+.br
+.B goreecloud-terminal ssh-tab
+.RI [OPENSSH_ARGUMENT ...]
+.br
+.B goreecloud-terminal workspaces
+.br
+.B goreecloud-terminal profiles
+.RI [WORKSPACE]
+.br
+.B goreecloud-terminal profile
+.I PROFILE
+.RI [REMOTE_COMMAND ...]
+.br
+.B goreecloud-terminal profile-tab
+.I PROFILE
+.RI [REMOTE_COMMAND ...]
+.SH DESCRIPTION
+.B goreecloud-terminal
+is the canonical command-line launcher for GoreeCloud Terminal.
+.PP
+For ordinary arguments, it forwards the command line unchanged to the inherited
+.B ptyxis
+runtime so GoreeCloud can provide a first-party command name without prematurely breaking compatibility-sensitive runtime, helper, packaging, D-Bus, or rollback behavior.
+.PP
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The upstream runtime foundation and GPL attribution remain preserved.
+.SH LOCAL API
+The supported GoreeCloud Terminal API is:
+.PP
+.nf
+goreecloud-terminal api status
+.fi
+.PP
+It returns schema-versioned JSON containing static product, release, identity, Privacy Shield, and Wardveil integration metadata. The API is read-only and local to the CLI. It does not open a network listener, enumerate sessions or profiles, or include terminal contents, commands, credentials, host aliases, or identifiers.
+.PP
+.B goreecloud-terminal api --help
+prints the supported API usage. Unknown API operations fail before the inherited terminal runtime is launched.
+.SH SSH WORKFLOWS
+The
+.B ssh
+subcommand opens a new GoreeCloud Terminal window running the system
+.BR ssh (1)
+client.
+.PP
+The
+.B ssh-tab
+subcommand opens the OpenSSH session as a new tab in the existing GoreeCloud Terminal instance.
+.PP
+Arguments after either subcommand are passed to the system ssh command unchanged. Normal OpenSSH argument ordering therefore applies: command-line options precede the destination and an optional remote command follows it.
+.PP
+OpenSSH remains responsible for host configuration, host-key verification, authentication, keys, agents, ports, proxy settings, forwarding, and connection policy. GoreeCloud Terminal does not store SSH passwords or private keys and does not replace OpenSSH configuration.
+.SH HOST PROFILES AND WORKSPACES
+GoreeCloud Terminal may optionally organize standard OpenSSH Host aliases using a local metadata file.
+.PP
+The default profile file is:
+.PP
+.nf
+$XDG_CONFIG_HOME/goreecloud-terminal/profiles.tsv
+.fi
+.PP
+or, when XDG_CONFIG_HOME is unset:
+.PP
+.nf
+~/.config/goreecloud-terminal/profiles.tsv
+.fi
+.PP
+Each active line contains exactly three TAB-separated fields:
+.PP
+.nf
+WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
+.fi
+.PP
+The profile file is organizational metadata only. It must not replace OpenSSH configuration or contain passwords, private-key material, reusable secrets, port policy, proxy policy, identity-file paths, or authentication policy.
+.PP
+The
+.B workspaces
+command lists configured workspace labels once in first-seen order.
+.PP
+The
+.B profiles
+command lists PROFILE, WORKSPACE, and SSH_HOST_ALIAS fields. An optional WORKSPACE argument restricts the listing.
+.PP
+The
+.B profile
+command resolves PROFILE to its configured OpenSSH Host alias and opens a new window running standard OpenSSH.
+.PP
+The
+.B profile-tab
+command performs the same alias resolution but opens the session in a new tab.
+.PP
+Duplicate profile IDs, malformed rows, aliases containing whitespace, aliases beginning with a hyphen, unknown workspaces, unknown profiles, and missing configuration fail before the terminal runtime is launched.
+.SH COMPATIBILITY
+The inherited
+.B ptyxis
+command remains installed during the current migration stage. Existing scripts and workflows may continue using it.
+.PP
+New GoreeCloud documentation and normal user workflows should prefer
+.B goreecloud-terminal
+unless a compatibility test specifically requires the inherited command.
+.SH OPTIONS
+Except for the GoreeCloud subcommands documented above, command-line options and program arguments are passed directly to the
+.B ptyxis
+runtime. For the inherited option set, see:
+.PP
+.BR ptyxis (1)
+.SH EXAMPLES
+Open GoreeCloud Terminal:
+.PP
+.nf
+goreecloud-terminal
+.fi
+.PP
+Read the local API status contract:
+.PP
+.nf
+goreecloud-terminal api status
+.fi
+.PP
+Open a standard OpenSSH session using an OpenSSH Host alias:
+.PP
+.nf
+goreecloud-terminal ssh server-alias
+.fi
+.PP
+Use a non-default OpenSSH port with normal option ordering:
+.PP
+.nf
+goreecloud-terminal ssh -p 2222 server-alias
+.fi
+.PP
+Open a configured GoreeCloud Terminal profile in a new window:
+.PP
+.nf
+goreecloud-terminal profile primary-vps
+.fi
+.PP
+List profiles within one workspace:
+.PP
+.nf
+goreecloud-terminal profiles Infrastructure
+.fi
+.SH SECURITY
+Do not place reusable passwords, private-key material, tokens, or other secrets directly in command-line arguments or GoreeCloud Terminal profile metadata. Standard OpenSSH and operating-system credential controls remain authoritative.
+.PP
+Workspace labels and aliases may reveal infrastructure organization even when they are not credentials. Protect the profile file as private local configuration.
+.SH RELEASE STATUS
+The source line identifies Release Candidate 50.2-rc.1. Release Candidate status is not Stable or production approval. See release/status.json and docs/release-readiness.md for the authoritative source acceptance boundary.
+.SH PROJECT
+GoreeCloud repository:
+.br
+https://github.com/GoreeCloud/goreecloud-terminal
+.PP
+Canonical upstream Ptyxis source:
+.br
+https://gitlab.gnome.org/chergert/ptyxis
+.SH SEE ALSO
+.BR ptyxis (1),
+.BR ssh (1),
+.BR ssh_config (5)

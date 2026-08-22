@@ -1,0 +1,281 @@
+#!/bin/sh
+set -eu
+
+# Canonical GoreeCloud Terminal command-line entry point.
+#
+# The inherited ptyxis binary remains the compatibility-sensitive runtime.
+# GoreeCloud administration conveniences launch standard operating-system tools
+# inside that runtime. OpenSSH remains authoritative for SSH configuration,
+# authentication, host-key verification, and credentials.
+ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"
+
+if [ -n "${GORECLOUD_TERMINAL_PROFILES_FILE:-}" ]; then
+  profiles_file="$GORECLOUD_TERMINAL_PROFILES_FILE"
+elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
+  profiles_file="$XDG_CONFIG_HOME/goreecloud-terminal/profiles.tsv"
+elif [ -n "${HOME:-}" ]; then
+  profiles_file="$HOME/.config/goreecloud-terminal/profiles.tsv"
+else
+  profiles_file=""
+fi
+
+tab="$(printf '\t')"
+
+print_api_usage() {
+  cat <<'EOF'
+Usage:
+  goreecloud-terminal api status
+
+The GoreeCloud Terminal API is a versioned, read-only local CLI status contract.
+It does not expose terminal contents, commands, credentials, host aliases, or
+identifiers and does not open a network listener.
+EOF
+}
+
+print_api_status() {
+  cat <<'EOF'
+{"schema_version":1,"product":"GoreeCloud Terminal","repository":"GoreeCloud/goreecloud-terminal","release_lifecycle":"Release Candidate","release_candidate":"50.2-rc.1","upstream_foundation":"Ptyxis 50.2","identity":{"production_application_id":"com.goreecloud.Terminal","development_application_id":"com.goreecloud.Terminal.Devel","canonical_launcher":"goreecloud-terminal"},"api":{"transport":"local-cli","read_only":true},"privacy":{"terminal_content_included":false,"commands_included":false,"credentials_included":false,"host_aliases_included":false,"identifiers_included":false},"privacy_shield_capabilities":["telemetry-minimization","data-minimization"],"wardveil":{"presentation_available":true,"authorization_authority":false}}
+EOF
+}
+
+print_ssh_usage() {
+  cat <<'EOF'
+Usage:
+  goreecloud-terminal ssh [OPENSSH_ARGUMENT ...]
+  goreecloud-terminal ssh-tab [OPENSSH_ARGUMENT ...]
+
+Commands:
+  ssh      Open a new GoreeCloud Terminal window running standard OpenSSH.
+  ssh-tab  Open a new tab in the current GoreeCloud Terminal instance running
+           standard OpenSSH.
+
+Arguments after the subcommand are passed to the system ssh command unchanged.
+Use normal OpenSSH argument ordering, including options before the destination.
+
+Examples:
+  goreecloud-terminal ssh server-alias
+  goreecloud-terminal ssh user@example.internal
+  goreecloud-terminal ssh -p 2222 server-alias
+  goreecloud-terminal ssh-tab server-alias
+
+GoreeCloud Terminal does not store SSH passwords, private keys, or replacement
+host configuration. Standard OpenSSH authentication and configuration remain
+authoritative.
+EOF
+}
+
+print_profile_usage() {
+  cat <<'EOF'
+Usage:
+  goreecloud-terminal workspaces
+  goreecloud-terminal profiles [WORKSPACE]
+  goreecloud-terminal profile PROFILE [REMOTE_COMMAND ...]
+  goreecloud-terminal profile-tab PROFILE [REMOTE_COMMAND ...]
+
+Host profiles are optional GoreeCloud Terminal metadata that point to standard
+OpenSSH Host aliases. The default profile file is:
+
+  $XDG_CONFIG_HOME/goreecloud-terminal/profiles.tsv
+
+or, when XDG_CONFIG_HOME is unset:
+
+  ~/.config/goreecloud-terminal/profiles.tsv
+
+Each non-comment line contains exactly three TAB-separated fields:
+
+  WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
+
+PROFILE is a unique local identifier. SSH_HOST_ALIAS must be a single OpenSSH
+Host alias and may not begin with '-' or contain whitespace. GoreeCloud Terminal
+stores no password, private key, port, proxy, hostname, or authentication policy
+in this file; those values remain in standard OpenSSH configuration.
+EOF
+}
+
+profiles_error() {
+  printf 'goreecloud-terminal: %s\n' "$*" >&2
+  exit 65
+}
+
+require_profiles_file() {
+  if [ -z "$profiles_file" ]; then
+    profiles_error 'cannot determine the profile configuration path because HOME and XDG_CONFIG_HOME are unset'
+  fi
+
+  if [ ! -f "$profiles_file" ]; then
+    printf 'goreecloud-terminal: profile configuration not found: %s\n' "$profiles_file" >&2
+    printf 'Create it as a TAB-separated WORKSPACE, PROFILE, SSH_HOST_ALIAS file.\n' >&2
+    exit 66
+  fi
+}
+
+validate_profiles_file() {
+  require_profiles_file
+
+  awk -F "$tab" '
+    BEGIN { valid = 1 }
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    NF != 3 {
+      printf "goreecloud-terminal: malformed profile line %d: expected exactly three TAB-separated fields\n", NR > "/dev/stderr"
+      valid = 0
+      next
+    }
+    $1 == "" {
+      printf "goreecloud-terminal: malformed profile line %d: workspace must not be empty\n", NR > "/dev/stderr"
+      valid = 0
+    }
+    $2 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ {
+      printf "goreecloud-terminal: malformed profile line %d: profile ID must use letters, digits, dot, underscore, or hyphen\n", NR > "/dev/stderr"
+      valid = 0
+    }
+    $3 == "" || $3 ~ /^-/ || $3 ~ /[[:space:]]/ {
+      printf "goreecloud-terminal: malformed profile line %d: SSH Host alias must be one non-option token\n", NR > "/dev/stderr"
+      valid = 0
+    }
+    seen[$2]++ {
+      printf "goreecloud-terminal: duplicate profile ID on line %d: %s\n", NR, $2 > "/dev/stderr"
+      valid = 0
+    }
+    END { exit valid ? 0 : 65 }
+  ' "$profiles_file" || exit $?
+}
+
+list_workspaces() {
+  validate_profiles_file
+  awk -F "$tab" '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    !seen[$1]++ { print $1 }
+  ' "$profiles_file"
+}
+
+list_profiles() {
+  validate_profiles_file
+  workspace="${1:-}"
+
+  if [ -n "$workspace" ]; then
+    if ! awk -F "$tab" -v wanted="$workspace" '
+      /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+      $1 == wanted { found = 1 }
+      END { exit found ? 0 : 1 }
+    ' "$profiles_file"; then
+      printf 'goreecloud-terminal: unknown workspace: %s\n' "$workspace" >&2
+      exit 66
+    fi
+  fi
+
+  awk -F "$tab" -v wanted="$workspace" '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    wanted == "" || $1 == wanted {
+      printf "%s\t%s\t%s\n", $2, $1, $3
+    }
+  ' "$profiles_file"
+}
+
+resolve_profile_alias() {
+  validate_profiles_file
+  profile_id="$1"
+  alias="$(awk -F "$tab" -v wanted="$profile_id" '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    $2 == wanted { print $3 }
+  ' "$profiles_file")"
+
+  if [ -z "$alias" ]; then
+    printf 'goreecloud-terminal: unknown profile: %s\n' "$profile_id" >&2
+    exit 66
+  fi
+
+  printf '%s\n' "$alias"
+}
+
+case "${1:-}" in
+  api)
+    shift
+    case "${1:-}" in
+      status)
+        [ "$#" -eq 1 ] || { print_api_usage >&2; exit 64; }
+        print_api_status
+        exit 0
+        ;;
+      -h|--help|'')
+        print_api_usage
+        exit 0
+        ;;
+      *)
+        print_api_usage >&2
+        exit 64
+        ;;
+    esac
+    ;;
+
+  ssh|ssh-tab)
+    mode="$1"
+    shift
+
+    if [ "$#" -eq 0 ]; then
+      print_ssh_usage >&2
+      exit 64
+    fi
+
+    case "$1" in
+      -h|--help)
+        print_ssh_usage
+        exit 0
+        ;;
+    esac
+
+    if [ "$mode" = "ssh-tab" ]; then
+      exec "$ptyxis_bin" --tab -- ssh "$@"
+    fi
+
+    exec "$ptyxis_bin" --new-window -- ssh "$@"
+    ;;
+
+  workspaces)
+    shift
+    if [ "$#" -ne 0 ]; then
+      print_profile_usage >&2
+      exit 64
+    fi
+    list_workspaces
+    exit 0
+    ;;
+
+  profiles)
+    shift
+    if [ "$#" -gt 1 ]; then
+      print_profile_usage >&2
+      exit 64
+    fi
+    list_profiles "${1:-}"
+    exit 0
+    ;;
+
+  profile|profile-tab)
+    mode="$1"
+    shift
+
+    if [ "$#" -eq 0 ]; then
+      print_profile_usage >&2
+      exit 64
+    fi
+
+    case "$1" in
+      -h|--help)
+        print_profile_usage
+        exit 0
+        ;;
+    esac
+
+    profile_id="$1"
+    shift
+    ssh_alias="$(resolve_profile_alias "$profile_id")"
+
+    if [ "$mode" = "profile-tab" ]; then
+      exec "$ptyxis_bin" --tab -- ssh "$ssh_alias" "$@"
+    fi
+
+    exec "$ptyxis_bin" --new-window -- ssh "$ssh_alias" "$@"
+    ;;
+esac
+
+exec "$ptyxis_bin" "$@"

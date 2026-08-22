@@ -1,5 +1,6 @@
 ptyxis_sources = [
   'gdkhsla.c',
+  'goreecloud-session-context.c',
   'main.c',
   'ptyxis-add-button-list-item.c',
   'ptyxis-add-button-list-model.c',
@@ -116,3 +117,16 @@ executable('ptyxis', ptyxis_sources + ptyxis_agent_ipc,
                c_args: ptyxis_c_args,
   include_directories: ptyxis_include_directories,
 )
+
+goreecloud_session_context_test = executable(
+  'test-goreecloud-session-context',
+  [
+    'goreecloud-session-context.c',
+    'test-goreecloud-session-context.c',
+  ],
+  dependencies: ptyxis_deps,
+       c_args: ptyxis_c_args,
+  include_directories: ptyxis_include_directories,
+)
+
+test('goreecloud-session-context', goreecloud_session_context_test)

@@ -6,6 +6,12 @@ else
   app_name = 'GoreeCloud Terminal'
 endif
 
+install_data(
+  'goreecloud-terminal',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
+
 desktop_config = configuration_data()
 desktop_config.set('APP_ID', app_id)
 desktop_config.set('APP_NAME', app_name)

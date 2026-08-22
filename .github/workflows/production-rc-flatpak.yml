@@ -1,0 +1,246 @@
+name: Production RC Flatpak Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - agent/release-candidate-readiness
+      - "release/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-rc-flatpak-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rc-flatpak:
+    name: Build and smoke-test production identity RC Flatpak
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      APP_ID: com.goreecloud.Terminal
+      RC_ID: 50.2-rc.1
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Validate RC source contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-privacy-shield-adapter.py
+          tools/test-local-api.sh
+          tools/validate-release-readiness.py
+
+      - name: Validate production manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          prod = json.loads(Path('com.goreecloud.Terminal.json').read_text())
+          dev = json.loads(Path('com.goreecloud.Terminal.Devel.json').read_text())
+          assert prod['app-id'] == 'com.goreecloud.Terminal'
+          assert prod['runtime'] == 'org.gnome.Platform'
+          assert prod['runtime-version'] == '50'
+          assert prod['sdk'] == 'org.gnome.Sdk'
+          assert prod['command'] == 'goreecloud-terminal'
+          assert set(prod['finish-args']) == set(dev['finish-args'])
+          pm = {m['name']: m for m in prod['modules']}
+          dm = {m['name']: m for m in dev['modules']}
+          for name in ('libportal', 'fast_float', 'simdutf', 'vte'):
+              assert pm[name]['sources'] == dm[name]['sources']
+          opts = set(pm['goreecloud-terminal']['config-opts'])
+          assert '-Ddevelopment=false' in opts
+          assert '-Ddevelopment=true' not in opts
+          assert '--wrap-mode=nodownload' in opts
+          assert '-Dlibc-compat=true' in opts
+          print('Production RC manifest contract validated')
+          PY
+
+      - name: Install Flatpak tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            elfutils \
+            flatpak \
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
+          flatpak --version
+          flatpak-builder --version
+          eu-strip --version
+          rsvg-convert --version
+
+      - name: Validate production icon source
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon='data/icons/goreecloud-terminal.svg'
+          output="$RUNNER_TEMP/goreecloud-terminal-rc-icon.png"
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+          icon = Path('data/icons/goreecloud-terminal.svg')
+          assert icon.is_file()
+          root = ElementTree.parse(icon).getroot()
+          assert root.tag.endswith('svg')
+          assert root.attrib.get('viewBox') == '0 0 512 512'
+          PY
+          rsvg-convert --width=128 --height=128 --output="$output" "$icon"
+          test -s "$output"
+          file "$output" | grep -Fq 'PNG image data, 128 x 128'
+
+      - name: Install declared GNOME runtime and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//50 \
+            org.gnome.Sdk//50
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Platform\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Sdk\t50'
+
+      - name: Build exact-head production RC Flatpak
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/goreecloud-terminal-rc-build"
+          state_dir="$RUNNER_TEMP/goreecloud-terminal-rc-state"
+          repo_dir="$RUNNER_TEMP/goreecloud-terminal-rc-repo"
+          rm -rf "$build_dir" "$state_dir" "$repo_dir"
+          flatpak-builder \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --state-dir="$state_dir" \
+            --repo="$repo_dir" \
+            "$build_dir" \
+            com.goreecloud.Terminal.json
+          test -d "$repo_dir"
+          printf '%s\n' "$repo_dir" > "$RUNNER_TEMP/rc-repo-path"
+
+      - name: Build production RC bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_dir="$(cat "$RUNNER_TEMP/rc-repo-path")"
+          bundle="goreecloud-terminal-${RC_ID}-${SOURCE_SHA}.flatpak"
+          flatpak build-bundle "$repo_dir" "$bundle" "$APP_ID"
+          test -s "$bundle"
+          sha256sum "$bundle" | tee "${bundle}.sha256"
+          printf '%s\n' "$bundle" > "$RUNNER_TEMP/rc-bundle-path"
+
+      - name: Install and inspect production RC bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/rc-bundle-path")"
+          if flatpak --user info "$APP_ID" >/dev/null 2>&1; then
+            echo 'Production GoreeCloud Terminal identity unexpectedly pre-installed' >&2
+            exit 1
+          fi
+          flatpak --user install -y --noninteractive "$bundle"
+          flatpak --user info "$APP_ID"
+          test "$(flatpak --user info --show-runtime "$APP_ID")" = 'org.gnome.Platform/x86_64/50'
+          flatpak --user info --show-ref "$APP_ID" | grep -Fq 'app/com.goreecloud.Terminal/'
+          flatpak --user info --show-commit "$APP_ID" | grep -Eq '^[0-9a-f]{64}$'
+
+      - name: Run production RC non-graphical smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_output="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" --version 2>&1)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal'
+
+          api_output="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" api status)"
+          API_OUTPUT="$api_output" python3 - <<'PY'
+          import json, os
+          obj = json.loads(os.environ['API_OUTPUT'])
+          assert obj['release_lifecycle'] == 'Release Candidate'
+          assert obj['release_candidate'] == '50.2-rc.1'
+          assert obj['identity']['production_application_id'] == 'com.goreecloud.Terminal'
+          assert obj['api']['read_only'] is True
+          assert obj['privacy']['terminal_content_included'] is False
+          assert obj['privacy']['credentials_included'] is False
+          PY
+
+          ssh_help="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" ssh --help 2>&1)"
+          printf '%s\n' "$ssh_help" | grep -Fq 'Standard OpenSSH authentication and configuration remain'
+          profile_help="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" profile --help 2>&1)"
+          printf '%s\n' "$profile_help" | grep -Fq 'WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS'
+
+      - name: Validate ordinary removal preserves application data
+        shell: bash
+        run: |
+          set -euo pipefail
+          data_dir="$HOME/.var/app/$APP_ID"
+          marker="$data_dir/.goreecloud-rc-removal-probe"
+          mkdir -p "$data_dir"
+          printf 'preserve\n' > "$marker"
+
+          flatpak --user uninstall -y --noninteractive "$APP_ID"
+          if flatpak --user info "$APP_ID" >/dev/null 2>&1; then
+            echo 'Production RC remained installed after ordinary removal' >&2
+            exit 1
+          fi
+          test -f "$marker"
+          grep -Fxq 'preserve' "$marker"
+          echo 'Production RC ordinary removal preserved application data'
+
+      - name: Record production RC package evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/rc-bundle-path")"
+          bundle_sha="$(awk '{print $1}' "${bundle}.sha256")"
+          repo_dir="$(cat "$RUNNER_TEMP/rc-repo-path")"
+          app_commit="$(ostree --repo="$repo_dir" rev-parse "app/$APP_ID/x86_64/master")"
+          SOURCE_SHA="$SOURCE_SHA" RC_ID="$RC_ID" APP_ID="$APP_ID" BUNDLE="$bundle" BUNDLE_SHA="$bundle_sha" APP_COMMIT="$app_commit" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          evidence = {
+              'schema_version': 1,
+              'source_sha': os.environ['SOURCE_SHA'],
+              'release_candidate': os.environ['RC_ID'],
+              'application_id': os.environ['APP_ID'],
+              'bundle': os.environ['BUNDLE'],
+              'bundle_sha256': os.environ['BUNDLE_SHA'],
+              'ostree_commit': os.environ['APP_COMMIT'],
+              'production_approved': False,
+              'stable_approved': False,
+          }
+          Path('production-rc-flatpak-evidence.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          cat production-rc-flatpak-evidence.json
+
+      - name: Upload production RC evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-production-rc-${{ env.RC_ID }}-${{ env.SOURCE_SHA }}
+          path: |
+            goreecloud-terminal-${{ env.RC_ID }}-${{ env.SOURCE_SHA }}.flatpak
+            goreecloud-terminal-${{ env.RC_ID }}-${{ env.SOURCE_SHA }}.flatpak.sha256
+            production-rc-flatpak-evidence.json
+          if-no-files-found: error
+          retention-days: 30

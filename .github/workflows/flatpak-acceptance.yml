@@ -1,0 +1,253 @@
+name: Flatpak Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - agent/flatpak-packaging-acceptance
+      - agent/flatpak-lifecycle-acceptance
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flatpak:
+    name: Build and smoke-test development Flatpak
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Validate manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("com.goreecloud.Terminal.Devel.json")
+          manifest = json.loads(path.read_text(encoding="utf-8"))
+
+          assert manifest["app-id"] == "com.goreecloud.Terminal.Devel"
+          assert manifest["runtime"] == "org.gnome.Platform"
+          assert manifest["runtime-version"] == "50"
+          assert manifest["sdk"] == "org.gnome.Sdk"
+          assert manifest["command"] == "goreecloud-terminal"
+
+          expected_finish_args = {
+              "--allow=devel",
+              "--device=dri",
+              "--filesystem=host",
+              "--share=ipc",
+              "--share=network",
+              "--socket=fallback-x11",
+              "--socket=wayland",
+              "--talk-name=org.freedesktop.Flatpak",
+          }
+          assert set(manifest["finish-args"]) == expected_finish_args
+
+          modules = {module["name"]: module for module in manifest["modules"]}
+          assert {"libportal", "fast_float", "simdutf", "vte", "goreecloud-terminal"} <= modules.keys()
+
+          assert "--libdir=lib" in modules["libportal"]["config-opts"]
+          assert "-DCMAKE_INSTALL_LIBDIR=lib" in modules["fast_float"]["config-opts"]
+          assert "-DCMAKE_INSTALL_LIBDIR=lib" in modules["simdutf"]["config-opts"]
+          assert "--libdir=lib" in modules["vte"]["config-opts"]
+
+          app = modules["goreecloud-terminal"]
+          assert app["buildsystem"] == "meson"
+          assert "--libdir=lib" in app["config-opts"]
+          assert "--wrap-mode=nodownload" in app["config-opts"]
+          assert "-Ddevelopment=true" in app["config-opts"]
+          assert "-Dlibc-compat=true" in app["config-opts"]
+          assert app["sources"] == [{"type": "dir", "path": "."}]
+
+          assert modules["fast_float"]["sources"][0]["commit"] == "05087a303dad9c98768b33c829d398223a649bc6"
+          assert modules["simdutf"]["sources"][0]["commit"] == "ca7acbcea967b5dcbab490066e99e3a6e6925539"
+          assert modules["vte"]["sources"][0]["sha256"] == "0414e31583836aeb7878da25f67c515f7e8879917ecc37c92e26b83e8d8fc3e3"
+          assert modules["libportal"]["sources"][0]["sha256"] == "de801ee349ed3c255a9af3c01b1a401fab5b3fc1c35eb2fd7dfb35d4b8194d7f"
+
+          print("Flatpak manifest contract validated")
+          PY
+
+          grep -Fq 'com.goreecloud.Terminal.Devel' docs/flatpak-packaging-and-acceptance.md
+          grep -Fq -- '--filesystem=host' docs/flatpak-packaging-and-acceptance.md
+          grep -Fq 'development acceptance bundle, not a distribution release' docs/flatpak-packaging-and-acceptance.md
+
+      - name: Install Flatpak tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            elfutils \
+            flatpak \
+            flatpak-builder \
+            librsvg2-bin \
+            librsvg2-common
+          flatpak --version
+          flatpak-builder --version
+          eu-strip --version
+          rsvg-convert --version
+
+      - name: Validate packaged icon source
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon='data/icons/goreecloud-terminal-devel.svg'
+          output="$RUNNER_TEMP/goreecloud-terminal-devel-icon.png"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          icon = Path('data/icons/goreecloud-terminal-devel.svg')
+          assert icon.is_file()
+          root = ElementTree.parse(icon).getroot()
+          assert root.tag.endswith('svg')
+          assert root.attrib.get('viewBox') == '0 0 512 512'
+          PY
+
+          rsvg-convert --width=128 --height=128 --output="$output" "$icon"
+          test -s "$output"
+          file "$output" | grep -Fq 'PNG image data, 128 x 128'
+
+      - name: Install declared GNOME runtime and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y --noninteractive flathub \
+            org.gnome.Platform//50 \
+            org.gnome.Sdk//50
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Platform\t50'
+          flatpak list --system --runtime --columns=application,branch | grep -Fx $'org.gnome.Sdk\t50'
+
+      - name: Build exact-head Flatpak and export repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/goreecloud-terminal-flatpak-build"
+          state_dir="$RUNNER_TEMP/goreecloud-terminal-flatpak-state"
+          repo_dir="$RUNNER_TEMP/goreecloud-terminal-flatpak-repo"
+
+          rm -rf "$build_dir" "$state_dir" "$repo_dir"
+
+          flatpak-builder \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --state-dir="$state_dir" \
+            --repo="$repo_dir" \
+            "$build_dir" \
+            com.goreecloud.Terminal.Devel.json
+
+          test -d "$repo_dir"
+          printf '%s\n' "$repo_dir" > "$RUNNER_TEMP/flatpak-repo-path"
+
+      - name: Build development acceptance bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_dir="$(cat "$RUNNER_TEMP/flatpak-repo-path")"
+          bundle="goreecloud-terminal-devel-${SOURCE_SHA}.flatpak"
+
+          flatpak build-bundle \
+            "$repo_dir" \
+            "$bundle" \
+            com.goreecloud.Terminal.Devel
+
+          test -s "$bundle"
+          sha256sum "$bundle" | tee "${bundle}.sha256"
+          printf '%s\n' "$bundle" > "$RUNNER_TEMP/flatpak-bundle-path"
+
+      - name: Install and inspect exact bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/flatpak-bundle-path")"
+
+          flatpak --user install -y --noninteractive "$bundle"
+
+          flatpak --user info com.goreecloud.Terminal.Devel
+          test "$(flatpak --user info --show-runtime com.goreecloud.Terminal.Devel)" = 'org.gnome.Platform/x86_64/50'
+          flatpak --user info --show-ref com.goreecloud.Terminal.Devel | grep -Fq 'app/com.goreecloud.Terminal.Devel/'
+          flatpak --user info --show-commit com.goreecloud.Terminal.Devel | grep -Eq '^[0-9a-f]{64}$'
+
+      - name: Run non-graphical packaged smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version_output="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel --version 2>&1)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal'
+
+          ssh_help="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel ssh --help 2>&1)"
+          printf '%s\n' "$ssh_help" | grep -Fq 'Standard OpenSSH authentication and configuration remain'
+
+          profile_help="$(flatpak run --user --command=goreecloud-terminal com.goreecloud.Terminal.Devel profile --help 2>&1)"
+          printf '%s\n' "$profile_help" | grep -Fq 'WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS'
+
+      - name: Validate clean package removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak --user uninstall -y --noninteractive com.goreecloud.Terminal.Devel
+
+          if flatpak --user info com.goreecloud.Terminal.Devel >/dev/null 2>&1; then
+            printf 'GoreeCloud Terminal development Flatpak remained installed after uninstall\n' >&2
+            exit 1
+          fi
+
+          printf 'Development Flatpak removal validated\n'
+
+      - name: Validate exact-artifact reinstall and data preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(cat "$RUNNER_TEMP/flatpak-bundle-path")"
+          expected_sha="$(awk '{print $1}' "${bundle}.sha256")"
+          state_root="$HOME/.var/app/com.goreecloud.Terminal.Devel"
+          probe="$state_root/.goreecloud-flatpak-lifecycle-probe"
+
+          mkdir -p "$state_root"
+          printf '%s\n' "$SOURCE_SHA" > "$probe"
+
+          tools/validate-flatpak-lifecycle.sh reinstall \
+            --bundle "$bundle" \
+            --sha256 "$expected_sha"
+
+          test -f "$probe"
+          test "$(cat "$probe")" = "$SOURCE_SHA"
+          rm -f "$probe"
+          printf 'Flatpak application-data preservation probe validated\n'
+
+      - name: Upload exact development bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-terminal-flatpak-${{ env.SOURCE_SHA }}
+          path: |
+            goreecloud-terminal-devel-${{ env.SOURCE_SHA }}.flatpak
+            goreecloud-terminal-devel-${{ env.SOURCE_SHA }}.flatpak.sha256
+          if-no-files-found: error
+          retention-days: 14

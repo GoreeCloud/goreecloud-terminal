@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><g color="#000" fill="#474747"><path d="M1.5 14h13c.277 0 .5.223.5.5v1c0 .277-.223.5-.5.5h-13a.499.499 0 01-.5-.5v-1c0-.277.223-.5.5-.5z" style="marker:none" overflow="visible"/><path d="M5 0C3.91 0 3 .91 3 2v8c0 1.09.91 2 2 2h6c1.09 0 2-.91 2-2V2c0-1.09-.91-2-2-2zm0 2h6v8H5z" style="line-height:normal;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000;text-transform:none;text-orientation:mixed;shape-padding:0;isolation:auto;mix-blend-mode:normal;marker:none" font-weight="400" font-family="sans-serif" overflow="visible"/><path d="M6 3h4v1H6zm3 2h1v1H9zm-2 6h2v4H7z" style="marker:none" overflow="visible"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Wardveil remote-session context: terminal connected across a protected link. -->
+  <g fill="currentColor">
+    <path d="M1.25 2.25h8.5v7.5h-8.5zm1.5 1.5v4.5h5.5v-4.5z"/>
+    <path d="M3.25 5.15 4.4 6.3 3.25 7.45l.95.95 2.1-2.1-2.1-2.1zM5.9 7.1h1.7v1.2H5.9z"/>
+    <path d="M10.25 5.5h1.5v1.75h1.75v1.5h-1.75v1.75h-1.5V8.75H8.5v-1.5h1.75z"/>
+    <path d="M10.9 10.25a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zm0 1.35a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5z"/>
+    <path d="M0.75 11h7v1.5h-7z"/>
+  </g>
+</svg>

@@ -1,433 +1,180 @@
-![Ptyxis Logo](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/icons/ptyxis.svg)
-
-[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](https://gitlab.gnome.org/chergert/ptyxis/-/blob/main/COPYING)
-[![GitLab Pipeline Status](https://gitlab.gnome.org/chergert/ptyxis/badges/main/pipeline.svg)](https://gitlab.gnome.org/chergert/ptyxis/-/pipelines)
-[![Distribution: Flatpak (Stable)](https://img.shields.io/badge/Available%20on-Flatpak%20(Stable)-4d9c9a.svg?logo=flatpak&logoColor=white)](https://flathub.org/apps/app.devsuite.Ptyxis)
-[![Distribution: Flatpak (Nightly)](https://img.shields.io/badge/Available%20on-Flatpak%20(Nightly)-4d9c9a.svg?logo=flatpak&logoColor=white)](https://gitlab.gnome.org/chergert/ptyxis#flatpak-recommended)
-
-# Ptyxis: Your Container-Oriented Terminal for GNOME
-
-**A modern terminal emulator built for the container era.**
-_Seamlessly navigate between your host system and local containers like Podman,
-Toolbox, and Distrobox with intelligent detection and a beautiful, responsive
-GNOME interface._
-
-![Ptyxis Screenshot - Tab Overview](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/tab-overview.png)
-_Fig 1: Ptyxis tab overview for managing multiple terminal sessions._
-
----
-
-- [What Makes Ptyxis Special?](#what-makes-ptyxis-special)
-- [Key Features](#key-features)
-- [Screenshots](#screenshots)
-- [Installation](#installation)
-- [Basic Usage & Command-Line Options](#basic-usage--command-line-options)
-- [Container Integration](#container-integration)
-- [Contributing: Feature Requests and Design Changes](#contributing-feature-requests-and-design-changes)
-- [Report an Issue](https://gitlab.gnome.org/chergert/ptyxis/-/issues)
-
----
-
-## What Makes Ptyxis Special?
-
-Ptyxis (the application project was formerly named "Prompt" and may still appear
-under `app.devsuite.Ptyxis` for its stable Flatpak release) isn't just another
-terminal emulator—it's engineered from the ground up for modern development
-workflows within the GNOME desktop, where local containers are first-class
-citizens. It simplifies and enhances your interaction with tools like Podman,
-Toolbox, and Distrobox, making them a natural extension of your terminal
-experience. Ptyxis is the default terminal in Fedora Workstation,
-Red Hat Enterprise Linux, and Ubuntu, highlighting its robust design
-and performance.
-
-## Key Features
-
-- **First-Class Container Integration**: Automatic discovery, direct spawning,
-  and context preservation (active container, CWD) for Podman, Toolbox,
-  Distrobox, and JHBuild.
-- **Modern GNOME Interface**: Built with GTK 4 and libadwaita for a native,
-  responsive, and accessible user experience, adhering to GNOME HIG.
-- **Dynamic Theming & Customization**: Extensive built-in color palettes that
-  automatically adapt to system light/dark modes. Supports user-installable
-  custom `.palette` files and "Window Dressing" for full-window theming.
-- **Smart Process Tracking**: Visual indicators for `sudo` sessions, active
-  SSH connections, and other foreground processes, enhancing situational
-  awareness.
-- **Advanced Tab Management**: Searchable tab overview with live previews and
-  pinned tabs that persist their session context (profile, container,
-  working directory) across application restarts.
-- **Customizable Keyboard Shortcuts**: A comprehensive set of actions with
-  highly configurable keyboard shortcuts accessible via the preferences.
-- **Robust User Profiles**: Create named profiles to fine-tune default
-  containers, startup commands, palette, terminal behaviors, and
-  compatibility modes.
-- **`ptyxis-agent` Architecture**: A unique out-of-process helper
-  (`ptyxis-agent`) enables full functionality even when Ptyxis is run as a
-  Flatpak by managing PTY creation, direct container interaction, and host
-  process monitoring.
-- **High-Performance Rendering**: Leverages the VTE (Virtual Terminal
-  Emulator) library with GPU acceleration (Vulkan/OpenGL where available)
-  for a remarkably fluid and responsive terminal experience.
-- **Terminal Inspector**: An integrated developer tool for debugging
-  terminal-based applications by allowing inspection of OSC (Operating System
-  Command) hyperlinks, mouse event coordinates, and other terminal sequences.
-- **Encrypted Scrollback Buffers**: Enhances privacy for your terminal
-  session history.
-- **Accessibility**: Designed with accessibility at its core, building upon
-  GTK4 and VTE accessibility features to support screen readers and other
-  assistive technologies effectively.
-
----
+# GoreeCloud Terminal
 
-## Screenshots
+GoreeCloud Terminal is the GoreeCloud-maintained Linux terminal application built from the open-source Ptyxis foundation. It preserves Ptyxis's mature GTK, VTE, PTY, container, accessibility, session, and process-tracking capabilities while adding GoreeCloud-owned product identity, Glaze UI, Wardveil Security context presentation, official GoreeCloud artwork, Privacy Shield boundaries, and GoreeCloud-specific administration workflows.
 
-Here's a glimpse into Ptyxis's interface and capabilities:
+> **Status: Release Candidate 50.2-rc.1.** This identified source/package line is intended for final acceptance. **Stable and production approval remain separate** and are explicitly false until the remaining supported-workstation gates are completed.
 
-![Container Menu shows automatically discovered containers](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/containers-menu.png)
-_Fig 2: Containers are automatically discovered and readily accessible._
+The authoritative source lifecycle is `release/status.json`; final acceptance requirements are documented in `docs/release-readiness.md`.
 
-![Tab Overview screen shows multiple tabs with previews](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/tab-overview.png)
-_Fig 3: A visual, searchable overview of all open terminal tabs._
-
-![Behavior Settings window for tweaking terminal behavior](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/change-behavior.png)
-_Fig 4: Fine-tune various terminal behaviors to your preference._
+## Maintained-fork model
 
-![Palette Selector screen for choosing color schemes](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/palette-selector.png)
-_Fig 5: Select from built-in color palettes or install your own._
+- GoreeCloud repository: `GoreeCloud/goreecloud-terminal`
+- Canonical upstream: `https://gitlab.gnome.org/chergert/ptyxis`
+- Imported upstream baseline: `c1ba62b71295f569e0fc144b25770f2315b30e00`
+- Upstream foundation version: `50.2`
+- GoreeCloud candidate: `50.2-rc.1`
+- License: GPL-3.0-or-later
 
-![Profile Editor for customizing profiles](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/edit-profile.png)
-_Fig 6: Profiles allow overriding features like default container._
+The repository preserves upstream copyright, contributor, translator, licensing, attribution, and source-history obligations. GoreeCloud-specific work is layered through controlled branches and pull requests. See `GORECLOUD_FORK.md`.
 
-![Shortcut Editor for remapping keyboard shortcuts](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/shortcut-editing.png)
-_Fig 7: Remap keyboard shortcuts to fit your workflow._
+## Product identity
 
-![Sudo Tracking indicator in the terminal](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/sudo-tracking.png)
-_Fig 8: The terminal clearly indicates when you're operating as root locally._
+- Production application ID: `com.goreecloud.Terminal`
+- Development application ID: `com.goreecloud.Terminal.Devel`
+- Production GSettings namespace: `com.goreecloud.Terminal`
+- Development GSettings namespace: `com.goreecloud.Terminal.Devel`
+- Canonical launcher: `goreecloud-terminal`
+- Compatibility runtime: `ptyxis`
+- Compatibility helper: `ptyxis-agent`
 
-![SSH Tracking indicator in the terminal](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/ssh-tracking.png)
-_Fig 9: A visual cue reminds you when connected to a remote system via SSH._
+The inherited executable/helper remain compatibility-sensitive implementation details. New GoreeCloud workflows should use `goreecloud-terminal`.
 
-![Terminal with a partially transparent background](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/transparency.png)
-_Fig 10: Optional background transparency for the daring._
+## Local API
 
-![Terminal showing an overlay when the column or row size changes](https://gitlab.gnome.org/chergert/ptyxis/-/raw/main/data/screenshots/columns-and-rows.png)
-_Fig 11: Column and row size indicator displayed during window resizing._
+GoreeCloud Terminal provides a deliberately narrow, built-in read-only local API:
 
----
+```bash
+goreecloud-terminal api status
+```
 
-## Installation
+It returns schema-versioned JSON with static product, release, identity, Privacy Shield, and Wardveil integration metadata. It opens no network listener and exposes no terminal content, commands, credentials, SSH destinations, profile aliases, or user/device identifiers.
 
-### Flatpak (Recommended)
+See `docs/local-api.md`.
 
-Ptyxis is primarily distributed as a Flatpak, ensuring all dependencies are
-managed and providing a consistent experience across Linux distributions.
+## Standard OpenSSH workflows
 
-- **Stable Version (from Flathub):**
-  The stable version uses the application ID `app.devsuite.Ptyxis`.
+OpenSSH remains the authority for host configuration, host keys, authentication, private keys, agents, ports, proxying, forwarding, and connection policy.
 
-  ```bash
-  flatpak install flathub app.devsuite.Ptyxis
-  ```
+```bash
+goreecloud-terminal ssh server-alias
+goreecloud-terminal ssh -p 2222 server-alias
+goreecloud-terminal ssh-tab server-alias
+```
 
-  To run: `flatpak run app.devsuite.Ptyxis`
+Arguments after the GoreeCloud subcommand are passed to the system `ssh` command unchanged using normal OpenSSH argument ordering.
 
-- **Nightly Development Version (from GNOME Nightly):**
-  For the latest features (potentially less stable). This version uses the
-  application ID `org.gnome.Ptyxis.Devel`.
+## Host profiles and workspaces
 
-  ```bash
-  flatpak install --user --from https://nightly.gnome.org/repo/appstream/org.gnome.Ptyxis.Devel.flatpakref
-  ```
+Optional local metadata may organize OpenSSH `Host` aliases using exactly three TAB-separated fields:
 
-  To run: `flatpak run org.gnome.Ptyxis.Devel`
+```text
+WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
+```
 
-### Building from Source
+```bash
+goreecloud-terminal workspaces
+goreecloud-terminal profiles
+goreecloud-terminal profiles Infrastructure
+goreecloud-terminal profile primary-vps
+goreecloud-terminal profile-tab primary-vps
+```
 
-Ptyxis uses the Meson build system.
+This metadata does not duplicate credentials, key paths, ports, proxy settings, hostnames, or authentication policy. Malformed configuration fails before the terminal runtime starts. See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md`.
 
-1. **Prerequisites:**
-    Ensure your system has the necessary development packages installed:
+## GoreeCloud platform layers
 
-    - C compiler (e.g., GCC, Clang)
-    - Meson (version 1.0.0 or newer)
-    - Ninja
-    - GLib (version 2.80 or newer, e.g., `libglib2.0-dev`)
-    - GTK4 (version 4.14 or newer, e.g., `libgtk-4-dev`)
-    - libadwaita (version 1.6 or newer, e.g., `libadwaita-1-dev`)
-    - JSON-GLib (version 1.6 or newer, e.g., `libjson-glib-dev`)
-    - VTE (GTK4 version, 0.79 or newer, e.g., `libvte-2.91-gtk4-dev`)
-    - libportal-gtk4 (on Linux, e.g., `libportal-gtk4-dev`)
+### Glaze UI 1.4
 
-2. **Clone the repository:**
+The RC targets **Glaze UI 1.4.0 Stable** through a native GTK/libadwaita mapping. Glaze styles terminal-adjacent application chrome while VTE retains ownership of terminal glyph rendering and palette behavior. The RC adds explicit light-scheme, reduced-motion, increased-contrast, focus-visible, and custom target-size source invariants.
 
-    ```bash
-    git clone https://gitlab.gnome.org/chergert/ptyxis.git
-    cd ptyxis
-    ```
+See `docs/glaze-ui.md`.
 
-3. **Configure the build using Meson:**
+### Wardveil Security
 
-    ```bash
-    meson setup _build --prefix=/usr/local --buildtype=release
-    # Or --buildtype=debug for development
-    ```
+The typed session-context model supports Local, Remote, Container, and Elevated presentation. Wardveil context is informational and does not replace `sudo`, OpenSSH, shell policy, or operating-system authorization.
 
-4. **Compile:**
+See `docs/wardveil-session-context.md` and `docs/wardveil-runtime-acceptance.md`.
 
-    ```bash
-    meson compile -C _build
-    ```
+### Privacy Shield
 
-5. **Install (optional):**
+The RC adopts a minimized Privacy Shield adapter with only:
 
-    ```bash
-    sudo meson install -C _build
-    ```
+- `telemetry-minimization`
+- `data-minimization`
 
-**Using GNOME Builder:**
-[GNOME Builder](https://apps.gnome.org/Builder/) provides an excellent
-integrated development environment. Simply open the cloned `ptyxis/` directory
-in Builder for build configuration, running, and debugging.
+GoreeCloud Terminal adds no analytics or remote tracker telemetry. Release evidence excludes terminal contents, command history, clipboard contents, credentials, raw SSH configuration, private infrastructure inventory, and similar sensitive material.
 
----
+See `privacy-shield/adapter.json` and `docs/privacy-shield-integration.md`.
 
-## Basic Usage & Command-Line Options
+## Packaging
 
-Launch Ptyxis from your system's application launcher or by typing `ptyxis`
-in an existing terminal (if installed to your PATH).
+### Development acceptance package
 
-**Common Command-Line Options:**
+`com.goreecloud.Terminal.Devel.json` remains the isolated development package and lifecycle-test identity. Its exact-artifact lifecycle harness verifies hashes, application/runtime identity, packaged smoke behavior, data-preserving local-bundle replacement, and clean ordinary removal without `--delete-data`.
 
-- `--version`: Show the program version.
-- `--preferences`: Open the preferences window directly.
-- `--new-window`: Open a new Ptyxis window.
-- `--tab`: Open a new tab in the most-recently-used window.
-- `--tab-with-profile=PROFILE_UUID`: Open a new tab using the specified
-  profile UUID. (UUIDs can be copied from `Preferences -> Profiles`).
-  Example: `ptyxis --tab-with-profile=a1b2c3d4-e5f6-7890-1234-567890abcdef`
-- `-x "COMMAND"`, `--execute "COMMAND"`: Execute a command in a new,
-  standalone window.
-  Example: `ptyxis -x "htop"`
-- `-- PROGRAM [ARGUMENTS...]`: Execute `PROGRAM` with `ARGUMENTS` in a new,
-  standalone window.
-  Example: `ptyxis -- htop -u myuser`
-- `-d DIR`, `--working-directory DIR`: Set working directory for new
-  tab/window or command.
-  Example: `ptyxis -d /home/user/myproject`
-- `--title=TITLE`: Set initial title for new tab/window.
-- `--maximize`: Request new window starts maximized.
-- `--fullscreen`: Request new window starts fullscreen.
-- `--import-palette=FILE`: Import a Ptyxis `.palette` file.
-- `-s`, `--standalone`: Start a new instance of Ptyxis.
-- `-h`, `--help`: Show a summary of options.
+See `docs/flatpak-packaging-and-acceptance.md` and `docs/flatpak-upgrade-and-rollback.md`.
 
-For a complete list, refer to the `ptyxis(1)` man page.
+### Production-identity RC package
 
----
+`com.goreecloud.Terminal.json` is the production-identity Release Candidate manifest. It uses:
 
-## Core Functionality & Design
+- `com.goreecloud.Terminal`;
+- GNOME Platform/SDK 50;
+- canonical `goreecloud-terminal` command;
+- `-Ddevelopment=false`;
+- the same pinned support dependencies as the accepted development package;
+- explicit terminal-oriented permissions that remain subject to Stable permission-minimization acceptance.
 
-Ptyxis uses a two-part architecture for robust terminal emulation and deep
-container integration within a GTK4/libadwaita UI.
+The `Production RC Flatpak Acceptance` workflow builds and smoke-tests an exact-head RC bundle. A successful RC package workflow is not Stable authorization.
 
-### UI Application
+## Build and test
 
-The user-facing GTK4/libadwaita application manages:
+Representative native development validation:
 
-- Windows, tabs, and the graphical interface.
-- User profiles, theming (palettes, "Window Dressing"), and shortcuts.
-- Displaying terminal content via the VTE widget.
-- Communication with `ptyxis-agent`.
+```bash
+meson setup _build \
+  --buildtype=debugoptimized \
+  --prefix=/usr \
+  -Ddevelopment=true
 
-### `ptyxis-agent`
+meson compile -C _build
+meson test -C _build --print-errorlogs
+DESTDIR="$PWD/_install" meson install -C _build
+```
 
-A distinct helper process, typically running on the host system (even when the
-Ptyxis UI is a Flatpak). It handles:
+The RC source adds automated gates for maintained-fork provenance, lifecycle safety, Privacy Shield, the local API, Glaze UI source invariants, development Flatpak acceptance, and production-identity RC Flatpak acceptance.
 
-- Creating and managing PTYs (pseudo-terminals).
-- Direct interaction with container runtimes (Podman, Toolbox, etc.) for
-  discovery and spawning processes within containers.
-- Monitoring host processes and retrieving system info (shell, OS, proxies).
-- D-Bus communication with the UI over a `socketpair()`.
+## Security and privacy boundaries
 
-This separation allows the UI to be responsive and potentially sandboxed, while
-the agent handles lower-level system interactions.
+Terminal software is security-sensitive. GoreeCloud-specific features therefore preserve these boundaries:
 
----
+- no reusable credentials, private keys, tokens, or passwords are committed to source;
+- OpenSSH remains responsible for SSH configuration/authentication;
+- `sudo` and the operating system remain responsible for privilege authorization;
+- host profiles remain non-secret organizational metadata and do not grant access;
+- Wardveil context does not authorize commands or sessions;
+- Privacy Shield prohibits GoreeCloud telemetry of private terminal/session activity;
+- the local API is read-only, local, and privacy-minimized;
+- Flatpak permissions remain explicit and reviewable;
+- package/release evidence is limited to non-secret source/package identity and pass/fail data;
+- upstream security and compatibility fixes are reviewed through controlled synchronization.
 
-## Container Integration
+## RC and Stable boundary
 
-Ptyxis is engineered for intuitive integration with local containerized
-development environments.
+Release Candidate `50.2-rc.1` may be used for controlled final acceptance. Stable promotion still requires recorded supported-workstation evidence for applicable items including:
 
-### Technical Details
+- graphical launch and D-Bus activation;
+- terminal input, rendering, fonts, Unicode, selection, and clipboard;
+- tabs/session lifecycle and crash recovery;
+- real OpenSSH host-key/authentication behavior;
+- real container/elevated/remote Wardveil transitions;
+- mixed-tab Wardveil presentation and accessibility;
+- assistive-technology behavior;
+- Glaze UI light/dark/transparency/high-contrast/reduced-motion presentation;
+- settings persistence and controlled migration;
+- production package installation/removal/coexistence;
+- Flatpak permission minimization;
+- repository-backed cross-version update and exact rollback using distinct accepted packages;
+- data compatibility after rollback.
 
-1. **Discovery:** `ptyxis-agent` queries the host for containers (e.g.,
-    `podman ps --all --format=json`) and monitors system files for dynamic
-    updates to the container list in the UI.
-2. **Spawning:** The agent constructs and executes CLI commands for the target
-    runtime (e.g., `podman exec -it ...`, `toolbox enter ...`,
-    `distrobox enter ...`). It manages PTY setup and I/O.
-3. **Context Management:**
-    - Active container identified by VTE termprops (e.g., `vte.container.name`).
-    - CWD and select environment variables can be propagated into containers.
-    - Profiles specify default container and inheritance behavior.
-    - URI translation for "Open Link" from containers.
+No green CI result alone may promote the candidate to Stable.
 
-### `ptyxis-agent` Functions in Container Management
+## Upstream attribution
 
-- Interfaces with container runtimes for discovery and execution.
-- Monitors spawned processes (host and container), tracking foreground
-  processes and reporting status/exit codes.
-- Can create systemd user scopes for tabs for resource isolation (if
-  `systemd-run` is available and new enough).
+Ptyxis was created and is maintained upstream by Christian Hergert and contributors through GNOME GitLab. GoreeCloud Terminal builds on that project under GPL-3.0-or-later.
 
-### Supported Container Technologies
-
-- **Podman:** Full support.
-- **Toolbox:** Supported.
-- **Distrobox:** Supported.
-- **JHBuild:** Supported as a special environment. For session persistence,
-  add to `~/.bashrc` (or equivalent):
-
-  ```bash
-  if [ -t 1 -a x$UNDER_JHBUILD != x ]; then
-      printf "\033]777;container;push;%s;jhbuild\033\\" "JHBuild"
-      function pop_container {
-          printf "\033]777;container;pop;;\033\\"
-      }
-      trap pop_container EXIT
-  fi
-  ```
-
-- **Docker:** Direct, dedicated support for the Docker daemon is **not
-  currently implemented**. Users can run `docker` CLI commands normally.
-- **systemd-nspawn:** Contributions for enhanced integration are welcome.
-
-### Note on Container Security
-
-Ptyxis assumes containers are not used for strict security isolation, as most
-general-purpose runtimes may not provide sufficient hardening for untrusted
-workloads by default. Users should be aware of their container solutions'
-security posture.
-
----
-
-## Customization & Theming
-
-- **Color Palettes:**
-  - Built-in schemes, auto-switching with system light/dark mode.
-  - Install custom `.palette` files in:
-    - Native: `~/.local/share/org.gnome.Ptyxis/palettes/`
-    - Flatpak (Stable): `~/.var/app/app.devsuite.Ptyxis/data/ptyxis/palettes/`
-    - Flatpak (Nightly): `~/.var/app/org.gnome.Ptyxis.Devel/data/ptyxis/palettes/`
-    - In Ptyxis 49, you can use the `--install-palette FILENAME` option to
-      install a palette to the correct location.
-  - "Window Dressing" applies palette colors to the window theme.
-- **Keyboard Shortcuts:**
-  - Most actions have configurable shortcuts via Preferences.
-- **Transparency:**
-  - Optional background transparency, adjustable via GSettings.
-    Example (set 15% transparency, schema ID may vary):
-
-    ```bash
-    # If using distro packaging
-    gsettings set org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/$PTYXIS_PROFILE/ opacity .85
-
-    # If using app.devsuite.Ptyxis from Flathub
-    flatpak run --command=gsettings app.devsuite.Ptyxis set org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/$PTYXIS_PROFILE/ opacity .85
-
-    # If using org.gnome.Ptyxis.Devel Nightly Flatpak
-    flatpak run --command=gsettings org.gnome.Ptyxis.Devel set org.gnome.Ptyxis.Devel.Profile:/org/gnome/Ptyxis/Devel/Profiles/$PTYXIS_PROFILE/ opacity .85
-    ```
-
-- **User Profiles:**
-  - Named profiles for default container, startup commands, appearance
-    (font, palette), terminal behaviors, and compatibility modes.
-
----
-
-## How It Works (Agent-UI Interaction & Fallbacks)
-
-Ptyxis UI and `ptyxis-agent` communicate via D-Bus messages over a `socketpair()`.
-The agent handles PTY creation and container interaction. It's designed for
-portability (e.g., GLIBC symbol versioning for `x86_64`, targeting GLIBC 2.17)
-to run on older host systems.
-
-When Ptyxis UI is a Flatpak, it uses permissions like `org.freedesktop.Flatpak`
-(for `flatpak-spawn --host`) to access the host for its agent.
-
-**Fallback:** If host agent execution fails (e.g., incompatible GLIBC on Alpine,
-non-standard linkers on NixOS), Ptyxis attempts to run `ptyxis-agent` inside
-its own Flatpak sandbox. This ensures basic functionality, though some
-host-interaction features might be limited.
-
----
-
-## Contributing: Feature Requests and Design Changes
-
-Ptyxis uses its GitLab issue tracker primarily for engineering defects. For new
-features or significant design changes:
-
-1. **Initiate Discussion:** Start by discussing your idea or proposal, using the
-    [GNOME Design Whiteboards project](https://gitlab.gnome.org/Teams/Design/whiteboards/)
-2. **Develop a Specification:** For larger features, a detailed specification
-    is required. This should cover:
-    - How the feature should work and not work.
-    - Interaction with existing features.
-    - Any necessary migration strategies.
-    - UI mock-ups (if applicable).
-    - Testing strategy.
-    - Potential risks and security considerations.
-    - Ideally, an indication of who might implement it.
-
-Once a design is well-defined, an issue can be filed on the Ptyxis tracker
-referencing the design discussion/specification.
-
----
-
-## Troubleshooting Issues
-
-- **Notifications Don't Work (e.g., command completion):**
-  Ensure your shell (e.g., `~/.bashrc`, `~/.zshrc`) sources
-  `/etc/profile.d/vte.sh`. This script, provided by VTE packages, sets up shell hooks for VTE's terminal property
-  escape sequences used by Ptyxis.
-
-  - Verify `vte.sh` exists and is sourced by your shell.
-  - If needed, manually add to your shell's rc file:
-    `if [ -f /etc/profile.d/vte.sh ]; then . /etc/profile.d/vte.sh; fi`
-
-- **GPU/Font Rendering Issues:**
-  Problems with GPU rendering or font rendering (especially with HiDPI
-  scaling) are often rooted in GTK, VTE, graphics drivers, or compositor
-  interactions.
-
-  - Try different fonts or rendering settings.
-  - Report persistent issues to [GNOME/gtk Issues](https://gitlab.gnome.org/GNOME/gtk/-/issues)
-    or [GNOME/vte Issues](https://gitlab.gnome.org/GNOME/vte/-/issues),
-    providing Ptyxis/GTK/VTE versions, OS, GPU/driver, scaling factor,
-    and steps to reproduce.
-
-- **Container Detection for `toolbox`, `podman`, `distrobox`:**
-  Reliable automatic container detection relies on these tools emitting VTE
-  escape sequences (like OSC 777).
-  - Use **recent versions** of container tools.
-  - Check tool/distribution documentation for VTE integration settings.
-  - If detection fails, create a Ptyxis profile to launch commands
-    explicitly in the target container.
-
----
+Canonical upstream source: `https://gitlab.gnome.org/chergert/ptyxis`
 
 ## License
 
-Ptyxis is licensed under the **GNU General Public License v3.0 or later**.
-The source code includes a copy of the license in the `COPYING` file.
-
----
-
-## Acknowledgments
-
-Ptyxis is primarily developed by **Christian Hergert**. It evolves concepts
-from [GNOME Builder](https://apps.gnome.org/app/org.gnome.Builder/) and was
-motivated by VTE performance/feature enhancements for Wayland. The aim is a
-fast, feature-rich, container-aware terminal for GNOME.
+GPL-3.0-or-later. The GPL text remains in `COPYING`.
