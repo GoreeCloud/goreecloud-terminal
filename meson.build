@@ -18,25 +18,25 @@ app_id = get_option('app-id')
 
 if get_option('development')
   if app_id == ''
-    app_id = 'org.gnome.Ptyxis.Devel'
+    app_id = 'com.goreecloud.Terminal.Devel'
   endif
   if app_schema_path == ''
-    app_schema_path = '/org/gnome/Ptyxis/Devel/'
+    app_schema_path = '/com/goreecloud/Terminal/Devel/'
   endif
 else
   if app_id == ''
-    app_id = 'org.gnome.Ptyxis'
+    app_id = 'com.goreecloud.Terminal'
   endif
   if app_schema_path == ''
-    app_schema_path = '/org/gnome/Ptyxis/'
+    app_schema_path = '/com/goreecloud/Terminal/'
   endif
 endif
 
 if app_schema_id == ''
   if get_option('development')
-    app_schema_id = 'org.gnome.Ptyxis.Devel'
+    app_schema_id = 'com.goreecloud.Terminal.Devel'
   else
-    app_schema_id = 'org.gnome.Ptyxis'
+    app_schema_id = 'com.goreecloud.Terminal'
   endif
 endif
 
@@ -84,9 +84,9 @@ config_h.set_quoted('GETTEXT_PACKAGE', 'ptyxis')
 config_h.set_quoted('LOCALEDIR', get_option('prefix') / get_option('localedir'))
 # LIBEXECDIR must be expanded in config.h
 config_h.set_quoted('LIBEXECDIR', get_option('prefix') / get_option('libexecdir'))
-config_h.set_quoted('PACKAGE_WEBSITE', 'https://gitlab.gnome.org/chergert/ptyxis')
+config_h.set_quoted('PACKAGE_WEBSITE', 'https://github.com/GoreeCloud/goreecloud-terminal')
 config_h.set_quoted('PACKAGE_ICON_NAME', app_id)
-config_h.set_quoted('PACKAGE_NAME', 'Ptyxis')
+config_h.set_quoted('PACKAGE_NAME', 'GoreeCloud Terminal')
 config_h.set10('DEVELOPMENT_BUILD', get_option('development'))
 config_h.set10('APP_IS_GENERIC', app_is_generic)
 config_h.set10('APP_IS_BUILDER', app_is_builder)
