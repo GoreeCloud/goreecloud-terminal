@@ -7,12 +7,23 @@ goreecloud-terminal \- launch GoreeCloud Terminal
 [\-\- PROGRAM ARGUMENTS]
 .br
 .B goreecloud-terminal ssh
-.I TARGET
-.RI [SSH_ARGUMENT ...]
+.RI [OPENSSH_ARGUMENT ...]
 .br
 .B goreecloud-terminal ssh-tab
-.I TARGET
-.RI [SSH_ARGUMENT ...]
+.RI [OPENSSH_ARGUMENT ...]
+.br
+.B goreecloud-terminal workspaces
+.br
+.B goreecloud-terminal profiles
+.RI [WORKSPACE]
+.br
+.B goreecloud-terminal profile
+.I PROFILE
+.RI [REMOTE_COMMAND ...]
+.br
+.B goreecloud-terminal profile-tab
+.I PROFILE
+.RI [REMOTE_COMMAND ...]
 .SH DESCRIPTION
 .B goreecloud-terminal
 is the canonical command-line launcher for GoreeCloud Terminal.
@@ -33,9 +44,49 @@ The
 .B ssh-tab
 subcommand opens the OpenSSH session as a new tab in the existing GoreeCloud Terminal instance.
 .PP
-TARGET may be a hostname, address, user@hostname value, or a Host alias configured through standard OpenSSH configuration such as ~/.ssh/config. Remaining arguments are passed to the system ssh command without GoreeCloud reinterpretation.
+Arguments after either subcommand are passed to the system ssh command unchanged. Normal OpenSSH argument ordering therefore applies: command-line options precede the destination and an optional remote command follows it.
 .PP
 OpenSSH remains responsible for host configuration, host-key verification, authentication, keys, agents, ports, proxy settings, forwarding, and connection policy. GoreeCloud Terminal does not store SSH passwords or private keys and does not replace OpenSSH configuration.
+.SH HOST PROFILES AND WORKSPACES
+GoreeCloud Terminal may optionally organize standard OpenSSH Host aliases using a local metadata file.
+.PP
+The default profile file is:
+.PP
+.nf
+$XDG_CONFIG_HOME/goreecloud-terminal/profiles.tsv
+.fi
+.PP
+or, when XDG_CONFIG_HOME is unset:
+.PP
+.nf
+~/.config/goreecloud-terminal/profiles.tsv
+.fi
+.PP
+Each active line contains exactly three TAB-separated fields:
+.PP
+.nf
+WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
+.fi
+.PP
+The profile file is organizational metadata only. It must not replace OpenSSH configuration or contain passwords, private-key material, reusable secrets, port policy, proxy policy, identity-file paths, or authentication policy.
+.PP
+The
+.B workspaces
+command lists configured workspace labels once in first-seen order.
+.PP
+The
+.B profiles
+command lists PROFILE, WORKSPACE, and SSH_HOST_ALIAS fields. An optional WORKSPACE argument restricts the listing.
+.PP
+The
+.B profile
+command resolves PROFILE to its configured OpenSSH Host alias and opens a new window running standard OpenSSH.
+.PP
+The
+.B profile-tab
+command performs the same alias resolution but opens the session in a new tab.
+.PP
+Duplicate profile IDs, malformed rows, aliases containing whitespace, aliases beginning with a hyphen, unknown workspaces, unknown profiles, and missing configuration fail before the terminal runtime is launched.
 .SH COMPATIBILITY
 The inherited
 .B ptyxis
@@ -45,11 +96,7 @@ New GoreeCloud documentation and normal user workflows should prefer
 .B goreecloud-terminal
 unless a compatibility test specifically requires the inherited command.
 .SH OPTIONS
-Except for the GoreeCloud
-.B ssh
-and
-.B ssh-tab
-subcommands, command-line options and program arguments are passed directly to the
+Except for the GoreeCloud administration subcommands documented above, command-line options and program arguments are passed directly to the
 .B ptyxis
 runtime. For the inherited option set, see:
 .PP
@@ -73,25 +120,33 @@ Run a command in a terminal:
 goreecloud-terminal -- bash -lc 'printf "hello from GoreeCloud Terminal\\n"'
 .fi
 .PP
-Open a standard OpenSSH session in a new window using an OpenSSH Host alias:
+Open a standard OpenSSH session using an OpenSSH Host alias:
 .PP
 .nf
 goreecloud-terminal ssh server-alias
 .fi
 .PP
-Open the same style of session in a new tab:
+Use a non-default OpenSSH port with normal option ordering:
 .PP
 .nf
-goreecloud-terminal ssh-tab server-alias
+goreecloud-terminal ssh -p 2222 server-alias
 .fi
 .PP
-Pass an additional OpenSSH option:
+Open a configured GoreeCloud Terminal profile in a new window:
 .PP
 .nf
-goreecloud-terminal ssh server-alias -p 2222
+goreecloud-terminal profile primary-vps
+.fi
+.PP
+List profiles within one workspace:
+.PP
+.nf
+goreecloud-terminal profiles Infrastructure
 .fi
 .SH SECURITY
-Do not place reusable passwords, private-key material, tokens, or other secrets directly in command-line arguments. Standard OpenSSH and operating-system credential controls remain authoritative.
+Do not place reusable passwords, private-key material, tokens, or other secrets directly in command-line arguments or GoreeCloud Terminal profile metadata. Standard OpenSSH and operating-system credential controls remain authoritative.
+.PP
+Workspace labels and aliases may reveal infrastructure organization even when they are not credentials. Protect the profile file as private local configuration.
 .SH PROJECT
 GoreeCloud repository:
 .br
