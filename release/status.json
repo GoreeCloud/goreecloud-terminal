@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "product": "GoreeCloud Terminal",
+  "repository": "GoreeCloud/goreecloud-terminal",
+  "release_lifecycle": "Release Candidate",
+  "release_candidate": "50.2-rc.1",
+  "upstream_foundation": {
+    "project": "Ptyxis",
+    "version": "50.2",
+    "canonical_repository": "https://gitlab.gnome.org/chergert/ptyxis"
+  },
+  "identity": {
+    "production_application_id": "com.goreecloud.Terminal",
+    "development_application_id": "com.goreecloud.Terminal.Devel",
+    "canonical_launcher": "goreecloud-terminal"
+  },
+  "distribution": {
+    "rc_manifest": "com.goreecloud.Terminal.json",
+    "rc_application_id": "com.goreecloud.Terminal",
+    "runtime": "org.gnome.Platform//50",
+    "development_manifest": "com.goreecloud.Terminal.Devel.json"
+  },
+  "source_acceptance": {
+    "exact_head_required": true,
+    "fork_foundation_required": true,
+    "flatpak_lifecycle_contract_required": true,
+    "development_flatpak_required": true,
+    "release_readiness_required": true,
+    "production_identity_flatpak_required": true
+  },
+  "production_approved": false,
+  "stable_approved": false,
+  "stable_blockers": [
+    "supported-workstation graphical acceptance",
+    "detector-driven Wardveil runtime transitions",
+    "mixed-tab and accessibility acceptance",
+    "Glaze UI light/dark palette and transparency acceptance",
+    "real OpenSSH controlled-host acceptance",
+    "settings persistence and controlled migration acceptance",
+    "Flatpak permission minimization review",
+    "second distinct package and repository-backed update/rollback acceptance",
+    "data compatibility after rollback",
+    "production package install/removal/coexistence acceptance"
+  ]
+}

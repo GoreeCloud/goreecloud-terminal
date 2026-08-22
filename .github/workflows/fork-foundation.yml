@@ -1,0 +1,237 @@
+name: Fork Foundation
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+    branches:
+      - main
+      - "agent/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provenance:
+    name: Provenance, license, and identity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate fork foundation records
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f COPYING
+          test -f GORECLOUD_FORK.md
+          test -f docs/product-identity.md
+          test -f docs/runtime-identity-acceptance.md
+          test -f docs/settings-migration-and-rollback.md
+          test -f docs/administration-workflows.md
+          test -f docs/host-profiles-and-workspaces.md
+          test -f man/goreecloud-terminal.1.in
+          test -x tools/validate-runtime-identity.sh
+          test -x tools/migrate-ptyxis-settings.sh
+          test -x tools/test-settings-migration.sh
+          test -x tools/test-ssh-launch-workflows.sh
+          test -x tools/test-host-profiles-workspaces.sh
+          bash -n tools/validate-runtime-identity.sh
+          bash -n tools/migrate-ptyxis-settings.sh
+          bash -n tools/test-settings-migration.sh
+          bash -n tools/test-ssh-launch-workflows.sh
+          bash -n tools/test-host-profiles-workspaces.sh
+          sh -n data/goreecloud-terminal
+          grep -Fq "GNU GENERAL PUBLIC LICENSE" COPYING
+          grep -Fq "https://gitlab.gnome.org/chergert/ptyxis" GORECLOUD_FORK.md
+          grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal" GORECLOUD_FORK.md
+          grep -Fq "GPL-3.0-or-later" data/org.gnome.Ptyxis.metainfo.xml.in.in
+
+      - name: Validate GoreeCloud product identity source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "app_id = 'com.goreecloud.Terminal'" meson.build
+          grep -Fq "app_id = 'com.goreecloud.Terminal.Devel'" meson.build
+          grep -Fq "app_schema_id = 'com.goreecloud.Terminal'" meson.build
+          grep -Fq "app_schema_id = 'com.goreecloud.Terminal.Devel'" meson.build
+          grep -Fq "PACKAGE_NAME', 'GoreeCloud Terminal'" meson.build
+          grep -Fq "PACKAGE_WEBSITE', 'https://github.com/GoreeCloud/goreecloud-terminal'" meson.build
+          grep -Fq "app_name = 'GoreeCloud Terminal'" data/meson.build
+          grep -Fq "'goreecloud-terminal'" data/meson.build
+          grep -Fq 'ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"' data/goreecloud-terminal
+          grep -Fq 'GORECLOUD_TERMINAL_PROFILES_FILE' data/goreecloud-terminal
+          grep -Fq 'profiles.tsv' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$ssh_alias" "$@"' data/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$ssh_alias" "$@"' data/goreecloud-terminal
+          grep -Fq 'duplicate profile ID' data/goreecloud-terminal
+          grep -Fq 'SSH Host alias must be one non-option token' data/goreecloud-terminal
+          grep -Fq 'Exec=goreecloud-terminal' data/org.gnome.Ptyxis.desktop.in.in
+          grep -Fq 'Exec=@bindir@/goreecloud-terminal --gapplication-service' data/org.gnome.Ptyxis.service.in
+          grep -Fq 'return _("GoreeCloud Terminal");' src/ptyxis-util.c
+          grep -Fq "GoreeCloud-maintained terminal" data/org.gnome.Ptyxis.metainfo.xml.in.in
+          grep -Fq "https://github.com/GoreeCloud/goreecloud-terminal/issues" data/org.gnome.Ptyxis.metainfo.xml.in.in
+          grep -Fq ".TH \"GOREECLOUD TERMINAL\"" man/ptyxis.1.in
+          grep -Fq ".TH \"GOREECLOUD-TERMINAL\"" man/goreecloud-terminal.1.in
+          grep -Fq 'Canonical CLI launcher | `goreecloud-terminal`' docs/product-identity.md
+          grep -Fq 'Compatibility runtime binary | `ptyxis`' docs/product-identity.md
+          grep -Fq 'tools/validate-runtime-identity.sh' docs/runtime-identity-acceptance.md
+          grep -Fq 'source_path="/org/gnome/Ptyxis/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'target_path="/com/goreecloud/Terminal/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'target_path="/com/goreecloud/Terminal/Devel/"' tools/migrate-ptyxis-settings.sh
+          grep -Fq 'migration refuses to write when the target already contains custom values' docs/settings-migration-and-rollback.md
+          grep -Fq 'OpenSSH remains the SSH protocol implementation' docs/administration-workflows.md
+          grep -Fq 'goreecloud-terminal ssh -p 2222 server-alias' docs/administration-workflows.md
+          grep -Fq 'workspace label, unique profile ID, and OpenSSH `Host` alias' GORECLOUD_FORK.md
+          grep -Fq 'A GoreeCloud Terminal profile is therefore an interface shortcut, not an authorization record.' docs/host-profiles-and-workspaces.md
+          grep -Fq 'Wardveil runtime presentation must continue to rely on verified runtime/process context.' docs/host-profiles-and-workspaces.md
+
+      - name: Test settings migration safety model
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-settings-migration.sh
+
+      - name: Test SSH launch workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-ssh-launch-workflows.sh
+
+      - name: Test host profiles and workspaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-host-profiles-workspaces.sh
+
+      - name: Record source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git describe --always --tags --dirty
+          grep -m1 "version:" meson.build
+
+  build:
+    name: Native build and tests
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:rawhide
+    steps:
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            appstream \
+            desktop-file-utils \
+            gcc \
+            gettext \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            json-glib-devel \
+            libadwaita-devel \
+            libportal-gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            vte291-gtk4-devel
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify supported Meson options
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "option('development'" meson_options.txt
+
+      - name: Configure current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! meson setup _build \
+            --buildtype=debugoptimized \
+            --prefix=/usr \
+            -Ddevelopment=true; then
+            printf '\n--- Meson configure log ---\n'
+            cat _build/meson-logs/meson-log.txt 2>/dev/null || true
+            exit 1
+          fi
+          grep -Fq '#define APP_ID "com.goreecloud.Terminal.Devel"' _build/config.h
+          grep -Fq '#define APP_SCHEMA_ID "com.goreecloud.Terminal.Devel"' _build/config.h
+          grep -Fq '#define PACKAGE_NAME "GoreeCloud Terminal"' _build/config.h
+
+      - name: Upload Meson configure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meson-configure-diagnostics
+          path: _build/meson-logs/meson-log.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson compile -C _build
+
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson test -C _build --print-errorlogs
+
+      - name: Validate install staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          DESTDIR="$PWD/_install" meson install -C _build
+          test -x _install/usr/bin/goreecloud-terminal
+          test -x _install/usr/bin/ptyxis
+          test -x _install/usr/libexec/ptyxis-agent
+          test -f _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          test -f _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
+          test -f _install/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Devel.gschema.xml
+          test -f _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          test -f _install/usr/share/man/man1/goreecloud-terminal.1
+          test -f _install/usr/share/man/man1/ptyxis.1
+          grep -Fq 'ptyxis_bin="${GORECLOUD_TERMINAL_PTYXIS_BIN:-ptyxis}"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'GORECLOUD_TERMINAL_PROFILES_FILE' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'profiles.tsv' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --new-window -- ssh "$ssh_alias" "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'exec "$ptyxis_bin" --tab -- ssh "$ssh_alias" "$@"' _install/usr/bin/goreecloud-terminal
+          grep -Fq 'Name=GoreeCloud Terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq 'Exec=goreecloud-terminal' _install/usr/share/applications/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq '<id>com.goreecloud.Terminal.Devel</id>' _install/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml
+          grep -Fq 'Name=com.goreecloud.Terminal.Devel' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'Exec=/usr/bin/goreecloud-terminal --gapplication-service' _install/usr/share/dbus-1/services/com.goreecloud.Terminal.Devel.service
+          grep -Fq 'goreecloud-terminal profile' _install/usr/share/man/man1/goreecloud-terminal.1
+          grep -Fq 'GoreeCloud Terminal' _install/usr/share/man/man1/ptyxis.1
+          find _install/usr/share/icons -type f -name 'com.goreecloud.Terminal.Devel*' -print -quit | grep -q .
+
+      - name: Run staged runtime identity harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/validate-runtime-identity.sh \
+            --root "$PWD/_install" \
+            --app-id com.goreecloud.Terminal.Devel

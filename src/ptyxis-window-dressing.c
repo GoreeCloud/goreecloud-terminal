@@ -25,6 +25,7 @@
 
 #include "gdkhslaprivate.h"
 
+#include "goreecloud-session-context.h"
 #include "ptyxis-application.h"
 #include "ptyxis-window-dressing.h"
 
@@ -37,6 +38,11 @@ struct _PtyxisWindowDressing
   char           *css_class;
   double          opacity;
   guint           queued_update;
+
+  GtkWidget      *session_context_chip;
+  GtkImage       *session_context_icon;
+  GtkLabel       *session_context_label;
+  GSignalGroup   *session_context_tab_signals;
 };
 
 enum {
@@ -52,6 +58,140 @@ G_DEFINE_FINAL_TYPE (PtyxisWindowDressing, ptyxis_window_dressing, G_TYPE_OBJECT
 static GParamSpec *properties[N_PROPS];
 static guint last_sequence;
 
+static AdwHeaderBar *
+ptyxis_window_dressing_find_header_bar (GtkWidget *widget)
+{
+  GtkWidget *child;
+
+  if (ADW_IS_HEADER_BAR (widget))
+    return ADW_HEADER_BAR (widget);
+
+  for (child = gtk_widget_get_first_child (widget);
+       child != NULL;
+       child = gtk_widget_get_next_sibling (child))
+    {
+      AdwHeaderBar *header_bar = ptyxis_window_dressing_find_header_bar (child);
+
+      if (header_bar != NULL)
+        return header_bar;
+    }
+
+  return NULL;
+}
+
+static void
+ptyxis_window_dressing_update_session_context (PtyxisWindowDressing *self)
+{
+  g_autoptr(PtyxisWindow) window = NULL;
+  const GoreeCloudSessionContext *context;
+  PtyxisProcessLeaderKind kind = PTYXIS_PROCESS_LEADER_KIND_UNKNOWN;
+  PtyxisTab *tab;
+
+  g_assert (PTYXIS_IS_WINDOW_DRESSING (self));
+
+  if (self->session_context_chip == NULL)
+    return;
+
+  window = ptyxis_window_dressing_dup_window (self);
+  if (window == NULL)
+    return;
+
+  tab = ptyxis_window_get_active_tab (window);
+  g_signal_group_set_target (self->session_context_tab_signals, tab);
+
+  if (tab != NULL)
+    g_object_get (tab,
+                  "process-leader-kind", &kind,
+                  NULL);
+
+  context = goreecloud_session_context_for_leader_kind (kind);
+
+  gtk_widget_remove_css_class (self->session_context_chip, "session-context-local");
+  gtk_widget_remove_css_class (self->session_context_chip, "session-context-remote");
+  gtk_widget_remove_css_class (self->session_context_chip, "session-context-container");
+  gtk_widget_remove_css_class (self->session_context_chip, "session-context-elevated");
+  gtk_widget_add_css_class (self->session_context_chip, context->css_class);
+
+  gtk_label_set_label (self->session_context_label, context->label);
+  gtk_image_set_from_icon_name (self->session_context_icon, context->icon_name);
+  gtk_widget_set_tooltip_text (self->session_context_chip,
+                               context->accessible_description);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->session_context_chip),
+                                  GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  context->accessible_description,
+                                  -1);
+
+  gtk_widget_set_visible (self->session_context_chip, context->show_indicator);
+}
+
+static void
+ptyxis_window_dressing_session_context_tab_notify_cb (PtyxisWindowDressing *self,
+                                                      GParamSpec           *pspec,
+                                                      PtyxisTab            *tab)
+{
+  g_assert (PTYXIS_IS_WINDOW_DRESSING (self));
+  g_assert (PTYXIS_IS_TAB (tab));
+
+  ptyxis_window_dressing_update_session_context (self);
+}
+
+static void
+ptyxis_window_dressing_active_tab_notify_cb (PtyxisWindowDressing *self,
+                                             GParamSpec           *pspec,
+                                             PtyxisWindow         *window)
+{
+  g_assert (PTYXIS_IS_WINDOW_DRESSING (self));
+  g_assert (PTYXIS_IS_WINDOW (window));
+
+  ptyxis_window_dressing_update_session_context (self);
+}
+
+static void
+ptyxis_window_dressing_create_session_context_chip (PtyxisWindowDressing *self,
+                                                    PtyxisWindow         *window)
+{
+  AdwHeaderBar *header_bar;
+
+  g_assert (PTYXIS_IS_WINDOW_DRESSING (self));
+  g_assert (PTYXIS_IS_WINDOW (window));
+
+  header_bar = ptyxis_window_dressing_find_header_bar (GTK_WIDGET (window));
+  if (header_bar == NULL)
+    {
+      g_warning ("Unable to locate terminal header bar for Wardveil session context");
+      return;
+    }
+
+  self->session_context_icon = GTK_IMAGE (gtk_image_new ());
+  gtk_image_set_pixel_size (self->session_context_icon, 16);
+
+  self->session_context_label = GTK_LABEL (gtk_label_new (NULL));
+  gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
+  gtk_label_set_max_width_chars (self->session_context_label, 16);
+
+  self->session_context_chip = g_object_new (GTK_TYPE_BOX,
+                                              "orientation", GTK_ORIENTATION_HORIZONTAL,
+                                              "spacing", 6,
+                                              "valign", GTK_ALIGN_CENTER,
+                                              NULL);
+  gtk_widget_add_css_class (self->session_context_chip, "wardveil-session-context");
+  gtk_box_append (GTK_BOX (self->session_context_chip),
+                  GTK_WIDGET (self->session_context_icon));
+  gtk_box_append (GTK_BOX (self->session_context_chip),
+                  GTK_WIDGET (self->session_context_label));
+  gtk_widget_set_visible (self->session_context_chip, FALSE);
+
+  adw_header_bar_pack_end (header_bar, self->session_context_chip);
+
+  g_signal_connect_object (window,
+                           "notify::active-tab",
+                           G_CALLBACK (ptyxis_window_dressing_active_tab_notify_cb),
+                           self,
+                           G_CONNECT_SWAPPED);
+
+  ptyxis_window_dressing_update_session_context (self);
+}
+
 static void
 ptyxis_window_dressing_update (PtyxisWindowDressing *self)
 {
@@ -60,6 +200,33 @@ ptyxis_window_dressing_update (PtyxisWindowDressing *self)
   g_assert (PTYXIS_IS_WINDOW_DRESSING (self));
 
   string = g_string_new (NULL);
+
+  /* Wardveil session context is application chrome, not terminal content.
+   * It intentionally uses text plus iconography so state is never conveyed by
+   * color alone. Local/unknown state stays hidden and therefore makes no
+   * protection claim.
+   */
+  g_string_append (string,
+                   ".wardveil-session-context {"
+                   " min-height: 24px;"
+                   " padding: 2px 9px;"
+                   " border-radius: 9999px;"
+                   " border: 1px solid alpha(currentColor,.18);"
+                   " background-color: alpha(currentColor,.07);"
+                   "}\n"
+                   ".wardveil-session-context.session-context-remote {"
+                   " background-color: alpha(#48b8ff,.14);"
+                   " border-color: alpha(#7fd6ff,.34);"
+                   "}\n"
+                   ".wardveil-session-context.session-context-container {"
+                   " background-color: alpha(#f6c85f,.14);"
+                   " border-color: alpha(#f6c85f,.34);"
+                   "}\n"
+                   ".wardveil-session-context.session-context-elevated {"
+                   " background-color: alpha(#ff6b7a,.16);"
+                   " border-color: alpha(#ff8a96,.42);"
+                   " font-weight: 600;"
+                   "}\n");
 
   if (self->palette != NULL)
     {
@@ -242,8 +409,13 @@ ptyxis_window_dressing_constructed (GObject *object)
   PtyxisWindowDressing *self = (PtyxisWindowDressing *)object;
   AdwStyleManager *style_manager = adw_style_manager_get_default ();
   PtyxisSettings *settings = ptyxis_application_get_settings (PTYXIS_APPLICATION_DEFAULT);
+  g_autoptr(PtyxisWindow) window = NULL;
 
   G_OBJECT_CLASS (ptyxis_window_dressing_parent_class)->constructed (object);
+
+  window = ptyxis_window_dressing_dup_window (self);
+  if (window != NULL)
+    ptyxis_window_dressing_create_session_context_chip (self, window);
 
   g_signal_connect_object (settings,
                            "notify::visual-process-leader",
@@ -276,6 +448,12 @@ ptyxis_window_dressing_dispose (GObject *object)
 
   ptyxis_window_dressing_set_palette (self, NULL);
 
+  g_signal_group_set_target (self->session_context_tab_signals, NULL);
+  g_clear_object (&self->session_context_tab_signals);
+  self->session_context_chip = NULL;
+  self->session_context_icon = NULL;
+  self->session_context_label = NULL;
+
   if (self->css_provider != NULL) {
     gtk_style_context_remove_provider_for_display (gdk_display_get_default (),
                                                    GTK_STYLE_PROVIDER (self->css_provider));
@@ -301,6 +479,7 @@ ptyxis_window_dressing_finalize (GObject *object)
   g_assert (self->palette == NULL);
   g_assert (self->queued_update == 0);
   g_assert (self->css_provider == NULL);
+  g_assert (self->session_context_tab_signals == NULL);
 
   G_OBJECT_CLASS (ptyxis_window_dressing_parent_class)->finalize (object);
 }
@@ -400,6 +579,13 @@ ptyxis_window_dressing_init (PtyxisWindowDressing *self)
   self->css_provider = gtk_css_provider_new ();
   self->css_class = g_strdup_printf ("window-dressing-%u", ++last_sequence);
   self->opacity = 1.0;
+  self->session_context_tab_signals = g_signal_group_new (PTYXIS_TYPE_TAB);
+
+  g_signal_group_connect_object (self->session_context_tab_signals,
+                                 "notify::process-leader-kind",
+                                 G_CALLBACK (ptyxis_window_dressing_session_context_tab_notify_cb),
+                                 self,
+                                 G_CONNECT_SWAPPED);
 
   g_weak_ref_init (&self->window_wr, NULL);
 }

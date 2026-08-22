@@ -4,53 +4,47 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>@APP_NAME@</name>
-  <summary>Secure terminal for the GoreeCloud platform</summary>
+  <summary>GoreeCloud-maintained terminal for Linux workstations</summary>
   <description>
     <p>
-      GoreeCloud Terminal is the native terminal experience for GoreeCloud,
-      designed for local shells, SSH administration, development workflows,
-      containers, and infrastructure operations.
+      GoreeCloud Terminal is the GoreeCloud-maintained fork of Ptyxis for approved
+      GoreeCloud Linux workstations. It preserves the mature GTK, VTE, PTY,
+      container, accessibility, and terminal-emulation foundation inherited from
+      upstream Ptyxis while adding GoreeCloud-owned product identity, Glaze UI,
+      Wardveil Security context presentation, and GoreeCloud terminal workflows.
     </p>
-    <p>Features:</p>
-    <ul>
-      <li>Local shell and remote SSH administration workflows</li>
-      <li>Container awareness with support for Podman, Toolbox, Distrobox, and more</li>
-      <li>Configurable keyboard shortcuts and reusable profiles</li>
-      <li>Modern interface designed to integrate with the GoreeCloud Glaze UI design language</li>
-      <li>User-installable color palettes with light and dark variants</li>
-      <li>Tabbed workflows with tab overviews, pinned tabs, and saved sessions</li>
-      <li>Foreground process tracking for sudo and SSH sessions</li>
-      <li>Transparent terminal background support</li>
-      <li>Separate process mode for terminal-based applications</li>
-      <li>Terminal tabs isolated in separate cgroups</li>
-      <li>Terminal inspector for application development and diagnostics</li>
-    </ul>
     <p>
-      GoreeCloud Terminal is maintained by GoreeCloud and is based on the
-      open-source Ptyxis terminal project. Upstream copyright, licensing,
-      and attribution are preserved in accordance with their respective terms.
+      The project remains an open-source maintained fork. Upstream Ptyxis authorship,
+      copyright, licensing, translation history, and source provenance are preserved
+      in the repository and are not represented as original GoreeCloud work.
     </p>
+    <p>Current capabilities include:</p>
+    <ul>
+      <li>Container-aware terminal sessions with Podman, Toolbox, Distrobox, and related environments</li>
+      <li>Configurable keyboard shortcuts, profiles, palettes, tabs, and saved sessions</li>
+      <li>Glaze UI application chrome while preserving VTE terminal palette ownership</li>
+      <li>Wardveil session-context presentation for remote, container, and elevated states</li>
+      <li>Terminal context-menu utilities with normal shell and sudo authorization boundaries</li>
+      <li>Foreground-process tracking, transparent terminal backgrounds, and terminal inspection tools</li>
+    </ul>
   </description>
+  <project_group>GoreeCloud</project_group>
+  <!-- developer_name is retained for compatibility with older AppStream consumers. -->
+  <developer_name translate="no">GoreeCloud</developer_name>
   <developer id="com.goreecloud">
     <name translate="no">GoreeCloud</name>
   </developer>
   <url type="homepage">https://github.com/GoreeCloud/goreecloud-terminal</url>
   <url type="bugtracker">https://github.com/GoreeCloud/goreecloud-terminal/issues</url>
   <url type="vcs-browser">https://github.com/GoreeCloud/goreecloud-terminal</url>
+  <url type="translate">https://gitlab.gnome.org/chergert/ptyxis/-/tree/main/po</url>
 
+  <!-- The fork continues to consume the inherited Ptyxis gettext catalog. -->
   <translation type="gettext">ptyxis</translation>
   <launchable type="desktop-id">@APP_ID@.desktop</launchable>
-
-  <releases>
-    <release version="50.2" date="2026-08-20">
-      <description>
-        <p>Initial GoreeCloud-maintained identity and platform integration release.</p>
-      </description>
-    </release>
-    <release version="50.1" date="2026-03-16"/>
-    <release version="50.0" date="2026-03-16"/>
-    <release version="49.0" date="2025-09-12"/>
-  </releases>
+  <provides>
+    <binary>ptyxis</binary>
+  </provides>
 
   <content_rating type="oars-1.1" />
 </component>

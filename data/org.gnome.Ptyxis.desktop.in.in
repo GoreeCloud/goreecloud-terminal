@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=@APP_NAME@
-Comment=GoreeCloud terminal for local shells, SSH, development, and infrastructure administration
-Exec=ptyxis
+Comment=A GoreeCloud-maintained terminal for Linux workstations
+Exec=goreecloud-terminal
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
 Icon=@APP_ID@
 DBusActivatable=true
@@ -11,7 +11,7 @@ Type=Application
 Categories=GNOME;GTK;System;TerminalEmulator;
 GenericName=Terminal
 # Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
-Keywords=terminal;prompt;shell;command;commandline;cmd;cli;console;ssh;remote;container;podman;toolbox;distrobox;GoreeCloud;
+Keywords=terminal;prompt;goreecloud;ptyxis;shell;command;commandline;cmd;cli;console;container;podman;toolbox;distrobox;
 Actions=new-window;new-tab;preferences;
 X-ExecArg=--
 X-TerminalArgTitle=--title
@@ -21,12 +21,12 @@ X-KDE-AuthorizeAction=shell_access
 
 [Desktop Action new-window]
 Name=New Window
-Exec=ptyxis --new-window
+Exec=goreecloud-terminal --new-window
 
 [Desktop Action new-tab]
 Name=New Tab
-Exec=ptyxis --tab
+Exec=goreecloud-terminal --tab
 
 [Desktop Action preferences]
 Name=Preferences
-Exec=ptyxis --preferences
+Exec=goreecloud-terminal --preferences

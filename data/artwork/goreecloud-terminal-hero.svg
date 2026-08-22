@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">GoreeCloud Terminal hero artwork</title>
+  <desc id="desc">A dark Glaze UI inspired hero panel showing a terminal window, cloud motif, and GoreeCloud Terminal wordmark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="60" x2="1480" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#091427"/>
+      <stop offset="0.5" stop-color="#102A54"/>
+      <stop offset="1" stop-color="#08111F"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="540" y1="248" x2="1150" y2="680" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4F90" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#071426" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="350" y1="180" x2="1240" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7FE7FF"/>
+      <stop offset="0.52" stop-color="#45A8FF"/>
+      <stop offset="1" stop-color="#836FFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="30" stdDeviation="35" flood-color="#000814" flood-opacity="0.55"/></filter>
+  </defs>
+  <rect width="1600" height="900" rx="56" fill="url(#bg)"/>
+  <circle cx="1330" cy="120" r="260" fill="#48A9FF" opacity="0.09"/>
+  <circle cx="220" cy="820" r="330" fill="#7C67FF" opacity="0.08"/>
+  <g opacity="0.3" fill="none" stroke="#79DFFF">
+    <path d="M0 710h1600"/><path d="M0 760h1600"/><path d="M0 810h1600"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M515 590c-63 0-114-51-114-114 0-58 43-106 99-113 21-88 101-153 196-153 103 0 187 75 202 174 70 5 126 64 126 136 0 75-61 136-136 136H515Z" fill="#0B1B33" stroke="url(#accent)" stroke-width="18"/>
+    <rect x="595" y="338" width="580" height="390" rx="44" fill="url(#glass)" stroke="#BDEFFF" stroke-opacity="0.25" stroke-width="4"/>
+    <rect x="622" y="367" width="526" height="50" rx="25" fill="#FFFFFF" opacity="0.07"/>
+    <circle cx="658" cy="392" r="8" fill="#70E6FF"/><circle cx="686" cy="392" r="8" fill="#6FA8FF"/><circle cx="714" cy="392" r="8" fill="#8979FF"/>
+    <path d="M690 490 770 553 690 616" fill="none" stroke="#F8FBFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M820 616h132" stroke="#7FE7FF" stroke-width="24" stroke-linecap="round"/>
+  </g>
+  <text x="150" y="180" fill="#F7FBFF" font-family="Inter, Cantarell, sans-serif" font-size="92" font-weight="700">GoreeCloud</text>
+  <text x="150" y="280" fill="#F7FBFF" font-family="Inter, Cantarell, sans-serif" font-size="92" font-weight="700">Terminal</text>
+  <text x="156" y="338" fill="#8EDFFF" font-family="Inter, Cantarell, sans-serif" font-size="28" font-weight="500" letter-spacing="4">LOCAL • REMOTE • SECURE</text>
+  <text x="156" y="392" fill="#C9D8EA" font-family="Inter, Cantarell, sans-serif" font-size="30">Your shell. Your infrastructure. Your cloud.</text>
+  <text x="157" y="735" fill="#8299B5" font-family="Inter, Cantarell, sans-serif" font-size="22">Glaze UI • Wardveil-aware • based on Ptyxis</text>
+</svg>
