@@ -1,0 +1,57 @@
+name: Flatpak Lifecycle Contract
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+    branches:
+      - main
+      - "agent/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-lifecycle-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lifecycle-contract:
+    name: Validate package lifecycle safety model
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate lifecycle source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/flatpak-upgrade-and-rollback.md
+          test -x tools/validate-flatpak-lifecycle.sh
+          test -x tools/test-flatpak-lifecycle.sh
+          bash -n tools/validate-flatpak-lifecycle.sh
+          bash -n tools/test-flatpak-lifecycle.sh
+          grep -Fq 'com.goreecloud.Terminal.Devel' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'only com.goreecloud.Terminal.Devel is accepted' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'transition mode requires two cryptographically distinct bundle artifacts' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'refusing to claim upgrade acceptance' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'rollback did not restore the exact baseline OSTree commit' tools/validate-flatpak-lifecycle.sh
+          grep -Fq 'real cross-version upgrade and rollback claim remains pending a second distinct accepted package candidate' docs/flatpak-upgrade-and-rollback.md
+
+      - name: Test lifecycle safety model
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/test-flatpak-lifecycle.sh
+
+      - name: Record lifecycle source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git describe --always --tags --dirty
