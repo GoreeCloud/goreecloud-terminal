@@ -32,45 +32,43 @@ jobs:
           path = Path("src/ptyxis-window-dressing.c")
           text = path.read_text(encoding="utf-8")
 
-          old = '''  self->session_context_icon = GTK_IMAGE (gtk_image_new ());
-          gtk_image_set_pixel_size (self->session_context_icon, 16);
+          replacements = [
+              (
+                  "  self->session_context_icon = GTK_IMAGE (gtk_image_new ());",
+                  "  self->session_context_icon = GTK_IMAGE (g_object_new (GTK_TYPE_IMAGE,\n"
+                  "                                                       \"accessible-role\", GTK_ACCESSIBLE_ROLE_NONE,\n"
+                  "                                                       NULL));",
+                  "decorative icon role",
+              ),
+              (
+                  "  self->session_context_label = GTK_LABEL (gtk_label_new (NULL));",
+                  "  self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,\n"
+                  "                                                                 \"accessible-role\", GTK_ACCESSIBLE_ROLE_NONE,\n"
+                  "                                                                 NULL));",
+                  "decorative label role",
+              ),
+              (
+                  "  self->session_context_chip = g_object_new (GTK_TYPE_BOX,\n",
+                  "  self->session_context_chip = g_object_new (GTK_TYPE_BOX,\n"
+                  "                                              \"accessible-role\", GTK_ACCESSIBLE_ROLE_GROUP,\n",
+                  "semantic group role",
+              ),
+          ]
 
-          self->session_context_label = GTK_LABEL (gtk_label_new (NULL));
-          gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
-          gtk_label_set_max_width_chars (self->session_context_label, 16);
+          changed = False
+          for old, new, description in replacements:
+              if old in text:
+                  if text.count(old) != 1:
+                      raise SystemExit(f"expected one {description} source pattern, found {text.count(old)}")
+                  text = text.replace(old, new, 1)
+                  changed = True
+              elif new not in text:
+                  raise SystemExit(f"neither old nor corrected {description} source pattern was found")
 
-          self->session_context_chip = g_object_new (GTK_TYPE_BOX,
-                                                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                                                      "spacing", 6,
-                                                      "valign", GTK_ALIGN_CENTER,
-                                                      NULL);
-          '''
-
-          new = '''  self->session_context_icon = GTK_IMAGE (g_object_new (GTK_TYPE_IMAGE,
-                                                       "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
-                                                       NULL));
-          gtk_image_set_pixel_size (self->session_context_icon, 16);
-
-          self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,
-                                                                 "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
-                                                                 NULL));
-          gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
-          gtk_label_set_max_width_chars (self->session_context_label, 16);
-
-          self->session_context_chip = g_object_new (GTK_TYPE_BOX,
-                                                      "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
-                                                      "orientation", GTK_ORIENTATION_HORIZONTAL,
-                                                      "spacing", 6,
-                                                      "valign", GTK_ALIGN_CENTER,
-                                                      NULL);
-          '''
-
-          if text.count(old) == 0 and '"accessible-role", GTK_ACCESSIBLE_ROLE_GROUP' in text:
-              print("Wardveil AT-SPI source fix is already applied")
-          elif text.count(old) == 1:
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          if changed:
+              path.write_text(text, encoding="utf-8")
           else:
-              raise SystemExit(f"expected one exact source block, found {text.count(old)}")
+              print("Wardveil AT-SPI source fix is already applied")
           PY
 
           python3 tools/test-wardveil-accessibility-contract.py
