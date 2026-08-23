@@ -34,7 +34,7 @@ EOF
 
 print_api_status() {
   cat <<'EOF'
-{"schema_version":1,"product":"GoreeCloud Terminal","repository":"GoreeCloud/goreecloud-terminal","release_lifecycle":"Release Candidate","release_candidate":"50.2-rc.1","upstream_foundation":"Ptyxis 50.2","identity":{"production_application_id":"com.goreecloud.Terminal","development_application_id":"com.goreecloud.Terminal.Devel","canonical_launcher":"goreecloud-terminal"},"api":{"transport":"local-cli","read_only":true},"privacy":{"terminal_content_included":false,"commands_included":false,"credentials_included":false,"host_aliases_included":false,"identifiers_included":false},"privacy_shield_capabilities":["telemetry-minimization","data-minimization"],"wardveil":{"presentation_available":true,"authorization_authority":false}}
+{"schema_version":1,"product":"GoreeCloud Terminal","repository":"GoreeCloud/goreecloud-terminal","release_lifecycle":"Release Candidate","release_candidate":"50.2-rc.2","upstream_foundation":"Ptyxis 50.2","identity":{"production_application_id":"com.goreecloud.Terminal","development_application_id":"com.goreecloud.Terminal.Devel","canonical_launcher":"goreecloud-terminal"},"api":{"transport":"local-cli","read_only":true},"privacy":{"terminal_content_included":false,"commands_included":false,"credentials_included":false,"host_aliases_included":false,"identifiers_included":false},"privacy_shield_capabilities":["telemetry-minimization","data-minimization"],"wardveil":{"presentation_available":true,"authorization_authority":false}}
 EOF
 }
 

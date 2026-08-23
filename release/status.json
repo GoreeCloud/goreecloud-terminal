@@ -3,7 +3,7 @@
   "product": "GoreeCloud Terminal",
   "repository": "GoreeCloud/goreecloud-terminal",
   "release_lifecycle": "Release Candidate",
-  "release_candidate": "50.2-rc.1",
+  "release_candidate": "50.2-rc.2",
   "upstream_foundation": {
     "project": "Ptyxis",
     "version": "50.2",
@@ -26,20 +26,23 @@
     "flatpak_lifecycle_contract_required": true,
     "development_flatpak_required": true,
     "release_readiness_required": true,
-    "production_identity_flatpak_required": true
+    "production_identity_flatpak_required": true,
+    "wardveil_accessibility_contract_required": true,
+    "supported_workstation_contract_required": true,
+    "flatpak_permission_contract_required": true,
+    "production_no_host_filesystem_transition_required": true
   },
   "production_approved": false,
   "stable_approved": false,
   "stable_blockers": [
-    "supported-workstation graphical acceptance",
-    "detector-driven Wardveil runtime transitions",
-    "mixed-tab and accessibility acceptance",
+    "exact 50.2-rc.2 supported-workstation regression acceptance for Wardveil accessible names and core terminal behavior",
     "Glaze UI light/dark palette and transparency acceptance",
-    "real OpenSSH controlled-host acceptance",
-    "settings persistence and controlled migration acceptance",
-    "Flatpak permission minimization review",
-    "second distinct package and repository-backed update/rollback acceptance",
-    "data compatibility after rollback",
-    "production package install/removal/coexistence acceptance"
+    "explicit contrast behavior acceptance where applicable",
+    "reduced-motion behavior acceptance where applicable",
+    "settings persistence and controlled migration/rollback acceptance",
+    "supported-workstation Flatpak permission minimization acceptance",
+    "production package install/removal/reinstall and upstream Ptyxis coexistence acceptance",
+    "second distinct accepted package repository-backed update/rollback and post-rollback data compatibility",
+    "crash and recovery acceptance"
   ]
 }

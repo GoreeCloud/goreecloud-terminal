@@ -11,7 +11,7 @@ privacy = json.loads((ROOT / "privacy-shield/adapter.json").read_text(encoding="
 assert status["schema_version"] == 1
 assert status["product"] == "GoreeCloud Terminal"
 assert status["release_lifecycle"] == "Release Candidate"
-assert status["release_candidate"] == "50.2-rc.1"
+assert status["release_candidate"] == "50.2-rc.2"
 assert status["production_approved"] is False
 assert status["stable_approved"] is False
 assert len(status["stable_blockers"]) >= 8
@@ -20,6 +20,21 @@ assert status["identity"] == {
     "development_application_id": "com.goreecloud.Terminal.Devel",
     "canonical_launcher": "goreecloud-terminal",
 }
+
+required_source_acceptance = {
+    "exact_head_required",
+    "fork_foundation_required",
+    "flatpak_lifecycle_contract_required",
+    "development_flatpak_required",
+    "release_readiness_required",
+    "production_identity_flatpak_required",
+    "wardveil_accessibility_contract_required",
+    "supported_workstation_contract_required",
+    "flatpak_permission_contract_required",
+    "production_no_host_filesystem_transition_required",
+}
+assert required_source_acceptance <= status["source_acceptance"].keys()
+assert all(status["source_acceptance"][key] is True for key in required_source_acceptance)
 
 assert prod["app-id"] == "com.goreecloud.Terminal"
 assert prod["runtime"] == "org.gnome.Platform"
@@ -52,7 +67,7 @@ launcher = (ROOT / "data/goreecloud-terminal").read_text(encoding="utf-8")
 for marker in (
     "goreecloud-terminal api status",
     '"release_lifecycle":"Release Candidate"',
-    '"release_candidate":"50.2-rc.1"',
+    '"release_candidate":"50.2-rc.2"',
     '"terminal_content_included":false',
     '"credentials_included":false',
 ):
@@ -80,10 +95,17 @@ for marker in ("read-only local CLI contract", "does not open a network listener
 readiness = (ROOT / "docs/release-readiness.md").read_text(encoding="utf-8")
 assert "No automation may convert RC to Stable merely because CI is green." in readiness
 assert "Production Identity RC Flatpak acceptance" in readiness
+assert "50.2-rc.2" in readiness
 
 readme = (ROOT / "README.md").read_text(encoding="utf-8")
-assert "Release Candidate 50.2-rc.1" in readme
+assert "Release Candidate 50.2-rc.2" in readme
 assert "Stable and production approval remain separate" in readme
+
+notes = (ROOT / "release/50.2-rc.2.md").read_text(encoding="utf-8")
+assert "# GoreeCloud Terminal 50.2-rc.2" in notes
+assert "50.2-rc.1 remains immutable" in notes
+assert "production_approved=false" in notes
+assert "stable_approved=false" in notes
 
 man = (ROOT / "man/goreecloud-terminal.1.in").read_text(encoding="utf-8")
 assert "goreecloud-terminal api" in man

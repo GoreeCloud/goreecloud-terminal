@@ -29,7 +29,7 @@ assert obj["schema_version"] == 1
 assert obj["product"] == "GoreeCloud Terminal"
 assert obj["repository"] == "GoreeCloud/goreecloud-terminal"
 assert obj["release_lifecycle"] == "Release Candidate"
-assert obj["release_candidate"] == "50.2-rc.1"
+assert obj["release_candidate"] == "50.2-rc.2"
 assert obj["upstream_foundation"] == "Ptyxis 50.2"
 assert obj["identity"]["production_application_id"] == "com.goreecloud.Terminal"
 assert obj["identity"]["development_application_id"] == "com.goreecloud.Terminal.Devel"

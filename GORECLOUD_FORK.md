@@ -2,7 +2,9 @@
 
 ## Status
 
-GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The active source line is **Release Candidate 50.2-rc.1** for controlled final acceptance. Stable and production approval remain separate and false until the remaining supported-workstation requirements are completed.
+GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The active source line is **Release Candidate 50.2-rc.2** for controlled follow-up acceptance. Stable and production approval remain separate and false until the remaining supported-workstation requirements are completed.
+
+The published `50.2-rc.1` release remains immutable historical evidence. RC2 is a separately versioned source/package line carrying the validated Wardveil accessibility correction and post-RC1 stabilization work.
 
 ## Canonical upstream
 
@@ -12,7 +14,7 @@ GoreeCloud Terminal is a GoreeCloud-maintained open-source fork of Ptyxis. The a
 - GoreeCloud repository: https://github.com/GoreeCloud/goreecloud-terminal
 - Initial imported upstream head: `c1ba62b71295f569e0fc144b25770f2315b30e00`
 - Imported/upstream foundation version: `50.2`
-- GoreeCloud candidate: `50.2-rc.1`
+- GoreeCloud candidate: `50.2-rc.2`
 
 GitHub mirrors and third-party forks are not authoritative upstream sources.
 
@@ -48,6 +50,7 @@ Terminal-emulation, PTY, accessibility, compatibility, and security-sensitive co
 ## Branch model
 
 - `main`: controlled GoreeCloud integration branch.
+- `release/terminal-50.2-rc.2`: governed follow-up Release Candidate integration branch.
 - `agent/fork-foundation`: Milestone 0 governance and CI.
 - `agent/terminal-artwork`: official artwork.
 - `agent/glaze-ui-foundation`: Glaze UI application chrome.
@@ -62,7 +65,7 @@ Terminal-emulation, PTY, accessibility, compatibility, and security-sensitive co
 - `agent/flatpak-lifecycle-acceptance`: exact-artifact lifecycle and rollback logic.
 - `agent/release-candidate-readiness`: production-identity RC lifecycle, API, Privacy Shield, Glaze 1.4, and final source-readiness gates.
 
-The project uses narrowly scoped stacked branches and pull requests for review and validation. Direct GoreeCloud feature work does not occur on an upstream-tracking branch.
+The project uses narrowly scoped branches and pull requests for review and validation. Direct GoreeCloud feature work does not occur on an upstream-tracking branch.
 
 ## Upstream synchronization
 
@@ -72,7 +75,7 @@ Upstream changes are reviewed rather than merged blindly. Review includes securi
 
 ### Milestone 0 — Fork Foundation
 
-Upstream history/licensing/provenance and CI validation are established. Source integration remains controlled through the stacked history.
+Upstream history/licensing/provenance and CI validation are established. Source integration remains controlled through governed history.
 
 ### Milestone 1 — Product Identity
 
@@ -80,13 +83,13 @@ Implemented source state includes official GoreeCloud artwork, production ID `co
 
 ### Milestone 2 — Glaze UI
 
-The RC targets Glaze UI 1.4.0 Stable through a native GTK/libadwaita mapping. Terminal canvas rendering remains controlled by VTE. Source includes explicit light, reduced-motion, increased-contrast, focus-visible, and target-size invariants. Real workstation appearance/accessibility remains a Stable gate.
+The RC targets Glaze UI 1.4.0 Stable through a native GTK/libadwaita mapping. Terminal canvas rendering remains controlled by VTE. Source includes explicit light, reduced-motion, increased-contrast, focus-visible, and target-size invariants. Explicit supported-workstation palette/transparency, contrast, and reduced-motion acceptance remains open where applicable.
 
 See `docs/glaze-ui.md`.
 
 ### Milestone 3 — Wardveil Security
 
-Typed Local, Remote, Container, and Elevated context presentation is implemented. Wardveil remains informational and is not authorization. Real detector-driven transitions, mixed-tab presentation, palette/accessibility, and integrated workstation acceptance remain open.
+Typed Local, Remote, Container, and Elevated context presentation is implemented. Wardveil remains informational and is not authorization. The revised semantic-label implementation passed live supported-workstation exact AT-SPI accessible-name validation for Remote, Container, and Elevated under their corresponding real detector-driven states before it was integrated to authoritative source. RC2 must preserve that behavior on its exact package; Local/unknown must remain free of a misleading context indicator.
 
 ### Milestone 4 — GoreeCloud Administration Workflows
 
@@ -104,14 +107,17 @@ Current source state includes:
 - explicit terminal-oriented permissions that remain subject to final minimization review;
 - exact-head development package build/install/smoke/removal evidence;
 - exact-artifact lifecycle validation with explicit SHA-256 checks;
-- data-preserving local-bundle replacement that matches observed Flatpak 1.14.6 behavior: ordinary application removal without `--delete-data`, verification that the app ref is gone, installation of the exact verified bundle, exact OSTree-commit verification, and smoke validation;
-- transition logic that requires cryptographically distinct artifacts and distinct installed OSTree commits before any upgrade claim, then requires exact baseline rollback;
+- data-preserving local-bundle replacement that matches observed Flatpak 1.14.6 behavior;
 - a read-only local API (`goreecloud-terminal api status`) that reports only static non-secret status metadata;
 - a minimized Privacy Shield adapter declaring only `telemetry-minimization` and `data-minimization`;
 - machine-readable `release/status.json` lifecycle state and explicit Stable blockers;
-- dedicated source-readiness and production-identity RC package workflows.
+- dedicated source-readiness, Wardveil accessibility, supported-workstation contract, Flatpak permission, development-package, and production-identity RC package workflows;
+- an isolated production no-host-filesystem candidate generator that permits exactly one temporary manifest delta: removal of `--filesystem=host`;
+- repository-backed production transition acceptance that verifies immutable RC1 baseline identity, updates to a cryptographically distinct generated candidate, confirms host-filesystem access is absent, rolls back to the exact published RC1 OSTree commit, and preserves synthetic application data through update, rollback, and ordinary removal.
 
-The unsupported local-bundle `flatpak install --reinstall <bundle>` behavior discovered during CI is not used as a false acceptance shortcut. Repository-backed `flatpak update`, real cross-version update/rollback, data compatibility after rollback, production package workstation behavior, permission minimization, graphical runtime, and Stable authorization remain separate gates.
+The canonical production and development manifests remain unchanged at the RC2 source-preparation boundary. The no-host-filesystem candidate cannot become the canonical permission set until affected supported-workstation workflows pass.
+
+Repository-backed transition CI is real package-lifecycle evidence, but selected-release cross-version acceptance still requires applicable exact-package supported-workstation data-compatibility and recovery checks.
 
 See `docs/flatpak-packaging-and-acceptance.md`, `docs/flatpak-upgrade-and-rollback.md`, and `docs/release-readiness.md`.
 
@@ -131,8 +137,10 @@ The local API is read-only local CLI JSON. It does not open a listener or expose
 
 ## Release boundary
 
-Release Candidate 50.2-rc.1 is intended for final controlled acceptance if all exact-head RC source/package workflows pass. CI success alone cannot establish Stable or production approval.
+Release Candidate 50.2-rc.2 is a separately versioned follow-up candidate. It does not alter or supersede the immutable historical identity of published 50.2-rc.1.
 
-Stable still requires applicable supported-workstation functional, security, accessibility, Glaze UI, Wardveil, settings, permission, real OpenSSH, production-package, repository-backed upgrade/rollback, data-compatibility, and recovery evidence.
+CI success alone cannot establish Stable or production approval. RC2 publication requires exact candidate package identity, applicable supported-workstation regression evidence, governed tag/prerelease creation, and independent post-publication verification.
+
+Stable still requires applicable remaining supported-workstation Glaze UI, settings, permission, production-package, selected-package repository-backed upgrade/rollback, post-rollback data-compatibility, and crash/recovery evidence.
 
 The authoritative source lifecycle is `release/status.json`.
