@@ -92,9 +92,13 @@ jobs:
           assert experiment['ci_authoritative_for_stable'] is False
           assert experiment['production_approved'] is False
           assert experiment['stable_approved'] is False
+          assert status['release_lifecycle'] == 'Release Candidate'
           assert status['production_approved'] is False
           assert status['stable_approved'] is False
-          assert 'Flatpak permission minimization review' in status['stable_blockers']
+          assert any(
+              'Flatpak permission minimization' in blocker
+              for blocker in status['stable_blockers']
+          ), 'current lifecycle must retain a Flatpak permission-minimization blocker'
           PY
 
       - name: Validate documentation boundaries
