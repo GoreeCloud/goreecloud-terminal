@@ -23,7 +23,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       APP_ID: com.goreecloud.Terminal
-      RC_ID: 50.2-rc.1
+      RC_ID: 50.2-rc.2
 
     steps:
       - name: Check out exact source
@@ -173,11 +173,11 @@ jobs:
           printf '%s\n' "$version_output" | grep -Fq 'GoreeCloud Terminal'
 
           api_output="$(flatpak run --user --command=goreecloud-terminal "$APP_ID" api status)"
-          API_OUTPUT="$api_output" python3 - <<'PY'
+          API_OUTPUT="$api_output" RC_ID="$RC_ID" python3 - <<'PY'
           import json, os
           obj = json.loads(os.environ['API_OUTPUT'])
           assert obj['release_lifecycle'] == 'Release Candidate'
-          assert obj['release_candidate'] == '50.2-rc.1'
+          assert obj['release_candidate'] == os.environ['RC_ID']
           assert obj['identity']['production_application_id'] == 'com.goreecloud.Terminal'
           assert obj['api']['read_only'] is True
           assert obj['privacy']['terminal_content_included'] is False
