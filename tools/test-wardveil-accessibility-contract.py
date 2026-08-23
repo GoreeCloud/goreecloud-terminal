@@ -33,20 +33,31 @@ def main() -> None:
 
     require_count(
         window,
-        '"accessible-role", GTK_ACCESSIBLE_ROLE_GROUP',
+        '"accessible-role", GTK_ACCESSIBLE_ROLE_GENERIC',
         1,
-        "semantic group role on Wardveil session-context chip",
+        "generic layout role on Wardveil session-context container",
+    )
+    require_count(
+        window,
+        '"accessible-role", GTK_ACCESSIBLE_ROLE_LABEL',
+        1,
+        "semantic role on visible Wardveil text label",
     )
     require_count(
         window,
         '"accessible-role", GTK_ACCESSIBLE_ROLE_NONE',
-        2,
-        "non-semantic decorative child roles",
+        1,
+        "non-semantic decorative icon role",
     )
     require(
         window,
-        "GTK_ACCESSIBLE_PROPERTY_LABEL,\n                                  context->accessible_description",
-        "accessible label mapping",
+        "gtk_accessible_update_property (GTK_ACCESSIBLE (self->session_context_label),\n                                    GTK_ACCESSIBLE_PROPERTY_LABEL,\n                                    context->accessible_description",
+        "accessible description mapped to semantic visible label",
+    )
+    require(
+        window,
+        "gtk_accessible_reset_property (GTK_ACCESSIBLE (self->session_context_label),\n                                   GTK_ACCESSIBLE_PROPERTY_LABEL)",
+        "accessible label reset for Local/unknown context",
     )
     require(
         window,
@@ -71,6 +82,11 @@ def main() -> None:
         doc,
         "The published 50.2-rc.1 tag and bundle remain immutable.",
         "immutable Release Candidate boundary",
+    )
+    require(
+        doc,
+        "The first corrective candidate used a semantic `GROUP` container",
+        "recorded rejection of first runtime-failing corrective design",
     )
 
     print("Wardveil accessibility source contract: PASS")
