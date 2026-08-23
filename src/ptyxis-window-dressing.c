@@ -116,10 +116,15 @@ ptyxis_window_dressing_update_session_context (PtyxisWindowDressing *self)
   gtk_image_set_from_icon_name (self->session_context_icon, context->icon_name);
   gtk_widget_set_tooltip_text (self->session_context_chip,
                                context->accessible_description);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->session_context_chip),
-                                  GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  context->accessible_description,
-                                  -1);
+
+  if (context->accessible_description != NULL)
+    gtk_accessible_update_property (GTK_ACCESSIBLE (self->session_context_label),
+                                    GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                    context->accessible_description,
+                                    -1);
+  else
+    gtk_accessible_reset_property (GTK_ACCESSIBLE (self->session_context_label),
+                                   GTK_ACCESSIBLE_PROPERTY_LABEL);
 
   gtk_widget_set_visible (self->session_context_chip, context->show_indicator);
 }
@@ -168,17 +173,17 @@ ptyxis_window_dressing_create_session_context_chip (PtyxisWindowDressing *self,
   gtk_image_set_pixel_size (self->session_context_icon, 16);
 
   self->session_context_label = GTK_LABEL (g_object_new (GTK_TYPE_LABEL,
-                                                                 "accessible-role", GTK_ACCESSIBLE_ROLE_NONE,
-                                                                 NULL));
+                                                        "accessible-role", GTK_ACCESSIBLE_ROLE_LABEL,
+                                                        NULL));
   gtk_label_set_ellipsize (self->session_context_label, PANGO_ELLIPSIZE_END);
   gtk_label_set_max_width_chars (self->session_context_label, 16);
 
   self->session_context_chip = g_object_new (GTK_TYPE_BOX,
-                                              "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP,
-                                              "orientation", GTK_ORIENTATION_HORIZONTAL,
-                                              "spacing", 6,
-                                              "valign", GTK_ALIGN_CENTER,
-                                              NULL);
+                                             "accessible-role", GTK_ACCESSIBLE_ROLE_GENERIC,
+                                             "orientation", GTK_ORIENTATION_HORIZONTAL,
+                                             "spacing", 6,
+                                             "valign", GTK_ALIGN_CENTER,
+                                             NULL);
   gtk_widget_add_css_class (self->session_context_chip, "wardveil-session-context");
   gtk_box_append (GTK_BOX (self->session_context_chip),
                   GTK_WIDGET (self->session_context_icon));
