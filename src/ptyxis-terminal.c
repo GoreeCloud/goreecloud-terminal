@@ -480,6 +480,39 @@ copy_all_clipboard_action (GtkWidget  *widget,
     return;
 
   text = g_strndup (data, size);
+
+  {
+    g_auto(GStrv) lines = g_strsplit (text, "\n", -1);
+    gsize n_lines = g_strv_length (lines);
+
+    while (n_lines > 0)
+      {
+        const char *line = lines[n_lines - 1];
+        gboolean blank = TRUE;
+
+        for (const char *p = line; *p != '\0'; p++)
+          {
+            if (!g_ascii_isspace (*p))
+              {
+                blank = FALSE;
+                break;
+              }
+          }
+
+        if (!blank)
+          break;
+
+        g_clear_pointer (&lines[n_lines - 1], g_free);
+        n_lines--;
+      }
+
+    g_clear_pointer (&text, g_free);
+    text = g_strjoinv ("\n", lines);
+  }
+
+  if (text[0] == '\0')
+    return;
+
   gdk_clipboard_set_text (clipboard, text);
 
   if (ptyxis_settings_get_toast_on_copy_clipboard (
