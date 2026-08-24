@@ -1,0 +1,37 @@
+name: Native Foundation Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-foundation-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-foundation-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify isolated native foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f native/src/main.c
+          test -f native/meson.build
+          test -f native/README.md
+          grep -Fq 'com.goreecloud.Terminal.Native' native/src/main.c
+          grep -Fq "dependency('gtk4'" native/meson.build
+          grep -Fq "dependency('vte-2.91-gtk4'" native/meson.build
+          if grep -RIE '(^|["<])(ptyxis|org\.gnome\.Ptyxis)' native/src native/meson.build; then
+            echo 'Native product source must not import or identify as Ptyxis.' >&2
+            exit 1
+          fi
