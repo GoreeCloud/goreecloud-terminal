@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Check out exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
@@ -235,7 +235,7 @@ jobs:
           cat production-rc-flatpak-evidence.json
 
       - name: Upload production RC evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: goreecloud-terminal-production-rc-${{ env.RC_ID }}-${{ env.SOURCE_SHA }}
           path: |
