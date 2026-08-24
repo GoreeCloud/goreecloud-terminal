@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Check out exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
@@ -256,7 +256,7 @@ jobs:
           test -f "$HOME/.var/app/$APP_ID/stable-transition-marker"
 
       - name: Upload production candidate and transition evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: goreecloud-terminal-production-transition-${{ env.SOURCE_SHA }}
           path: |
