@@ -1,0 +1,51 @@
+name: Apply Copy All trailing-blank fix
+
+on:
+  push:
+    branches:
+      - agent/copy-all-trailing-blank-trim
+    paths:
+      - .github/workflows/agent-apply-copy-all-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/copy-all-trailing-blank-trim
+
+      - name: Apply guarded source edit
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/ptyxis-terminal.c")
+          source = path.read_text()
+
+          old = """  text = g_strndup (data, size);\n  gdk_clipboard_set_text (clipboard, text);\n"""
+          new = """  text = g_strndup (data, size);\n\n  {\n    g_auto(GStrv) lines = g_strsplit (text, \"\\n\", -1);\n    gsize n_lines = g_strv_length (lines);\n\n    while (n_lines > 0)\n      {\n        const char *line = lines[n_lines - 1];\n        gboolean blank = TRUE;\n\n        for (const char *p = line; *p != '\\0'; p++)\n          {\n            if (!g_ascii_isspace (*p))\n              {\n                blank = FALSE;\n                break;\n              }\n          }\n\n        if (!blank)\n          break;\n\n        g_clear_pointer (&lines[n_lines - 1], g_free);\n        n_lines--;\n      }\n\n    g_clear_pointer (&text, g_free);\n    text = g_strjoinv (\"\\n\", lines);\n  }\n\n  if (text[0] == '\\0')\n    return;\n\n  gdk_clipboard_set_text (clipboard, text);\n"""
+
+          if source.count(old) != 1:
+              raise SystemExit("expected exactly one Copy All clipboard write site")
+
+          path.write_text(source.replace(old, new, 1))
+
+      - name: Validate patch shape
+        run: |
+          git diff --check
+          git diff -- src/ptyxis-terminal.c
+          grep -F 'g_auto(GStrv) lines = g_strsplit (text, "\n", -1);' src/ptyxis-terminal.c
+          grep -F 'text = vte_terminal_get_text_selected' src/ptyxis-terminal.c
+
+      - name: Commit source fix
+        run: |
+          git config user.name "GoreeCloud"
+          git config user.email "295260680+GoreeCloud@users.noreply.github.com"
+          git add src/ptyxis-terminal.c
+          git commit -m "Trim trailing blank rows from Copy All"
+          git push origin HEAD:agent/copy-all-trailing-blank-trim
