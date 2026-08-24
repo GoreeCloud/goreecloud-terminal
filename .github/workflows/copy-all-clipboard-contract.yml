@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Validate Copy All clipboard behavior contract
         run: python3 tools/test-copy-all-clipboard-contract.py
