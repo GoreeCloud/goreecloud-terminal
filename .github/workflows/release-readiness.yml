@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
@@ -91,7 +91,7 @@ jobs:
           cat release-readiness-evidence.json
 
       - name: Upload Release Candidate source evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: goreecloud-terminal-release-readiness-${{ env.SOURCE_SHA }}
           path: release-readiness-evidence.json

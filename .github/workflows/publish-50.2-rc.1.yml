@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Check out exact approved release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.RELEASE_SOURCE_SHA }}
           fetch-depth: 0
@@ -262,7 +262,7 @@ jobs:
           PY
 
       - name: Upload exact release-publication inputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: goreecloud-terminal-release-publication-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}
           path: |
@@ -287,7 +287,7 @@ jobs:
 
     steps:
       - name: Download exact validated release-publication inputs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: goreecloud-terminal-release-publication-${{ env.RC_ID }}-${{ env.RELEASE_SOURCE_SHA }}
           path: release-inputs

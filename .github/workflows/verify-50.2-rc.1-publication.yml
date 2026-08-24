@@ -138,7 +138,7 @@ jobs:
           PY
 
       - name: Upload read-only verification record
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: verified-goreecloud-terminal-50.2-rc.1-publication
           path: verified-release-publication.json
