@@ -1,0 +1,28 @@
+name: Copy All Clipboard Contract
+
+on:
+  pull_request:
+    paths:
+      - src/ptyxis-terminal.c
+      - tools/test-copy-all-clipboard-contract.py
+      - .github/workflows/copy-all-clipboard-contract.yml
+  push:
+    branches:
+      - main
+    paths:
+      - src/ptyxis-terminal.c
+      - tools/test-copy-all-clipboard-contract.py
+      - .github/workflows/copy-all-clipboard-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  copy-all-clipboard-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+
+      - name: Validate Copy All clipboard behavior contract
+        run: python3 tools/test-copy-all-clipboard-contract.py
