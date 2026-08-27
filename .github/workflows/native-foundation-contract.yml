@@ -26,12 +26,44 @@ jobs:
         run: |
           set -euo pipefail
           test -f native/src/main.c
+          test -f native/src/session-lifecycle.c
+          test -f native/src/session-lifecycle.h
+          test -f native/src/test-session-lifecycle.c
           test -f native/meson.build
           test -f native/README.md
           grep -Fq 'com.goreecloud.Terminal.Native' native/src/main.c
           grep -Fq "dependency('gtk4'" native/meson.build
           grep -Fq "dependency('vte-2.91-gtk4'" native/meson.build
+          grep -Fq "test('native-session-lifecycle'" native/meson.build
           if grep -RIE '(^|["<])(ptyxis|org\.gnome\.Ptyxis)' native/src native/meson.build; then
             echo 'Native product source must not import or identify as Ptyxis.' >&2
             exit 1
           fi
+
+  native-build:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    steps:
+      - name: Install native build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            gcc \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            vte291-gtk4-devel
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Configure native source
+        run: meson setup native/_build native --buildtype=debugoptimized
+      - name: Compile native source
+        run: meson compile -C native/_build
+      - name: Run native tests
+        run: meson test -C native/_build --print-errorlogs
