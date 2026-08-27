@@ -5,9 +5,9 @@ project(
   default_options: ['c_std=c17', 'warning_level=3', 'werror=true'],
 )
 
-glib = dependency('glib-2.0', version: '>=2.76')
-gtk = dependency('gtk4', version: '>=4.14')
-vte = dependency('vte-2.91-gtk4', version: '>=0.76')
+glib = dependency('glib-2.0', version: '>=2.76', include_type: 'system')
+gtk = dependency('gtk4', version: '>=4.14', include_type: 'system')
+vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
 
 executable(
   'goreecloud-terminal-native',
