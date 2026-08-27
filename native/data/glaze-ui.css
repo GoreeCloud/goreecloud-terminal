@@ -1,0 +1,99 @@
+/* GoreeCloud Terminal — native Glaze UI 1.5.0 mapping.
+ *
+ * This stylesheet owns application chrome only. VTE keeps complete ownership of
+ * terminal palettes, ANSI colors, cursor rendering, selection and shell output.
+ */
+
+.glaze-window {
+  background-color: @theme_bg_color;
+  color: @theme_fg_color;
+}
+
+headerbar.glaze-header {
+  min-height: 48px;
+  padding: 6px 8px;
+  border-bottom: 1px solid alpha(@theme_fg_color, 0.12);
+  background-color: alpha(@theme_bg_color, 0.96);
+  box-shadow: 0 1px 8px alpha(black, 0.12);
+}
+
+.glaze-header button,
+.glaze-tab-close {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 12px;
+}
+
+.glaze-appearance {
+  min-width: 84px;
+  min-height: 36px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.glaze-session-tabs {
+  background-color: @theme_bg_color;
+}
+
+.glaze-session-tabs tab {
+  min-height: 40px;
+  padding: 3px 8px;
+  border-radius: 12px 12px 0 0;
+}
+
+.glaze-session-tabs tab:checked {
+  background-color: alpha(@theme_selected_bg_color, 0.16);
+}
+
+.glaze-session-tabs tab:focus-visible,
+.glaze-header button:focus-visible {
+  outline: 3px solid @theme_selected_bg_color;
+  outline-offset: 2px;
+}
+
+.glaze-session-exited {
+  opacity: 0.76;
+}
+
+/* Explicit appearance modes are local presentation state only. */
+.glaze-window.glaze-light {
+  background-color: #f5f7fb;
+  color: #17202a;
+}
+
+.glaze-window.glaze-light headerbar.glaze-header,
+.glaze-window.glaze-light .glaze-session-tabs {
+  background-color: #f9fbff;
+  color: #17202a;
+}
+
+.glaze-window.glaze-light .glaze-session-tabs tab:checked {
+  background-color: rgba(42, 112, 186, 0.14);
+}
+
+.glaze-window.glaze-dark {
+  background-color: #111820;
+  color: #edf4fb;
+}
+
+.glaze-window.glaze-dark headerbar.glaze-header,
+.glaze-window.glaze-dark .glaze-session-tabs {
+  background-color: #17212b;
+  color: #edf4fb;
+}
+
+.glaze-window.glaze-dark .glaze-session-tabs tab:checked {
+  background-color: rgba(112, 182, 255, 0.18);
+}
+
+/* High-contrast mode strengthens chrome boundaries without recoloring VTE. */
+.glaze-window.glaze-high-contrast headerbar.glaze-header,
+.glaze-window.glaze-high-contrast .glaze-session-tabs tab:checked {
+  border: 2px solid currentColor;
+  box-shadow: none;
+}
+
+.glaze-window.glaze-high-contrast button:focus-visible,
+.glaze-window.glaze-high-contrast tab:focus-visible {
+  outline-width: 4px;
+}
