@@ -9,7 +9,15 @@
 #include <gtk/gtk.h>
 #include <vte/vte.h>
 
+#include "session-lifecycle.h"
+
 #define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal.Native"
+#define SESSION_STATE_KEY "goreecloud-native-session-state"
+
+typedef struct {
+    GoreeTerminalSessionLifecycle lifecycle;
+    GtkWidget *tab_text;
+} TerminalSessionView;
 
 typedef struct {
     GtkWidget *window;
@@ -42,31 +50,76 @@ spawn_default_shell(VteTerminal *terminal)
         NULL);
 }
 
+static TerminalSessionView *
+session_view_for(GtkWidget *terminal)
+{
+    return g_object_get_data(G_OBJECT(terminal), SESSION_STATE_KEY);
+}
+
+static void
+update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
+{
+    char *tab_title = NULL;
+    char *accessible_label = NULL;
+
+    if (session->lifecycle.state == GOREE_TERMINAL_SESSION_EXITED) {
+        tab_title = g_strdup_printf("Session %u — Exited", session->lifecycle.id);
+        accessible_label = g_strdup_printf(
+            "Terminal session %u, exited; output preserved",
+            session->lifecycle.id);
+    } else {
+        tab_title = g_strdup_printf("Session %u", session->lifecycle.id);
+        accessible_label = g_strdup_printf("Terminal session %u", session->lifecycle.id);
+    }
+
+    gtk_label_set_text(GTK_LABEL(session->tab_text), tab_title);
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(terminal),
+        GTK_ACCESSIBLE_PROPERTY_LABEL,
+        accessible_label,
+        -1);
+
+    g_free(tab_title);
+    g_free(accessible_label);
+}
+
+static void
+session_child_exited(VteTerminal *terminal, int status, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    goree_terminal_session_mark_child_exited(&session->lifecycle, status);
+    update_session_presentation(GTK_WIDGET(terminal), session);
+}
+
 static void
 close_session(GtkButton *button, gpointer user_data)
 {
-    GtkWidget *session = GTK_WIDGET(user_data);
-    GtkWidget *notebook = gtk_widget_get_parent(session);
+    GtkWidget *terminal = GTK_WIDGET(user_data);
+    GtkWidget *notebook = gtk_widget_get_parent(terminal);
+    TerminalSessionView *session = session_view_for(terminal);
 
     (void) button;
 
     if (!GTK_IS_NOTEBOOK(notebook))
         return;
 
-    int page = gtk_notebook_page_num(GTK_NOTEBOOK(notebook), session);
+    if (session != NULL)
+        goree_terminal_session_request_close(&session->lifecycle);
+
+    int page = gtk_notebook_page_num(GTK_NOTEBOOK(notebook), terminal);
     if (page >= 0)
         gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), page);
 }
 
 static GtkWidget *
-create_tab_label(GtkWidget *session, guint session_id)
+create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     GtkWidget *label = gtk_label_new(NULL);
     GtkWidget *close = gtk_button_new_from_icon_name("window-close-symbolic");
-    char *title = g_strdup_printf("Session %u", session_id);
 
-    gtk_label_set_text(GTK_LABEL(label), title);
+    session->tab_text = label;
     gtk_button_set_has_frame(GTK_BUTTON(close), FALSE);
     gtk_widget_set_tooltip_text(close, "Close terminal session");
     gtk_accessible_update_property(
@@ -77,9 +130,8 @@ create_tab_label(GtkWidget *session, guint session_id)
 
     gtk_box_append(GTK_BOX(box), label);
     gtk_box_append(GTK_BOX(box), close);
-    g_signal_connect(close, "clicked", G_CALLBACK(close_session), session);
-
-    g_free(title);
+    g_signal_connect(close, "clicked", G_CALLBACK(close_session), terminal);
+    update_session_presentation(terminal, session);
     return box;
 }
 
@@ -88,16 +140,14 @@ add_session(TerminalWindow *terminal_window)
 {
     guint session_id = terminal_window->next_session_id++;
     GtkWidget *terminal = vte_terminal_new();
-    GtkWidget *tab_label = create_tab_label(terminal, session_id);
-    char *accessible_label = g_strdup_printf("Terminal session %u", session_id);
+    TerminalSessionView *session = g_new0(TerminalSessionView, 1);
 
+    goree_terminal_session_lifecycle_init(&session->lifecycle, session_id);
+    g_object_set_data_full(G_OBJECT(terminal), SESSION_STATE_KEY, session, g_free);
+
+    GtkWidget *tab_label = create_tab_label(terminal, session);
     gtk_widget_set_hexpand(terminal, TRUE);
     gtk_widget_set_vexpand(terminal, TRUE);
-    gtk_accessible_update_property(
-        GTK_ACCESSIBLE(terminal),
-        GTK_ACCESSIBLE_PROPERTY_LABEL,
-        accessible_label,
-        -1);
 
     int page = gtk_notebook_append_page(
         GTK_NOTEBOOK(terminal_window->notebook),
@@ -106,8 +156,14 @@ add_session(TerminalWindow *terminal_window)
     gtk_notebook_set_current_page(GTK_NOTEBOOK(terminal_window->notebook), page);
     gtk_widget_grab_focus(terminal);
 
-    spawn_default_shell(VTE_TERMINAL(terminal));
-    g_free(accessible_label);
+    g_signal_connect(
+        terminal,
+        "child-exited",
+        G_CALLBACK(session_child_exited),
+        session);
+
+    if (goree_terminal_session_mark_running(&session->lifecycle))
+        spawn_default_shell(VTE_TERMINAL(terminal));
 }
 
 static void
