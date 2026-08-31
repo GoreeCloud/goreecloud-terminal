@@ -1,7 +1,8 @@
-/* GoreeCloud Terminal — native Glaze UI 1.5.0 mapping.
+/* GoreeCloud Terminal — native Glaze UI 2.1.0 mapping.
  *
- * This stylesheet owns application chrome only. VTE keeps complete ownership of
- * terminal palettes, ANSI colors, cursor rendering, selection and shell output.
+ * Content is solid. Interaction is glazed. This stylesheet owns application
+ * chrome only. VTE retains complete authority over terminal palettes, ANSI
+ * colors, cursor rendering, selection, and shell output.
  */
 
 .glaze-window {
@@ -9,24 +10,25 @@
   color: @theme_fg_color;
 }
 
+/* Persistent application interaction uses a restrained Soft Glaze treatment. */
 headerbar.glaze-header {
-  min-height: 48px;
-  padding: 6px 8px;
-  border-bottom: 1px solid alpha(@theme_fg_color, 0.12);
-  background-color: alpha(@theme_bg_color, 0.96);
+  min-height: 56px;
+  padding: 4px 8px;
+  border-bottom: 1px solid alpha(@theme_fg_color, 0.14);
+  background-color: alpha(@theme_bg_color, 0.90);
   box-shadow: 0 1px 8px alpha(black, 0.12);
 }
 
 .glaze-header button,
-.glaze-tab-close {
-  min-width: 36px;
-  min-height: 36px;
-  border-radius: 12px;
+.glaze-tab-close,
+.glaze-appearance {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 14px;
 }
 
 .glaze-appearance {
-  min-width: 84px;
-  min-height: 36px;
+  min-width: 96px;
   padding-left: 12px;
   padding-right: 12px;
 }
@@ -36,9 +38,9 @@ headerbar.glaze-header {
 }
 
 .glaze-session-tabs tab {
-  min-height: 40px;
-  padding: 3px 8px;
-  border-radius: 12px 12px 0 0;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-radius: 14px 14px 0 0;
 }
 
 .glaze-session-tabs tab:checked {
@@ -49,6 +51,15 @@ headerbar.glaze-header {
 .glaze-header button:focus-visible {
   outline: 3px solid @theme_selected_bg_color;
   outline-offset: 2px;
+}
+
+/* Product/host adapter state for Glaze UI 2.1 Touch Assistance. */
+.glaze-window.glaze-touch-assistance .glaze-header button,
+.glaze-window.glaze-touch-assistance .glaze-tab-close,
+.glaze-window.glaze-touch-assistance .glaze-appearance,
+.glaze-window.glaze-touch-assistance .glaze-session-tabs tab {
+  min-width: 56px;
+  min-height: 56px;
 }
 
 .glaze-session-exited {
@@ -86,7 +97,7 @@ headerbar.glaze-header {
   background-color: rgba(112, 182, 255, 0.18);
 }
 
-/* High-contrast mode strengthens chrome boundaries without recoloring VTE. */
+/* High contrast strengthens chrome boundaries without recoloring VTE. */
 .glaze-window.glaze-high-contrast headerbar.glaze-header,
 .glaze-window.glaze-high-contrast .glaze-session-tabs tab:checked {
   border: 2px solid currentColor;
@@ -96,4 +107,10 @@ headerbar.glaze-header {
 .glaze-window.glaze-high-contrast button:focus-visible,
 .glaze-window.glaze-high-contrast tab:focus-visible {
   outline-width: 4px;
+}
+
+/* Reduced-transparency adapter: preserve interaction hierarchy without blur. */
+.glaze-window.glaze-reduced-transparency headerbar.glaze-header {
+  background-color: @theme_bg_color;
+  box-shadow: none;
 }
