@@ -5,11 +5,13 @@
 static void
 test_stable_identity(void)
 {
-    g_assert_cmpstr(GOREE_TERMINAL_GLAZE_VERSION, ==, "1.5.0");
+    g_assert_cmpstr(GOREE_TERMINAL_GLAZE_VERSION, ==, "2.1.0");
     g_assert_cmpstr(
         GOREE_TERMINAL_GLAZE_SOURCE_REVISION,
         ==,
-        "2e1618397f6ebcdd254a76bfdd7e98846f2c5aa3");
+        "c49113eb8b93c267613fdf1bbca1f814495acad7");
+    g_assert_cmpint(GOREE_TERMINAL_GLAZE_GENERAL_TARGET_PX, ==, 48);
+    g_assert_cmpint(GOREE_TERMINAL_GLAZE_TOUCH_ASSISTANCE_TARGET_PX, ==, 56);
 }
 
 static void
