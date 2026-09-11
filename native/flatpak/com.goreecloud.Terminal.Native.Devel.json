@@ -80,6 +80,8 @@
       "name": "goreecloud-terminal-native",
       "buildsystem": "simple",
       "build-commands": [
+        "sed -i 's/#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native\"/#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native.Devel\"/' native/src/main.c",
+        "grep -Fq '#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native.Devel\"' native/src/main.c",
         "meson setup _native-build native --buildtype=debugoptimized",
         "meson compile -C _native-build",
         "meson test -C _native-build --print-errorlogs",
