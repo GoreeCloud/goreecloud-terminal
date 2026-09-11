@@ -11,6 +11,7 @@
 
 #include "glaze-contract.h"
 #include "session-lifecycle.h"
+#include "theme-engine.h"
 
 #define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal.Native"
 #define SESSION_STATE_KEY "goreecloud-native-session-state"
@@ -20,21 +21,23 @@ typedef struct {
     GoreeTerminalSessionLifecycle lifecycle;
     GtkWidget *tab_root;
     GtkWidget *tab_text;
+    GtkWidget *context_menu;
 } TerminalSessionView;
 
 typedef struct {
     GtkWidget *window;
     GtkWidget *notebook;
-    GtkWidget *appearance_button;
+    GtkWidget *theme_button;
     GtkSettings *settings;
     gulong theme_notify_id;
     gboolean system_prefers_dark;
-    GoreeTerminalAppearance appearance;
+    GoreeTerminalThemeEngine theme_engine;
     guint next_session_id;
 } TerminalWindow;
 
 static void add_session(TerminalWindow *terminal_window);
-static void apply_appearance(TerminalWindow *terminal_window);
+static void apply_theme(TerminalWindow *terminal_window);
+static void close_terminal_widget(GtkWidget *terminal);
 
 static void
 install_glaze_ui(void)
@@ -78,65 +81,93 @@ system_uses_high_contrast(GtkSettings *settings)
     return high_contrast;
 }
 
+static gboolean
+parse_rgba(const char *value, GdkRGBA *rgba)
+{
+    return value != NULL && gdk_rgba_parse(rgba, value);
+}
+
 static void
-apply_appearance(TerminalWindow *terminal_window)
+apply_terminal_palette(TerminalWindow *terminal_window, VteTerminal *terminal)
+{
+    GoreeTerminalTheme selected = goree_terminal_theme_engine_get(&terminal_window->theme_engine);
+    const GoreeTerminalThemeDefinition *theme = goree_terminal_theme_resolve(
+        selected,
+        terminal_window->system_prefers_dark);
+    GdkRGBA foreground;
+    GdkRGBA background;
+    GdkRGBA cursor;
+    GdkRGBA selection;
+
+    if (parse_rgba(theme->foreground, &foreground))
+        vte_terminal_set_color_foreground(terminal, &foreground);
+    if (parse_rgba(theme->background, &background))
+        vte_terminal_set_color_background(terminal, &background);
+    if (parse_rgba(theme->cursor, &cursor))
+        vte_terminal_set_color_cursor(terminal, &cursor);
+    if (parse_rgba(theme->selection_background, &selection))
+        vte_terminal_set_color_highlight(terminal, &selection);
+}
+
+static void
+apply_theme(TerminalWindow *terminal_window)
 {
     GtkWidget *window = terminal_window->window;
-    GtkWidget *button = terminal_window->appearance_button;
-    gboolean prefer_dark = terminal_window->system_prefers_dark;
+    GtkWidget *button = terminal_window->theme_button;
+    GoreeTerminalTheme selected = goree_terminal_theme_engine_get(&terminal_window->theme_engine);
+    const GoreeTerminalThemeDefinition *selected_definition = goree_terminal_theme_definition(selected);
+    const GoreeTerminalThemeDefinition *effective = goree_terminal_theme_resolve(
+        selected,
+        terminal_window->system_prefers_dark);
 
     gtk_widget_remove_css_class(window, "glaze-system");
     gtk_widget_remove_css_class(window, "glaze-light");
     gtk_widget_remove_css_class(window, "glaze-dark");
+    gtk_widget_remove_css_class(window, "glaze-deep-dark");
     gtk_widget_remove_css_class(window, "glaze-high-contrast");
 
-    switch (terminal_window->appearance) {
-    case GOREE_TERMINAL_APPEARANCE_LIGHT:
-        prefer_dark = FALSE;
-        gtk_widget_add_css_class(window, "glaze-light");
-        break;
-    case GOREE_TERMINAL_APPEARANCE_DARK:
-        prefer_dark = TRUE;
-        gtk_widget_add_css_class(window, "glaze-dark");
-        break;
-    case GOREE_TERMINAL_APPEARANCE_SYSTEM:
-    default:
+    if (selected == GOREE_TERMINAL_THEME_FOLLOW_SYSTEM)
         gtk_widget_add_css_class(window, "glaze-system");
-        break;
-    }
+    else if (selected == GOREE_TERMINAL_THEME_LIGHT)
+        gtk_widget_add_css_class(window, "glaze-light");
+    else if (selected == GOREE_TERMINAL_THEME_DEEP_DARK)
+        gtk_widget_add_css_class(window, "glaze-deep-dark");
+    else
+        gtk_widget_add_css_class(window, "glaze-dark");
 
     if (terminal_window->settings != NULL) {
         g_object_set(
             terminal_window->settings,
             "gtk-application-prefer-dark-theme",
-            prefer_dark,
+            effective->prefers_dark,
             NULL);
 
         if (system_uses_high_contrast(terminal_window->settings))
             gtk_widget_add_css_class(window, "glaze-high-contrast");
     }
 
-    gtk_button_set_label(
-        GTK_BUTTON(button),
-        goree_terminal_appearance_label(terminal_window->appearance));
+    char *button_label = g_strdup_printf("Theme: %s", selected_definition->label);
+    char *accessible_label = g_strdup_printf(
+        "Terminal theme: %s",
+        selected_definition->label);
+    gtk_menu_button_set_label(GTK_MENU_BUTTON(button), button_label);
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(button),
         GTK_ACCESSIBLE_PROPERTY_LABEL,
-        goree_terminal_appearance_accessible_label(terminal_window->appearance),
+        accessible_label,
         -1);
-    gtk_widget_set_tooltip_text(
-        button,
-        goree_terminal_appearance_accessible_label(terminal_window->appearance));
-}
+    gtk_widget_set_tooltip_text(button, accessible_label);
+    g_free(button_label);
+    g_free(accessible_label);
 
-static void
-appearance_clicked(GtkButton *button, gpointer user_data)
-{
-    TerminalWindow *terminal_window = user_data;
-
-    (void) button;
-    terminal_window->appearance = goree_terminal_appearance_next(terminal_window->appearance);
-    apply_appearance(terminal_window);
+    int pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(terminal_window->notebook));
+    for (int page = 0; page < pages; page++) {
+        GtkWidget *terminal = gtk_notebook_get_nth_page(
+            GTK_NOTEBOOK(terminal_window->notebook),
+            page);
+        if (VTE_IS_TERMINAL(terminal))
+            apply_terminal_palette(terminal_window, VTE_TERMINAL(terminal));
+    }
 }
 
 static void
@@ -144,7 +175,7 @@ theme_changed(GObject *settings, GParamSpec *pspec, gpointer user_data)
 {
     (void) settings;
     (void) pspec;
-    apply_appearance(user_data);
+    apply_theme(user_data);
 }
 
 static void
@@ -242,6 +273,110 @@ close_session(GtkButton *button, gpointer user_data)
     close_terminal_widget(GTK_WIDGET(user_data));
 }
 
+static void
+terminal_action_copy(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_copy_clipboard_format(VTE_TERMINAL(user_data), VTE_FORMAT_TEXT);
+}
+
+static void
+terminal_action_paste(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_paste_clipboard(VTE_TERMINAL(user_data));
+}
+
+static void
+terminal_action_select_all(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_select_all(VTE_TERMINAL(user_data));
+}
+
+static void
+terminal_action_clear(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+
+    /* Clear only the visible terminal display and home the cursor. This does not
+     * execute a shell command and therefore does not alter shell history. */
+    vte_terminal_feed(VTE_TERMINAL(user_data), "\033[2J\033[H", -1);
+}
+
+static void
+terminal_action_close(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    close_terminal_widget(GTK_WIDGET(user_data));
+}
+
+static const GActionEntry terminal_actions[] = {
+    {"copy", terminal_action_copy, NULL, NULL, NULL, {0, 0, 0}},
+    {"paste", terminal_action_paste, NULL, NULL, NULL, {0, 0, 0}},
+    {"select-all", terminal_action_select_all, NULL, NULL, NULL, {0, 0, 0}},
+    {"clear", terminal_action_clear, NULL, NULL, NULL, {0, 0, 0}},
+    {"close", terminal_action_close, NULL, NULL, NULL, {0, 0, 0}},
+};
+
+static GtkWidget *
+build_terminal_context_menu(GtkWidget *terminal)
+{
+    GSimpleActionGroup *actions = g_simple_action_group_new();
+    g_action_map_add_action_entries(
+        G_ACTION_MAP(actions),
+        terminal_actions,
+        G_N_ELEMENTS(terminal_actions),
+        terminal);
+    gtk_widget_insert_action_group(terminal, "terminal", G_ACTION_GROUP(actions));
+    g_object_unref(actions);
+
+    GMenu *menu = g_menu_new();
+    GMenu *edit = g_menu_new();
+    GMenu *session = g_menu_new();
+
+    g_menu_append(edit, "Copy", "terminal.copy");
+    g_menu_append(edit, "Paste", "terminal.paste");
+    g_menu_append(edit, "Select All", "terminal.select-all");
+    g_menu_append(edit, "Clear", "terminal.clear");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(edit));
+
+    g_menu_append(session, "New Session", "win.new-session");
+    g_menu_append(session, "Close Session", "terminal.close");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(session));
+
+    GtkWidget *popover = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
+    gtk_widget_add_css_class(popover, "glaze-context-menu");
+    gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+    gtk_widget_set_parent(popover, terminal);
+
+    g_object_unref(edit);
+    g_object_unref(session);
+    g_object_unref(menu);
+    return popover;
+}
+
+static void
+context_menu_pressed(GtkGestureClick *gesture,
+                     int n_press,
+                     double x,
+                     double y,
+                     gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    GdkRectangle pointing_to = {(int) x, (int) y, 1, 1};
+
+    (void) n_press;
+    gtk_popover_set_pointing_to(GTK_POPOVER(session->context_menu), &pointing_to);
+    gtk_popover_popup(GTK_POPOVER(session->context_menu));
+    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
 static GtkWidget *
 create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
 {
@@ -282,6 +417,17 @@ add_session(TerminalWindow *terminal_window)
     GtkWidget *tab_label = create_tab_label(terminal, session);
     gtk_widget_set_hexpand(terminal, TRUE);
     gtk_widget_set_vexpand(terminal, TRUE);
+    apply_terminal_palette(terminal_window, VTE_TERMINAL(terminal));
+
+    session->context_menu = build_terminal_context_menu(terminal);
+    GtkGesture *context_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(context_click), GDK_BUTTON_SECONDARY);
+    g_signal_connect(
+        context_click,
+        "pressed",
+        G_CALLBACK(context_menu_pressed),
+        session);
+    gtk_widget_add_controller(terminal, GTK_EVENT_CONTROLLER(context_click));
 
     int page = gtk_notebook_append_page(
         GTK_NOTEBOOK(terminal_window->notebook),
@@ -332,10 +478,42 @@ action_close_session(GSimpleAction *action, GVariant *parameter, gpointer user_d
         close_terminal_widget(terminal);
 }
 
+static void
+action_set_theme(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    const char *theme_id = g_variant_get_string(parameter, NULL);
+
+    (void) action;
+    if (goree_terminal_theme_engine_set(&terminal_window->theme_engine, theme_id))
+        apply_theme(terminal_window);
+}
+
 static const GActionEntry window_actions[] = {
     {"new-session", action_new_session, NULL, NULL, NULL, {0, 0, 0}},
     {"close-session", action_close_session, NULL, NULL, NULL, {0, 0, 0}},
+    {"set-theme", action_set_theme, "s", NULL, NULL, {0, 0, 0}},
 };
+
+static GMenuModel *
+build_theme_menu(void)
+{
+    GMenu *menu = g_menu_new();
+
+    for (int i = 0; i < GOREE_TERMINAL_THEME_COUNT; i++) {
+        GoreeTerminalTheme theme = (GoreeTerminalTheme) i;
+        GMenuItem *item = g_menu_item_new(goree_terminal_theme_label(theme), NULL);
+        g_menu_item_set_action_and_target(
+            item,
+            "win.set-theme",
+            "s",
+            goree_terminal_theme_id(theme));
+        g_menu_append_item(menu, item);
+        g_object_unref(item);
+    }
+
+    return G_MENU_MODEL(menu);
+}
 
 static void
 terminal_window_destroyed(GtkWidget *widget, gpointer user_data)
@@ -364,7 +542,7 @@ static TerminalWindow *
 create_terminal_window(GtkApplication *application)
 {
     TerminalWindow *terminal_window = g_new0(TerminalWindow, 1);
-    terminal_window->appearance = GOREE_TERMINAL_APPEARANCE_SYSTEM;
+    goree_terminal_theme_engine_init(&terminal_window->theme_engine);
     terminal_window->next_session_id = 1;
     terminal_window->settings = gtk_settings_get_default();
 
@@ -380,12 +558,12 @@ create_terminal_window(GtkApplication *application)
     GtkWidget *header = gtk_header_bar_new();
     GtkWidget *title = gtk_label_new("GoreeCloud Terminal");
     GtkWidget *new_session = gtk_button_new_from_icon_name("tab-new-symbolic");
-    GtkWidget *appearance = gtk_button_new();
+    GtkWidget *theme_button = gtk_menu_button_new();
     GtkWidget *notebook = gtk_notebook_new();
 
     terminal_window->window = window;
     terminal_window->notebook = notebook;
-    terminal_window->appearance_button = appearance;
+    terminal_window->theme_button = theme_button;
 
     gtk_window_set_title(GTK_WINDOW(window), "GoreeCloud Terminal");
     gtk_window_set_default_size(GTK_WINDOW(window), 960, 640);
@@ -405,9 +583,12 @@ create_terminal_window(GtkApplication *application)
         -1);
     gtk_header_bar_pack_start(GTK_HEADER_BAR(header), new_session);
 
-    gtk_widget_add_css_class(appearance, "glaze-action");
-    gtk_widget_add_css_class(appearance, "glaze-appearance");
-    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), appearance);
+    gtk_widget_add_css_class(theme_button, "glaze-action");
+    gtk_widget_add_css_class(theme_button, "glaze-theme-engine");
+    GMenuModel *theme_menu = build_theme_menu();
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(theme_button), theme_menu);
+    g_object_unref(theme_menu);
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), theme_button);
 
     gtk_widget_add_css_class(notebook, "glaze-session-tabs");
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
@@ -434,11 +615,6 @@ create_terminal_window(GtkApplication *application)
         G_CALLBACK(new_session_clicked),
         terminal_window);
     g_signal_connect(
-        appearance,
-        "clicked",
-        G_CALLBACK(appearance_clicked),
-        terminal_window);
-    g_signal_connect(
         window,
         "destroy",
         G_CALLBACK(terminal_window_destroyed),
@@ -452,7 +628,7 @@ create_terminal_window(GtkApplication *application)
             terminal_window);
     }
 
-    apply_appearance(terminal_window);
+    apply_theme(terminal_window);
     add_session(terminal_window);
     return terminal_window;
 }
