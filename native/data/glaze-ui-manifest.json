@@ -11,20 +11,35 @@
     "releasePublished": "2026-09-08",
     "requiredConsumerVersion": "1.3.0",
     "contract": "GLAZE_UI_V1_3.md",
-    "accessibilityContract": "contracts/v1.3/accessibility.candidate.json"
+    "accessibilityContract": "contracts/v1.3/accessibility.candidate.json",
+    "personalizationContract": "contracts/v1.3/personalization.candidate.json"
   },
   "nativeMapping": {
     "platform": "linux-gtk4",
-    "chromeAuthority": "GoreeCloud Terminal native source",
-    "terminalSurfaceAuthority": "VTE",
+    "chromeAuthority": "GoreeCloud Terminal native source mapped to Glaze UI 1.3.0",
+    "terminalSurfaceAuthority": "GoreeCloud Terminal Theme Engine over VTE presentation APIs",
+    "terminalEmulationAuthority": "VTE",
     "terminalContentStyledByGlaze": false,
     "minimumInteractiveTargetPx": 48,
     "touchAssistanceMinimumInteractiveTargetPx": 56,
-    "appearanceModes": ["system", "light", "dark"],
+    "appearanceModes": ["follow-system", "light", "dark", "deep-dark"],
+    "themeEngine": {
+      "owner": "GoreeCloud Terminal",
+      "scope": "terminal foreground, background, cursor, selection, and theme resolution",
+      "persistence": "pending",
+      "semanticAnsiPaletteOverride": false
+    },
+    "contextMenu": {
+      "owner": "GoreeCloud Terminal",
+      "actions": ["copy", "paste", "select-all", "clear", "new-session", "close-session"],
+      "shellCommands": [],
+      "sudoAptUpdateExposed": false,
+      "clearExecutesShellCommand": false
+    },
     "customMotion": false
   },
   "evidence": {
-    "automatedContractTests": "native-glaze-contract",
+    "automatedContractTests": ["native-glaze-contract", "native-theme-engine"],
     "sourceBuild": "required",
     "renderedLinuxAcceptance": "pending",
     "assistiveTechnologyAcceptance": "pending",
