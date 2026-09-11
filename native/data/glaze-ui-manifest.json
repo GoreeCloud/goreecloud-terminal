@@ -25,6 +25,18 @@
     "touchOrientedReferenceTargetPx": 48,
     "touchAssistanceMinimumInteractiveTargetPx": 56,
     "appearanceModes": ["follow-system", "light", "dark", "deep-dark"],
+    "materials": {
+      "foundation": "neutral-glass",
+      "dominantGlazeRegion": "header-and-session-tab-chrome",
+      "terminalCanvas": "solid-vte-owned",
+      "alphaTranslucency": true,
+      "gradientHighlights": true,
+      "layeredShadows": true,
+      "semanticAccentSelection": true,
+      "nativeBackdropBlur": "not-claimed-without-verified-compositor-adapter",
+      "reducedTransparencyFallback": "opaque-solid-raised",
+      "highContrastFallback": "opaque-strong-boundaries"
+    },
     "themeEngine": {
       "owner": "GoreeCloud Terminal",
       "scope": "terminal foreground, background, cursor, selection, and theme resolution",
@@ -43,7 +55,7 @@
   "evidence": {
     "automatedContractTests": ["native-glaze-contract", "native-theme-engine"],
     "sourceBuild": "required",
-    "renderedLinuxAcceptance": "failed-on-2e497f9; revalidation-pending",
+    "renderedLinuxAcceptance": "failed-through-f8742e4; material-depth-revalidation-pending",
     "assistiveTechnologyAcceptance": "pending",
     "physicalDeviceAcceptance": "revalidation-pending",
     "productionEligible": false
