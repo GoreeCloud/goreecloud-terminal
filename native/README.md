@@ -53,6 +53,28 @@ The native right-click menu is application-owned and contains only explicit term
 
 Clear is an internal terminal-display action rather than a shell command. This keeps the action deterministic and avoids adding `clear` or equivalent commands to shell history.
 
+## Laptop and workstation acceptance
+
+Physical-device review is required before the native implementation can qualify for Stable promotion. The repository provides one acceptance entry point:
+
+```sh
+./scripts/testing/native-workstation-acceptance.sh
+```
+
+The runner checks the exact checked-out Git revision, refuses a dirty working tree, validates the Glaze contract, builds the native application, runs the unit tests, and then launches two isolated physical-device passes. It uses a temporary `XDG_CONFIG_HOME`, so testing the Theme Engine does not overwrite the user's normal GoreeCloud Terminal preferences.
+
+The first launch requires review of all four Theme Engine modes, terminal readability, the rebuilt six-action context menu, absence of `sudo apt update`, Copy/Paste/Select All/Clear, New Session/Close Session, shortcuts, focus, high contrast where available, representative VTE behavior, and assistive technology where available. The first pass intentionally ends on Deep Dark. The second launch uses the same isolated preference store and must restore Deep Dark automatically.
+
+For the Fedora 44 reference environment used by CI, the required development packages are:
+
+```sh
+sudo dnf install gcc git glib2-devel gtk4-devel meson ninja-build pkgconf-pkg-config vte291-gtk4-devel
+```
+
+Other supported Linux distributions must provide equivalent GLib 2.76+, GTK 4.14+, VTE GTK4 0.76+, GCC, Meson, Ninja, pkg-config, Git, and Python 3 development tooling.
+
+The acceptance runner does not silently mark the application Stable. Human visual/accessibility results must be recorded and the applicable GoreeCloud release, platform-integration, migration, packaging, supported-workstation, and promotion gates must still be satisfied.
+
 ## Explicitly unclaimed integrations
 
 The native source does not yet claim implemented SSH/remote state, disconnected-state presentation, elevated-context warnings, Wardveil Security state, Privacy Shield authorization state, Everkeep recovery state, or verified reduced-transparency platform adaptation. Those capabilities require their own runtime contracts and evidence before UI can present them as real.
