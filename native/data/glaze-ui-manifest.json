@@ -16,17 +16,19 @@
   },
   "nativeMapping": {
     "platform": "linux-gtk4",
+    "formFactor": "desktop-pointer-keyboard",
     "chromeAuthority": "GoreeCloud Terminal native source mapped to Glaze UI 1.3.0",
     "terminalSurfaceAuthority": "GoreeCloud Terminal Theme Engine over VTE presentation APIs",
     "terminalEmulationAuthority": "VTE",
     "terminalContentStyledByGlaze": false,
-    "minimumInteractiveTargetPx": 48,
+    "desktopInteractiveDensityPolicy": "compact-form-factor-aware",
+    "touchOrientedReferenceTargetPx": 48,
     "touchAssistanceMinimumInteractiveTargetPx": 56,
     "appearanceModes": ["follow-system", "light", "dark", "deep-dark"],
     "themeEngine": {
       "owner": "GoreeCloud Terminal",
       "scope": "terminal foreground, background, cursor, selection, and theme resolution",
-      "persistence": "pending",
+      "persistence": "private-xdg-mode-only",
       "semanticAnsiPaletteOverride": false
     },
     "contextMenu": {
@@ -41,9 +43,9 @@
   "evidence": {
     "automatedContractTests": ["native-glaze-contract", "native-theme-engine"],
     "sourceBuild": "required",
-    "renderedLinuxAcceptance": "pending",
+    "renderedLinuxAcceptance": "failed-on-2e497f9; revalidation-pending",
     "assistiveTechnologyAcceptance": "pending",
-    "physicalDeviceAcceptance": "pending",
+    "physicalDeviceAcceptance": "revalidation-pending",
     "productionEligible": false
   },
   "integrationClaims": {
