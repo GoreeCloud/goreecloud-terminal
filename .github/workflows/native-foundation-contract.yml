@@ -50,6 +50,11 @@ jobs:
           grep -Fq "test('native-theme-engine'" native/meson.build
           grep -Fq 'GOREE_TERMINAL_GLAZE_VERSION "1.3.0"' native/src/glaze-contract.h
           grep -Fq '"deep-dark"' native/src/theme-engine.c
+          grep -Fq 'GOREE_TERMINAL_THEME_SETTINGS_PATH' native/src/theme-engine.c
+          grep -Fq 'g_get_user_config_dir()' native/src/theme-engine.c
+          grep -Fq 'mode=deep-dark' native/src/test-theme-engine.c
+          grep -Fq '/theme/persistence' native/src/test-theme-engine.c
+          grep -Fq '/theme/invalid-persistence-fails-safe' native/src/test-theme-engine.c
           grep -Fq 'g_menu_append(edit, "Clear", "terminal.clear")' native/src/main.c
           grep -Fq 'vte_terminal_feed(VTE_TERMINAL(user_data), "\033[2J\033[H", -1)' native/src/main.c
           if grep -Fn 'sudo apt update' native/src/main.c; then
