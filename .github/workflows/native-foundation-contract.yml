@@ -99,4 +99,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Run automated laptop acceptance path
         shell: bash
-        run: bash scripts/testing/native-workstation-acceptance.sh --automated-only
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash scripts/testing/native-workstation-acceptance.sh --automated-only
