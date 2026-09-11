@@ -20,6 +20,8 @@ The verified source on this branch provides:
 - explicit local-running and local-exited session labels backed by runtime state;
 - Glaze UI V1.3 / `1.3.0` application-chrome mapping pinned to the canonical Stable tag commit;
 - a GoreeCloud Terminal Theme Engine with `follow-system`, `light`, `dark`, and `deep-dark` modes;
+- persistence of the selected Theme Engine mode across launches through a private XDG configuration file;
+- fail-safe fallback to Follow System when persisted theme state is missing or invalid;
 - separation between Glaze-owned application chrome and Terminal-owned VTE presentation policy;
 - Terminal-owned foreground, background, cursor, and selection theme resolution without silent ANSI semantic-palette remapping;
 - high-contrast chrome strengthening without Glaze styling terminal content;
@@ -30,7 +32,7 @@ The verified source on this branch provides:
 - Clear behavior that clears the visible terminal display without executing a shell command or writing to shell history;
 - `Ctrl+Shift+T` for a new local session and `Ctrl+Shift+W` for closing the current session;
 - no custom application motion that bypasses reduced-motion behavior;
-- a machine-readable Glaze adoption manifest, Glaze contract tests, Theme Engine tests, and drift validation; and
+- a machine-readable Glaze adoption manifest, Glaze contract tests, Theme Engine persistence tests, and drift validation; and
 - an isolated Meson build with strict compiler warnings and native unit tests.
 
 The exact Glaze boundary and remaining acceptance work are documented in `GLAZE_UI_13.md`.
@@ -39,7 +41,11 @@ The exact Glaze boundary and remaining acceptance work are documented in `GLAZE_
 
 The Theme Engine is a GoreeCloud Terminal subsystem, not a replacement for Glaze UI. Glaze remains authoritative for shared application-chrome design rules and accessibility precedence. The Theme Engine owns terminal-specific presentation policy exposed through VTE APIs.
 
-The current Theme Engine is intentionally bounded. It does not yet persist user choices across launches, synchronize themes across devices, import arbitrary third-party theme files, or claim native Personalization adapter acceptance. Those remain separate future work.
+The current Theme Engine persists only the selected mode identifier. Production defaults to `$XDG_CONFIG_HOME/goreecloud/terminal/theme.ini`; the test suite may override that path through `GOREE_TERMINAL_THEME_SETTINGS_PATH` so automated validation never writes real user configuration. The preference directory is created with private permissions and the settings file is restricted to the user where the platform permits it.
+
+The persisted file must not contain terminal contents, shell commands, shell history, working directories, hostnames, SSH aliases, credentials, private keys, tokens, or other session data. Invalid persisted state fails safe to Follow System.
+
+Arbitrary third-party theme import, theme export, cross-device synchronization, wallpaper-derived themes, custom ANSI semantic-palette authoring, and native Personalization adapter acceptance remain separate future work.
 
 ## Context-menu boundary
 
@@ -59,4 +65,4 @@ Passing repository-local build and contract tests is necessary but does not esta
 
 ## Required next slices
 
-The native implementation still needs Theme Engine persistence and import/export policy, profiles/workspaces, SSH and remote-session workflows, evidence-backed remote/disconnected/elevated/recovery state, Wardveil Security integration, Privacy Shield controls, Everkeep continuity/recovery, settings persistence, richer shell/context integration, split-pane workflows, dangerous-paste protection, migration from the transitional application, packaging, rendered accessibility validation, and supported-workstation acceptance before it can replace the transitional Ptyxis-derived line.
+The native implementation still needs broader settings persistence beyond the Theme Engine, profile/workspace persistence, optional theme import/export policy, SSH and remote-session workflows, evidence-backed remote/disconnected/elevated/recovery state, Wardveil Security integration, Privacy Shield controls, Everkeep continuity/recovery, richer shell/context integration, split-pane workflows, dangerous-paste protection, migration from the transitional application, packaging, rendered accessibility validation, and supported-workstation acceptance before it can replace the transitional Ptyxis-derived line.
