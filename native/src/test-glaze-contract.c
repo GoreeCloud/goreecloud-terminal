@@ -13,7 +13,7 @@ test_glaze_identity(void)
         GOREE_TERMINAL_GLAZE_SOURCE_REVISION,
         ==,
         "ff34f232f295c9dcb07e4c681f66d4104d0b9323");
-    g_assert_cmpint(GOREE_TERMINAL_GLAZE_GENERAL_TARGET_PX, ==, 48);
+    g_assert_cmpint(GOREE_TERMINAL_GLAZE_TOUCH_REFERENCE_TARGET_PX, ==, 48);
     g_assert_cmpint(GOREE_TERMINAL_GLAZE_TOUCH_ASSISTANCE_TARGET_PX, ==, 56);
 }
 
