@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'native/**'
+      - 'scripts/testing/native-workstation-acceptance.sh'
       - '.github/workflows/native-foundation-contract.yml'
   push:
     branches: [main]
     paths:
       - 'native/**'
+      - 'scripts/testing/native-workstation-acceptance.sh'
       - '.github/workflows/native-foundation-contract.yml'
 
 permissions:
@@ -42,6 +44,11 @@ jobs:
           test -f native/GLAZE_UI_13.md
           test -f native/meson.build
           test -f native/README.md
+          test -f scripts/testing/native-workstation-acceptance.sh
+          bash -n scripts/testing/native-workstation-acceptance.sh
+          grep -Fq -- '--automated-only' scripts/testing/native-workstation-acceptance.sh
+          grep -Fq 'XDG_CONFIG_HOME="${config_dir}"' scripts/testing/native-workstation-acceptance.sh
+          grep -Fq 'mode=deep-dark' scripts/testing/native-workstation-acceptance.sh
           grep -Fq 'com.goreecloud.Terminal.Native' native/src/main.c
           grep -Fq "dependency('gtk4'" native/meson.build
           grep -Fq "dependency('vte-2.91-gtk4'" native/meson.build
@@ -85,13 +92,11 @@ jobs:
             meson \
             ninja-build \
             pkgconf-pkg-config \
+            python3 \
             vte291-gtk4-devel
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Configure native source
-        run: meson setup native/_build native --buildtype=debugoptimized
-      - name: Compile native source
-        run: meson compile -C native/_build
-      - name: Run native tests
-        run: meson test -C native/_build --print-errorlogs
+      - name: Run automated laptop acceptance path
+        shell: bash
+        run: bash scripts/testing/native-workstation-acceptance.sh --automated-only
