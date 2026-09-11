@@ -137,23 +137,40 @@ visual/accessibility judgment and therefore are not auto-approved by this script
 FIRST LAUNCH CHECKLIST
   1. Verify the window opens and terminal text is readable.
   2. Cycle Theme through Follow System, Light, Dark, and Deep Dark.
-  3. End the first launch on Deep Dark so persistence can be verified.
-  4. Right-click the terminal and confirm exactly these product actions appear:
+  3. Visually evaluate the Glaze material system in each appearance:
+       - header + tab rail read as one bounded neutral-glass chrome region;
+       - chrome shows visible translucency/material layering, optical highlights,
+         structural borders, and restrained depth rather than flat default GTK;
+       - active/selected tab uses semantic accent plus shape/weight/border cues;
+       - controls and popovers visibly separate through Glaze surface/depth treatment;
+       - terminal content itself remains a solid, highly readable VTE-owned canvas;
+       - no effect makes text, focus, controls, or selection difficult to understand.
+     True compositor backdrop blur is not required unless a verified native adapter
+     exists; do not count fake or unsupported blur as acceptance evidence.
+  4. End the first launch on Deep Dark so persistence can be verified.
+  5. Right-click the terminal and confirm exactly these product actions appear:
        Copy, Paste, Select All, Clear, New Session, Close Session
      Confirm there is no sudo apt update or other package-management shortcut.
-  5. Enter visible non-sensitive text, use Select All / Copy / Paste, then Clear.
+  6. Enter visible non-sensitive text, use Select All / Copy / Paste, then Clear.
      Clear must clear the visible display without placing a clear command in
      shell history.
-  6. Right-click a tab and confirm Rename Tab, Reset Tab Name, and Close Tab.
-     Rename it to a non-sensitive test name and verify the visible title changes.
-     Double-click the tab name and verify inline renaming is also available.
-     Use Reset Tab Name and verify it returns to Session N. Confirm these tab
-     actions do not alter the six-action terminal-content menu from step 4.
-  7. Verify New Session and Close Session, including Ctrl+Shift+T and Ctrl+Shift+W.
-  8. Check visible focus treatment and keyboard operability of application chrome.
-  9. If your desktop provides High Contrast, enable it and verify usable contrast.
- 10. Check representative Unicode, selection, cursor, shell input, and scrolling.
- 11. If an assistive technology such as Orca is available, verify controls and
+  7. Right-click a tab and confirm Rename Tab, Reset Tab Name, and Close Tab.
+     The GTK editable-text menu (for example Edit / Copy) must NOT replace the
+     GoreeCloud tab menu. Rename the tab to a non-sensitive test name and verify
+     the visible title changes. Double-click the tab name and verify inline
+     renaming is also available. Use Reset Tab Name and verify it returns to
+     Session N. Confirm tab actions do not alter the six-action terminal-content
+     menu from step 5.
+  8. Verify New Session and Close Session, including Ctrl+Shift+T and Ctrl+Shift+W.
+  9. Check visible focus treatment and keyboard operability of application chrome.
+ 10. If your desktop provides High Contrast, enable it and verify the Glaze glass
+     effects fall back toward opaque, strong-boundary presentation without loss
+     of hierarchy or control meaning.
+ 11. If a Reduced Transparency path is available, verify it removes reliance on
+     translucent material while preserving hierarchy with opacity, geometry,
+     borders, selected state, and contrast.
+ 12. Check representative Unicode, selection, cursor, shell input, and scrolling.
+ 13. If an assistive technology such as Orca is available, verify controls and
      local-session/tab labels are understandable and not misleading.
 
 Close GoreeCloud Terminal after completing the first-launch checks.
@@ -193,7 +210,8 @@ PERSISTENCE RELAUNCH CHECKLIST
   1. The second launch must restore Deep Dark without reselecting it.
   2. A tab renamed in the first run must NOT be restored; live tab names are
      intentionally session-local and are not persisted to disk.
-  3. Recheck terminal readability, cursor, selection, and context-menu placement.
+  3. Recheck terminal readability, selected-tab accent, material hierarchy,
+     cursor, selection, and context-menu placement.
   4. Recheck Clear and one New Session / Close Session cycle.
   5. Confirm no unexpected settings from your normal profile appear; this run is
      isolated under a temporary XDG configuration directory.
