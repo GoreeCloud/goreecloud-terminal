@@ -23,6 +23,7 @@ executable(
     'src/main.c',
     'src/session-lifecycle.c',
     'src/glaze-contract.c',
+    'src/theme-engine.c',
     native_resources,
   ],
   dependencies: [glib, gtk, vte],
@@ -47,5 +48,15 @@ glaze_contract_test = executable(
   dependencies: [glib],
 )
 
+theme_engine_test = executable(
+  'test-native-theme-engine',
+  [
+    'src/test-theme-engine.c',
+    'src/theme-engine.c',
+  ],
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
+test('native-theme-engine', theme_engine_test)
