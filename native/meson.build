@@ -5,6 +5,17 @@ project(
   default_options: ['c_std=c17', 'warning_level=3', 'werror=true'],
 )
 
+cc = meson.get_compiler('c')
+native_executable_c_args = []
+
+# glib-compile-resources may emit a generated C string larger than the ISO C
+# minimum guaranteed 4095-character literal length when embedding the Glaze UI
+# stylesheet. Keep every other warning fatal and demote only this generated-
+# resource portability warning for the native application target.
+if cc.has_argument('-Wno-error=overlength-strings')
+  native_executable_c_args += '-Wno-error=overlength-strings'
+endif
+
 glib = dependency('glib-2.0', version: '>=2.76', include_type: 'system')
 gtk = dependency('gtk4', version: '>=4.14', include_type: 'system')
 vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
@@ -27,6 +38,7 @@ executable(
     native_resources,
   ],
   dependencies: [glib, gtk, vte],
+  c_args: native_executable_c_args,
   install: false,
 )
 
