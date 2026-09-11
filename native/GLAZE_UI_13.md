@@ -31,7 +31,8 @@ Implemented repository-local contract points include:
 - current Stable Glaze UI V1.3 / `1.3.0` authority pinned to the exact tag commit;
 - the V1.3 personalization surface `follow-system`, `light`, `dark`, and `deep-dark` exposed through the Terminal Theme Engine;
 - private persistence of the selected Terminal Theme Engine mode across launches;
-- a 48px general interactive-target floor;
+- compact, form-factor-aware density for pointer/keyboard desktop chrome;
+- a 48px touch-oriented reference target retained as shared Glaze contract metadata rather than forced onto normal desktop controls;
 - a 56px Touch Assistance target floor for the reserved platform adapter state;
 - visible keyboard-focus treatment;
 - stronger non-color boundaries and solid application chrome for detected high-contrast themes;
@@ -68,7 +69,15 @@ The current GTK-native adapter snapshots the platform preference for dark applic
 
 High-contrast detection is based on the active GTK theme identity and strengthens application-chrome boundaries while removing translucent treatment. A portable reduced-transparency platform preference adapter is not yet verified; the corresponding CSS class is reserved but is not automatically asserted.
 
-Accessibility outranks personalization. Theme selection must not remove visible focus, weaken minimum target sizes, override forced/high-contrast requirements, or become the only carrier of semantic state.
+Desktop density is form-factor-aware. Pointer/keyboard desktop chrome must remain compact enough to preserve workspace and terminal-content priority. The shared 48px touch reference is not a mandatory desktop CSS minimum. Touch Assistance remains a distinct 56px target mode.
+
+Accessibility outranks personalization. Theme selection must not remove visible focus, weaken applicable target sizes, override forced/high-contrast requirements, or become the only carrier of semantic state.
+
+### Physical visual evidence
+
+The first Zorin OS 17.3 / Wayland Flatpak rendering of exact candidate `2e497f9119a3678a5bb1b2abaa29c89b2e8c1bc2` failed rendered visual acceptance. The owner-provided screenshot showed an oversized title/header region, oversized tab strip, an overly large theme control, excessive spacing, and insufficient Glaze hierarchy/refinement for a desktop terminal application.
+
+Source review traced the dominant sizing defect to an unconditional 56px header and 48px desktop control/tab minimums. Those values incorrectly treated touch references as normal pointer/keyboard desktop geometry. The development mapping has since been changed to compact desktop chrome with the 56px Touch Assistance override retained separately. That change requires a fresh physical-device re-test; no rendered pass is claimed until the new exact candidate is reviewed.
 
 ## Rebuilt right-click menu
 
@@ -123,7 +132,7 @@ Repository-local validation includes the native build, session lifecycle tests, 
 
 Still required before any claim of Glaze consumer acceptance or production readiness:
 
-- rendered Linux acceptance across Follow System/Light/Dark/Deep Dark behavior and preference restoration;
+- fresh rendered Linux acceptance across Follow System/Light/Dark/Deep Dark behavior and preference restoration after the failed `2e497f9` physical visual pass;
 - rendered and keyboard review of the rebuilt context menu;
 - direct runtime verification that Clear clears the visible display without adding a shell-history command;
 - keyboard and focus traversal review;
