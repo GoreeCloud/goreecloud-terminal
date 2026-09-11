@@ -55,10 +55,10 @@ Clear is an internal terminal-display action rather than a shell command. This k
 
 ## Laptop and workstation acceptance
 
-Physical-device review is required before the native implementation can qualify for Stable promotion. The repository provides one acceptance entry point:
+Physical-device review is required before the native implementation can qualify for Stable promotion. From the repository root, run the acceptance entry point with Bash:
 
 ```sh
-./scripts/testing/native-workstation-acceptance.sh
+bash scripts/testing/native-workstation-acceptance.sh
 ```
 
 The runner checks the exact checked-out Git revision, refuses a dirty working tree, validates the Glaze contract, builds the native application, runs the unit tests, and then launches two isolated physical-device passes. It uses a temporary `XDG_CONFIG_HOME`, so testing the Theme Engine does not overwrite the user's normal GoreeCloud Terminal preferences.
