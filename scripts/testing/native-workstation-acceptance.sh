@@ -27,7 +27,18 @@ case "${1:-}" in
 esac
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd -- "${script_dir}/../.." && pwd)"
+path_candidate="$(cd -- "${script_dir}/../.." && pwd)"
+
+if [[ -n "${GITHUB_WORKSPACE:-}" ]] && git -C "${GITHUB_WORKSPACE}" rev-parse --show-toplevel >/dev/null 2>&1; then
+  repo_root="$(git -C "${GITHUB_WORKSPACE}" rev-parse --show-toplevel)"
+elif git -C "${path_candidate}" rev-parse --show-toplevel >/dev/null 2>&1; then
+  repo_root="$(git -C "${path_candidate}" rev-parse --show-toplevel)"
+else
+  printf 'Acceptance runner could not resolve a GoreeCloud Terminal Git checkout.\n' >&2
+  printf 'Script path candidate: %s\n' "${path_candidate}" >&2
+  exit 1
+fi
+
 native_dir="${repo_root}/native"
 
 require_command() {
@@ -73,16 +84,20 @@ EOF
   exit 1
 fi
 
-if ! git -C "${repo_root}" diff --quiet || ! git -C "${repo_root}" diff --cached --quiet; then
-  cat >&2 <<'EOF'
-The working tree has uncommitted changes. Workstation acceptance must be tied to
-an exact source revision. Commit, stash, or discard those changes, then retry.
-EOF
-  exit 1
-fi
-
 source_revision="$(git -C "${repo_root}" rev-parse HEAD)"
 printf 'GoreeCloud Terminal native acceptance source: %s\n' "${source_revision}"
+
+if [[ "${mode}" == "interactive" ]]; then
+  if ! git -C "${repo_root}" diff --quiet -- || ! git -C "${repo_root}" diff --cached --quiet --; then
+    cat >&2 <<'EOF'
+The working tree has uncommitted changes. Physical-device acceptance must be tied
+to an exact source revision. Commit, stash, or discard those changes, then retry.
+EOF
+    exit 1
+  fi
+else
+  printf 'Automated mode: exact revision is provided by the checked-out CI source.\n'
+fi
 
 work_root="$(mktemp -d "${TMPDIR:-/tmp}/goreecloud-terminal-native-acceptance.XXXXXX")"
 build_dir="${work_root}/build"
