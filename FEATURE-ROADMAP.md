@@ -33,9 +33,9 @@ The roadmap separates verified implementation from proposed work. A roadmap entr
 | FR-015 | Add shell/context integration for working-directory awareness, safe title updates, foreground-process state, and supported shell hooks without logging command content. | High | Proposed |
 | FR-016 | Add safe search, copy, paste, selection, open-link, and clipboard workflows with explicit dangerous-paste protections and no background collection of terminal content. | High | In progress: native Copy/Paste/Select All menu surface exists; dangerous-paste protection remains planned |
 | FR-017 | Add scalable scrollback controls, configurable retention, memory bounds, and privacy-aware clearing behavior suitable for long-running sessions. | Medium | Proposed |
-| FR-018 | Complete accessibility acceptance for keyboard, focus, high contrast, reduced motion/transparency, 200% text/reflow where applicable, screen readers, target sizing, and representative VTE content. | Critical | Planned; source contracts only |
+| FR-018 | Complete accessibility acceptance for keyboard, focus, high contrast, reduced motion/transparency, 200% text/reflow where applicable, screen readers, target sizing, and representative VTE content. | Critical | In progress: source contracts and isolated laptop acceptance runner exist; physical-device rendered and assistive-technology results remain pending |
 | FR-019 | Add repository-controlled product identity, iconography, desktop integration, notifications where justified, and Linux desktop conventions without importing inherited product branding. | High | Planned |
-| FR-020 | Complete native packaging, migration tooling, settings/profile migration, rollback, release validation, and supported-workstation acceptance before replacing the transitional Ptyxis-derived line. | Critical | Planned |
+| FR-020 | Complete native packaging, migration tooling, settings/profile migration, rollback, release validation, and supported-workstation acceptance before replacing the transitional Ptyxis-derived line. | Critical | In progress: supported-workstation acceptance runner exists; packaging, migration/rollback, physical-device qualification, and release promotion remain pending |
 | FR-021 | Maintain explicit Development/Validation/Promotion/Packaged/Stable lifecycle separation; never treat source completion or passing CI alone as Stable evidence. | Critical | Ongoing control |
 | FR-022 | Maintain a GoreeCloud Terminal-owned Theme Engine that maps Glaze-approved appearance modes to terminal-specific presentation without duplicating Glaze UI authority or silently remapping ANSI semantics. | High | In progress: Follow System/Light/Dark/Deep Dark engine, tests, and private XDG mode persistence implemented; rendered acceptance and optional import/export policy remain open |
 | FR-023 | Replace inherited/right-click convenience actions with a GoreeCloud-owned terminal context menu; prohibit privileged/package-management shortcuts such as `sudo apt update`; provide Copy, Paste, Select All, Clear, New Session, and Close Session. | High | Implemented in native Development source; rendered acceptance pending |
@@ -45,16 +45,17 @@ The roadmap separates verified implementation from proposed work. A roadmap entr
 The recommended implementation order is:
 
 1. finish issue #73 Glaze UI native chrome, Theme Engine, rebuilt context menu, and repository-local validation against the current Stable shared design-system contract;
-2. complete deterministic accessibility, rendered-menu, theme-switching, preference-restoration, Clear-behavior, and input contracts for the native window/session layer;
-3. expand settings persistence beyond the Theme Engine, then implement profiles/workspaces and safe preference storage;
-4. implement SSH/remote lifecycle and trustworthy context-state presentation;
-5. integrate Wardveil Security, Privacy Shield, and Everkeep through their canonical versioned platform contracts;
-6. add split-pane, shell-context, dangerous-paste protection, search, and long-session quality improvements; and
-7. complete migration, packaging, rendered acceptance, supported-workstation qualification, and release promotion gates.
+2. run the repository-controlled laptop/workstation acceptance path and record physical-device results for theme switching/restoration, context menu, Clear, focus, high contrast, representative VTE behavior, and assistive technology;
+3. complete remaining deterministic accessibility and input acceptance for the native window/session layer;
+4. expand settings persistence beyond the Theme Engine, then implement profiles/workspaces and safe preference storage;
+5. implement SSH/remote lifecycle and trustworthy context-state presentation;
+6. integrate Wardveil Security, Privacy Shield, and Everkeep through their canonical versioned platform contracts;
+7. add split-pane, shell-context, dangerous-paste protection, search, and long-session quality improvements; and
+8. complete migration, packaging, supported-workstation qualification, and release promotion gates before Stable classification.
 
 ## Maintenance and synchronization
 
-This roadmap and the corresponding Drive `FEATURE-ROADMAP.docx` must remain materially synchronized with one another and with the authoritative project or service record. Update both copies whenever feature scope, priority, dependency, implementation status, cancellation, supersession, recommendation, or verification state materially changes.
+This roadmap and the corresponding Drive `FEATURE-ROADMAP.docx` must remain materially synchronized with one another and with the authoritative project or service record. Update both copies whenever feature scope, priority, dependency, implementation status, cancellation, supersession, or verification state materially changes.
 
 No feature may be represented as complete or Stable solely because it appears in this roadmap. Completion and lifecycle claims require the applicable authoritative implementation, validation, review, release, and production evidence.
 
