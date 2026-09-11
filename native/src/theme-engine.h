@@ -27,6 +27,14 @@ typedef struct {
     GoreeTerminalTheme active;
 } GoreeTerminalThemeEngine;
 
+/*
+ * The Theme Engine owns the terminal-specific appearance preference. The
+ * persisted file contains only the selected theme ID and never terminal
+ * contents, commands, paths, hosts, credentials, or other session data.
+ *
+ * GOREE_TERMINAL_THEME_SETTINGS_PATH may override the XDG path for isolated
+ * testing. Production defaults to $XDG_CONFIG_HOME/goreecloud/terminal/theme.ini.
+ */
 void goree_terminal_theme_engine_init(GoreeTerminalThemeEngine *engine);
 gboolean goree_terminal_theme_engine_set(GoreeTerminalThemeEngine *engine, const char *id);
 GoreeTerminalTheme goree_terminal_theme_engine_get(const GoreeTerminalThemeEngine *engine);
@@ -35,5 +43,6 @@ const GoreeTerminalThemeDefinition *goree_terminal_theme_resolve(GoreeTerminalTh
                                                                   gboolean system_prefers_dark);
 const char *goree_terminal_theme_id(GoreeTerminalTheme theme);
 const char *goree_terminal_theme_label(GoreeTerminalTheme theme);
+char *goree_terminal_theme_settings_path(void);
 
 G_END_DECLS
