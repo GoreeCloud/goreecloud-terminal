@@ -29,16 +29,28 @@ jobs:
           test -f native/src/session-lifecycle.c
           test -f native/src/session-lifecycle.h
           test -f native/src/test-session-lifecycle.c
+          test -f native/src/glaze-contract.c
+          test -f native/src/glaze-contract.h
+          test -f native/src/test-glaze-contract.c
+          test -f native/data/glaze-ui.css
+          test -f native/data/glaze-ui-manifest.json
+          test -f native/data/goreecloud-terminal-native.gresource.xml
+          test -f native/tools/validate-glaze-contract.py
+          test -f native/GLAZE_UI_13.md
           test -f native/meson.build
           test -f native/README.md
           grep -Fq 'com.goreecloud.Terminal.Native' native/src/main.c
           grep -Fq "dependency('gtk4'" native/meson.build
           grep -Fq "dependency('vte-2.91-gtk4'" native/meson.build
           grep -Fq "test('native-session-lifecycle'" native/meson.build
+          grep -Fq "test('native-glaze-contract'" native/meson.build
+          grep -Fq 'GOREE_TERMINAL_GLAZE_VERSION "1.3.0"' native/src/glaze-contract.h
           if grep -RIE '(^|["<])(ptyxis|org\.gnome\.Ptyxis)' native/src native/meson.build; then
             echo 'Native product source must not import or identify as Ptyxis.' >&2
             exit 1
           fi
+      - name: Validate Glaze adoption metadata
+        run: python3 native/tools/validate-glaze-contract.py
 
   native-build:
     runs-on: ubuntu-latest
