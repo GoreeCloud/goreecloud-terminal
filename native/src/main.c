@@ -19,9 +19,12 @@
 
 typedef struct {
     GoreeTerminalSessionLifecycle lifecycle;
+    GtkWidget *terminal;
     GtkWidget *tab_root;
     GtkWidget *tab_text;
+    GtkWidget *tab_menu;
     GtkWidget *context_menu;
+    char *custom_title;
 } TerminalSessionView;
 
 typedef struct {
@@ -210,26 +213,54 @@ session_view_for(GtkWidget *terminal)
 }
 
 static void
+session_view_free(gpointer data)
+{
+    TerminalSessionView *session = data;
+
+    if (session == NULL)
+        return;
+
+    g_free(session->custom_title);
+    g_free(session);
+}
+
+static void
 update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
 {
+    const gboolean has_custom_title = session->custom_title != NULL &&
+                                      *session->custom_title != '\0';
     char *tab_title = NULL;
     char *accessible_label = NULL;
 
     if (session->lifecycle.state == GOREE_TERMINAL_SESSION_EXITED) {
-        tab_title = g_strdup_printf("Session %u — Exited", session->lifecycle.id);
-        accessible_label = g_strdup_printf(
-            "Local terminal session %u, exited; output preserved",
-            session->lifecycle.id);
+        tab_title = has_custom_title
+            ? g_strdup_printf("%s — Exited", session->custom_title)
+            : g_strdup_printf("Session %u — Exited", session->lifecycle.id);
+        accessible_label = has_custom_title
+            ? g_strdup_printf(
+                "%s, local terminal session %u, exited; output preserved",
+                session->custom_title,
+                session->lifecycle.id)
+            : g_strdup_printf(
+                "Local terminal session %u, exited; output preserved",
+                session->lifecycle.id);
         gtk_widget_add_css_class(session->tab_root, "glaze-session-exited");
     } else {
-        tab_title = g_strdup_printf("Session %u", session->lifecycle.id);
-        accessible_label = g_strdup_printf(
-            "Local terminal session %u",
-            session->lifecycle.id);
+        tab_title = has_custom_title
+            ? g_strdup(session->custom_title)
+            : g_strdup_printf("Session %u", session->lifecycle.id);
+        accessible_label = has_custom_title
+            ? g_strdup_printf(
+                "%s, local terminal session %u",
+                session->custom_title,
+                session->lifecycle.id)
+            : g_strdup_printf(
+                "Local terminal session %u",
+                session->lifecycle.id);
         gtk_widget_remove_css_class(session->tab_root, "glaze-session-exited");
     }
 
-    gtk_label_set_text(GTK_LABEL(session->tab_text), tab_title);
+    gtk_editable_set_text(GTK_EDITABLE(session->tab_text), tab_title);
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(terminal),
         GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -238,6 +269,28 @@ update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
 
     g_free(tab_title);
     g_free(accessible_label);
+}
+
+static void
+tab_title_editing_changed(GObject *object, GParamSpec *pspec, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) pspec;
+
+    if (gtk_editable_label_get_editing(GTK_EDITABLE_LABEL(object)))
+        return;
+
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(object));
+    char *normalized = g_strdup(text != NULL ? text : "");
+    g_strstrip(normalized);
+
+    g_clear_pointer(&session->custom_title, g_free);
+    if (*normalized != '\0')
+        session->custom_title = g_strdup(normalized);
+
+    g_free(normalized);
+    update_session_presentation(session->terminal, session);
 }
 
 static void
@@ -377,11 +430,107 @@ context_menu_pressed(GtkGestureClick *gesture,
     gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
 }
 
+static void
+tab_action_rename(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    gtk_editable_label_start_editing(GTK_EDITABLE_LABEL(session->tab_text));
+}
+
+static void
+tab_action_reset_name(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    g_clear_pointer(&session->custom_title, g_free);
+    update_session_presentation(session->terminal, session);
+}
+
+static void
+tab_action_close(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    close_terminal_widget(session->terminal);
+}
+
+static const GActionEntry tab_actions[] = {
+    {"rename", tab_action_rename, NULL, NULL, NULL, {0, 0, 0}},
+    {"reset-name", tab_action_reset_name, NULL, NULL, NULL, {0, 0, 0}},
+    {"close", tab_action_close, NULL, NULL, NULL, {0, 0, 0}},
+};
+
+static GtkWidget *
+build_tab_context_menu(TerminalSessionView *session)
+{
+    GSimpleActionGroup *actions = g_simple_action_group_new();
+    g_action_map_add_action_entries(
+        G_ACTION_MAP(actions),
+        tab_actions,
+        G_N_ELEMENTS(tab_actions),
+        session);
+    gtk_widget_insert_action_group(session->tab_root, "tab", G_ACTION_GROUP(actions));
+    g_object_unref(actions);
+
+    GMenu *menu = g_menu_new();
+    g_menu_append(menu, "Rename Tab", "tab.rename");
+    g_menu_append(menu, "Reset Tab Name", "tab.reset-name");
+    g_menu_append(menu, "Close Tab", "tab.close");
+
+    GtkWidget *popover = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
+    gtk_widget_add_css_class(popover, "glaze-context-menu");
+    gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+    gtk_widget_set_parent(popover, session->tab_root);
+    g_object_unref(menu);
+    return popover;
+}
+
+static void
+tab_menu_pressed(GtkGestureClick *gesture,
+                 int n_press,
+                 double x,
+                 double y,
+                 gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    GdkRectangle pointing_to = {(int) x, (int) y, 1, 1};
+
+    (void) n_press;
+    gtk_popover_set_pointing_to(GTK_POPOVER(session->tab_menu), &pointing_to);
+    gtk_popover_popup(GTK_POPOVER(session->tab_menu));
+    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
+static void
+tab_primary_pressed(GtkGestureClick *gesture,
+                    int n_press,
+                    double x,
+                    double y,
+                    gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) x;
+    (void) y;
+
+    if (n_press == 2) {
+        gtk_editable_label_start_editing(GTK_EDITABLE_LABEL(session->tab_text));
+        gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+    }
+}
+
 static GtkWidget *
 create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    GtkWidget *label = gtk_label_new(NULL);
+    GtkWidget *label = gtk_editable_label_new("");
     GtkWidget *close = gtk_button_new_from_icon_name("window-close-symbolic");
 
     session->tab_root = box;
@@ -390,6 +539,7 @@ create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
     gtk_widget_add_css_class(box, "glaze-session-local");
     gtk_widget_add_css_class(close, "glaze-tab-close");
     gtk_button_set_has_frame(GTK_BUTTON(close), FALSE);
+    gtk_widget_set_tooltip_text(box, "Right-click for tab actions; double-click the name to rename");
     gtk_widget_set_tooltip_text(close, "Close terminal session");
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(close),
@@ -400,6 +550,32 @@ create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
     gtk_box_append(GTK_BOX(box), label);
     gtk_box_append(GTK_BOX(box), close);
     g_signal_connect(close, "clicked", G_CALLBACK(close_session), terminal);
+    g_signal_connect(
+        label,
+        "notify::editing",
+        G_CALLBACK(tab_title_editing_changed),
+        session);
+
+    session->tab_menu = build_tab_context_menu(session);
+
+    GtkGesture *tab_context_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(tab_context_click), GDK_BUTTON_SECONDARY);
+    g_signal_connect(
+        tab_context_click,
+        "pressed",
+        G_CALLBACK(tab_menu_pressed),
+        session);
+    gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(tab_context_click));
+
+    GtkGesture *tab_primary_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(tab_primary_click), GDK_BUTTON_PRIMARY);
+    g_signal_connect(
+        tab_primary_click,
+        "pressed",
+        G_CALLBACK(tab_primary_pressed),
+        session);
+    gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(tab_primary_click));
+
     update_session_presentation(terminal, session);
     return box;
 }
@@ -412,7 +588,12 @@ add_session(TerminalWindow *terminal_window)
     TerminalSessionView *session = g_new0(TerminalSessionView, 1);
 
     goree_terminal_session_lifecycle_init(&session->lifecycle, session_id);
-    g_object_set_data_full(G_OBJECT(terminal), SESSION_STATE_KEY, session, g_free);
+    session->terminal = terminal;
+    g_object_set_data_full(
+        G_OBJECT(terminal),
+        SESSION_STATE_KEY,
+        session,
+        session_view_free);
 
     GtkWidget *tab_label = create_tab_label(terminal, session);
     gtk_widget_set_hexpand(terminal, TRUE);
