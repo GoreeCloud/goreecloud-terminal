@@ -31,23 +31,25 @@ The roadmap separates verified implementation from proposed work. A roadmap entr
 | FR-013 | Expand keyboard-first workflows with deterministic shortcuts, logical focus order, discoverable commands, conflict review, and full terminal-input preservation. | High | In progress |
 | FR-014 | Add split-pane and multi-session workspace layouts with keyboard navigation, pane resizing, clear active-pane state, and continuity-safe restoration. | High | Proposed |
 | FR-015 | Add shell/context integration for working-directory awareness, safe title updates, foreground-process state, and supported shell hooks without logging command content. | High | Proposed |
-| FR-016 | Add safe search, copy, paste, selection, open-link, and clipboard workflows with explicit dangerous-paste protections and no background collection of terminal content. | High | Proposed |
+| FR-016 | Add safe search, copy, paste, selection, open-link, and clipboard workflows with explicit dangerous-paste protections and no background collection of terminal content. | High | In progress: native Copy/Paste/Select All menu surface exists; dangerous-paste protection remains planned |
 | FR-017 | Add scalable scrollback controls, configurable retention, memory bounds, and privacy-aware clearing behavior suitable for long-running sessions. | Medium | Proposed |
 | FR-018 | Complete accessibility acceptance for keyboard, focus, high contrast, reduced motion/transparency, 200% text/reflow where applicable, screen readers, target sizing, and representative VTE content. | Critical | Planned; source contracts only |
 | FR-019 | Add repository-controlled product identity, iconography, desktop integration, notifications where justified, and Linux desktop conventions without importing inherited product branding. | High | Planned |
 | FR-020 | Complete native packaging, migration tooling, settings/profile migration, rollback, release validation, and supported-workstation acceptance before replacing the transitional Ptyxis-derived line. | Critical | Planned |
 | FR-021 | Maintain explicit Development/Validation/Promotion/Packaged/Stable lifecycle separation; never treat source completion or passing CI alone as Stable evidence. | Critical | Ongoing control |
+| FR-022 | Maintain a GoreeCloud Terminal-owned Theme Engine that maps Glaze-approved appearance modes to terminal-specific presentation without duplicating Glaze UI authority or silently remapping ANSI semantics. | High | In progress: Follow System/Light/Dark/Deep Dark engine and tests implemented; persistence remains planned |
+| FR-023 | Replace inherited/right-click convenience actions with a GoreeCloud-owned terminal context menu; prohibit privileged/package-management shortcuts such as `sudo apt update`; provide Copy, Paste, Select All, Clear, New Session, and Close Session. | High | Implemented in native Development source; rendered acceptance pending |
 
 ## Near-term sequence
 
 The recommended implementation order is:
 
-1. finish issue #73 Glaze UI native chrome and repository-local validation against the current Stable shared design-system contract;
-2. complete deterministic accessibility and input contracts for the native window/session layer;
-3. implement profiles/workspaces and settings persistence;
+1. finish issue #73 Glaze UI native chrome, Theme Engine, rebuilt context menu, and repository-local validation against the current Stable shared design-system contract;
+2. complete deterministic accessibility, rendered-menu, theme-switching, and input contracts for the native window/session layer;
+3. implement Theme Engine/settings persistence, profiles/workspaces, and safe preference storage;
 4. implement SSH/remote lifecycle and trustworthy context-state presentation;
 5. integrate Wardveil Security, Privacy Shield, and Everkeep through their canonical versioned platform contracts;
-6. add split-pane, shell-context, clipboard/search, and long-session quality improvements; and
+6. add split-pane, shell-context, dangerous-paste protection, search, and long-session quality improvements; and
 7. complete migration, packaging, rendered acceptance, supported-workstation qualification, and release promotion gates.
 
 ## Maintenance and synchronization
