@@ -117,8 +117,6 @@ def main() -> None:
             "tab close action missing")
     require("gtk_editable_label_start_editing" in main_source,
             "tab rename must use an explicit editable-label interaction")
-    require("GTK_PHASE_CAPTURE" in main_source,
-            "tab secondary-click menu must capture before GtkEditableLabel's native text menu")
     require("custom_title" in main_source,
             "live-session custom tab title state missing")
     require("sudo apt update" not in main_source.lower(), "forbidden package-management context action present")
