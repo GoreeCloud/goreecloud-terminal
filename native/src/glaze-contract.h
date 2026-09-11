@@ -8,7 +8,9 @@ G_BEGIN_DECLS
 #define GOREE_TERMINAL_GLAZE_VERSION "1.3.0"
 #define GOREE_TERMINAL_GLAZE_TAG "v1.3.0"
 #define GOREE_TERMINAL_GLAZE_SOURCE_REVISION "ff34f232f295c9dcb07e4c681f66d4104d0b9323"
-#define GOREE_TERMINAL_GLAZE_GENERAL_TARGET_PX 48
+/* Shared Glaze touch references. Desktop pointer/keyboard chrome is form-factor
+ * aware and is not required to use touch-sized targets by default. */
+#define GOREE_TERMINAL_GLAZE_TOUCH_REFERENCE_TARGET_PX 48
 #define GOREE_TERMINAL_GLAZE_TOUCH_ASSISTANCE_TARGET_PX 56
 
 typedef enum {
