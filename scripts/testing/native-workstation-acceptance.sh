@@ -8,9 +8,9 @@ Usage: scripts/testing/native-workstation-acceptance.sh [--automated-only]
 Builds and tests the GoreeCloud Terminal native implementation from the current
 checked-out revision. In interactive mode it then launches the application twice
 with an isolated XDG configuration directory so physical-device Glaze UI, Theme
-Engine persistence, context-menu, Clear, keyboard, focus, high-contrast, VTE,
-and assistive-technology behavior can be reviewed without changing the user's
-normal GoreeCloud Terminal preferences.
+Engine persistence, terminal and tab context menus, live tab renaming, Clear,
+keyboard, focus, high-contrast, VTE, and assistive-technology behavior can be
+reviewed without changing the user's normal GoreeCloud Terminal preferences.
 
 Options:
   --automated-only  Run dependency, build, contract, and unit-test checks only.
@@ -144,12 +144,17 @@ FIRST LAUNCH CHECKLIST
   5. Enter visible non-sensitive text, use Select All / Copy / Paste, then Clear.
      Clear must clear the visible display without placing a clear command in
      shell history.
-  6. Verify New Session and Close Session, including Ctrl+Shift+T and Ctrl+Shift+W.
-  7. Check visible focus treatment and keyboard operability of application chrome.
-  8. If your desktop provides High Contrast, enable it and verify usable contrast.
-  9. Check representative Unicode, selection, cursor, shell input, and scrolling.
- 10. If an assistive technology such as Orca is available, verify controls and
-     local-session labels are understandable and not misleading.
+  6. Right-click a tab and confirm Rename Tab, Reset Tab Name, and Close Tab.
+     Rename it to a non-sensitive test name and verify the visible title changes.
+     Double-click the tab name and verify inline renaming is also available.
+     Use Reset Tab Name and verify it returns to Session N. Confirm these tab
+     actions do not alter the six-action terminal-content menu from step 4.
+  7. Verify New Session and Close Session, including Ctrl+Shift+T and Ctrl+Shift+W.
+  8. Check visible focus treatment and keyboard operability of application chrome.
+  9. If your desktop provides High Contrast, enable it and verify usable contrast.
+ 10. Check representative Unicode, selection, cursor, shell input, and scrolling.
+ 11. If an assistive technology such as Orca is available, verify controls and
+     local-session/tab labels are understandable and not misleading.
 
 Close GoreeCloud Terminal after completing the first-launch checks.
 EOF
@@ -186,9 +191,11 @@ cat <<'EOF'
 
 PERSISTENCE RELAUNCH CHECKLIST
   1. The second launch must restore Deep Dark without reselecting it.
-  2. Recheck terminal readability, cursor, selection, and context-menu placement.
-  3. Recheck Clear and one New Session / Close Session cycle.
-  4. Confirm no unexpected settings from your normal profile appear; this run is
+  2. A tab renamed in the first run must NOT be restored; live tab names are
+     intentionally session-local and are not persisted to disk.
+  3. Recheck terminal readability, cursor, selection, and context-menu placement.
+  4. Recheck Clear and one New Session / Close Session cycle.
+  5. Confirm no unexpected settings from your normal profile appear; this run is
      isolated under a temporary XDG configuration directory.
 
 Close GoreeCloud Terminal after the persistence check.
