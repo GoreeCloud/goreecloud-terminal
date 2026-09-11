@@ -1,138 +1,95 @@
 # GoreeCloud Terminal
 
-GoreeCloud Terminal is the GoreeCloud-maintained Linux terminal application built from the open-source Ptyxis foundation. It preserves Ptyxis's mature GTK, VTE, PTY, container, accessibility, session, and process-tracking capabilities while adding GoreeCloud-owned product identity, Glaze UI, Wardveil Security context presentation, official GoreeCloud artwork, Privacy Shield boundaries, and GoreeCloud-specific administration workflows.
+GoreeCloud Terminal is GoreeCloud's Linux terminal application. The repository currently contains **two explicitly separated implementation tracks**:
 
-> **Status: Release Candidate 50.2-rc.2.** This follow-up candidate line carries the supported-workstation-validated Wardveil AT-SPI accessibility correction and post-RC1 stabilization work. **Stable and production approval remain separate** and are explicitly false until the remaining supported-workstation gates are completed.
+1. a transitional Ptyxis-derived Release Candidate line used for current packaging, compatibility, and workstation acceptance; and
+2. an original GoreeCloud-owned native GTK 4/VTE implementation under `native/`, which is the active architecture-migration path.
 
-The authoritative source lifecycle is `release/status.json`; final acceptance requirements are documented in `docs/release-readiness.md`.
+The native implementation does not import Ptyxis application architecture, UI, workflows, branding, or general product logic. GTK 4 and VTE remain mature supporting platform libraries because replacing terminal emulation/rendering independently would increase compatibility, accessibility, and standards risk.
 
-## Maintained-fork model
+> **Release lifecycle:** `50.2-rc.2` remains the current transitional Release Candidate recorded by `release/status.json`. `production_approved=false` and `stable_approved=false`. The `native/` implementation is **Development source only** and is not a replacement package, Release Candidate, Stable build, or workstation replacement.
 
-- GoreeCloud repository: `GoreeCloud/goreecloud-terminal`
-- Canonical upstream: `https://gitlab.gnome.org/chergert/ptyxis`
-- Imported upstream baseline: `c1ba62b71295f569e0fc144b25770f2315b30e00`
-- Upstream foundation version: `50.2`
-- GoreeCloud candidate: `50.2-rc.2`
-- License: GPL-3.0-or-later
+## Current development direction
 
-The repository preserves upstream copyright, contributor, translator, licensing, attribution, and source-history obligations. GoreeCloud-specific work is layered through controlled branches and pull requests. See `GORECLOUD_FORK.md`.
+GoreeCloud Terminal is moving from a maintained-fork product architecture toward an original GoreeCloud-owned application architecture while preserving mature terminal/runtime foundations where justified.
 
-## RC2 stabilization highlights
+The native Development source currently provides:
 
-- Carries the revised Wardveil semantic-label accessibility implementation that passed live supported-workstation AT-SPI exact-name checks for Remote, Container, and Elevated detector-driven states before merge.
-- Preserves Local/unknown behavior without a misleading Wardveil context indicator.
-- Includes a fail-closed production no-host-filesystem candidate generator that permits exactly one temporary manifest delta: removal of `--filesystem=host`.
-- Includes real repository-backed Flatpak update and exact rollback acceptance tooling using immutable `50.2-rc.1` as the rollback baseline.
-- Keeps the canonical production and development Flatpak manifests unchanged while supported-workstation permission-minimization acceptance remains open.
-- Keeps `production_approved=false` and `stable_approved=false`.
+- GoreeCloud-owned GTK application, window, tab, and local-session architecture;
+- VTE-owned terminal emulation/rendering and local default-shell execution;
+- accessible local-session and exited-session state presentation;
+- multi-session tabs and independent windows;
+- deterministic `Ctrl+Shift+T` new-session and `Ctrl+Shift+W` close-session actions;
+- current-authority Glaze UI V1.3 / `1.3.0` application-chrome integration work;
+- System, Light, and Dark application appearance behavior using GTK semantic theme roles;
+- high-contrast application-chrome treatment, visible focus behavior, and Glaze interactive-target contracts;
+- a machine-readable Glaze adoption manifest, repository-local drift validator, and unit tests; and
+- isolated Meson build/test definitions under `native/`.
 
-The published `50.2-rc.1` tag, prerelease, source, bundle, checksum, and OSTree identity remain immutable historical release evidence.
+See `native/README.md`, `native/GLAZE_UI_13.md`, and `FEATURE-ROADMAP.md`.
 
-## Product identity
+## Architecture and rendering boundary
 
+GoreeCloud owns the native application shell, product identity, application actions, session lifecycle, accessibility semantics, and product-level presentation.
+
+**VTE remains authoritative for terminal content**, including glyph rendering, ANSI colors, palettes, cursor behavior, selection, and terminal input/output semantics. Glaze UI must not recolor, inspect, reinterpret, log, or take ownership of terminal content merely to create a branded appearance.
+
+The native source currently supports truthful local/running and local/exited presentation. Remote/disconnected, elevated, Wardveil, Privacy Shield authorization, and Everkeep recovery states remain unimplemented in the native path until separate runtime contracts and evidence exist.
+
+## Glaze UI
+
+The current shared GoreeCloud design-system authority is **GLAZE UI V1.3 — Adaptive Resonance / `1.3.0`**. The native Terminal integration pins that target and exact release source revision in `native/data/glaze-ui-manifest.json`.
+
+Native Glaze work is repository-local Development integration, not automatic consumer acceptance. Rendered Linux review, accessibility/assistive-technology acceptance, native-platform qualification, and normal GoreeCloud release approval remain separate gates.
+
+The older transitional RC contains a historical native GTK/libadwaita Glaze mapping. Historical version labels in that line do not override the current shared Glaze authority and must not be interpreted as current shared-design-system conformance.
+
+See `docs/glaze-ui.md` and `native/GLAZE_UI_13.md`.
+
+## Transitional Release Candidate line
+
+The current packaged/release-candidate source remains based on the Ptyxis 50.2 foundation while the native implementation is developed and qualified. This transitional line retains compatibility, packaging, rollback, supported-workstation, Wardveil, Privacy Shield, and release-readiness evidence that must not be silently transferred to the new native implementation.
+
+Key RC facts from `release/status.json`:
+
+- Release Candidate: `50.2-rc.2`
 - Production application ID: `com.goreecloud.Terminal`
-- Development application ID: `com.goreecloud.Terminal.Devel`
-- Production GSettings namespace: `com.goreecloud.Terminal`
-- Development GSettings namespace: `com.goreecloud.Terminal.Devel`
+- Development package application ID: `com.goreecloud.Terminal.Devel`
 - Canonical launcher: `goreecloud-terminal`
-- Compatibility runtime: `ptyxis`
-- Compatibility helper: `ptyxis-agent`
+- Production approved: false
+- Stable approved: false
 
-The inherited executable/helper remain compatibility-sensitive implementation details. New GoreeCloud workflows should use `goreecloud-terminal`.
+The upstream-derived line preserves required copyright, contributor, translator, licensing, attribution, and source-history obligations. See `GORECLOUD_FORK.md`.
 
-## Local API
+## Wardveil Security, Privacy Shield, and Everkeep
 
-GoreeCloud Terminal provides a deliberately narrow, built-in read-only local API:
+Platform-system state is implementation-specific and must not be inferred across the two tracks.
 
-```bash
-goreecloud-terminal api status
-```
+The transitional RC contains existing Wardveil and Privacy Shield integrations documented under `docs/` and `privacy-shield/`. Those records remain evidence for that implementation line only.
 
-It returns schema-versioned JSON with static product, release, identity, Privacy Shield, and Wardveil integration metadata. It opens no network listener and exposes no terminal content, commands, credentials, SSH destinations, profile aliases, or user/device identifiers.
+The native implementation currently declares **extension points only** for Wardveil Security, Privacy Shield, and Everkeep. It does not yet claim native security-state, privacy-authorization, or recovery-state integration. Future work must use the corresponding canonical GoreeCloud platform contracts rather than introducing Terminal-local substitutes.
 
-See `docs/local-api.md`.
+## SSH, profiles, and workspaces
 
-## Standard OpenSSH workflows
+The transitional RC retains existing OpenSSH-based workflows and non-secret host-profile/workspace metadata. OpenSSH remains responsible for SSH configuration, host keys, authentication, private keys, agents, ports, forwarding, proxying, and connection policy.
 
-OpenSSH remains the authority for host configuration, host keys, authentication, private keys, agents, ports, proxying, forwarding, and connection policy.
-
-```bash
-goreecloud-terminal ssh server-alias
-goreecloud-terminal ssh -p 2222 server-alias
-goreecloud-terminal ssh-tab server-alias
-```
-
-Arguments after the GoreeCloud subcommand are passed to the system `ssh` command unchanged using normal OpenSSH argument ordering.
-
-## Host profiles and workspaces
-
-Optional local metadata may organize OpenSSH `Host` aliases using exactly three TAB-separated fields:
-
-```text
-WORKSPACE<TAB>PROFILE<TAB>SSH_HOST_ALIAS
-```
-
-```bash
-goreecloud-terminal workspaces
-goreecloud-terminal profiles
-goreecloud-terminal profiles Infrastructure
-goreecloud-terminal profile primary-vps
-goreecloud-terminal profile-tab primary-vps
-```
-
-This metadata does not duplicate credentials, key paths, ports, proxy settings, hostnames, or authentication policy. Malformed configuration fails before the terminal runtime starts. See `docs/administration-workflows.md` and `docs/host-profiles-and-workspaces.md`.
-
-## GoreeCloud platform layers
-
-### Glaze UI 1.4
-
-The RC targets **Glaze UI 1.4.0 Stable** through a native GTK/libadwaita mapping. Glaze styles terminal-adjacent application chrome while VTE retains ownership of terminal glyph rendering and palette behavior. The RC adds explicit light-scheme, reduced-motion, increased-contrast, focus-visible, and custom target-size source invariants.
-
-See `docs/glaze-ui.md`.
-
-### Wardveil Security
-
-The typed session-context model supports Local, Remote, Container, and Elevated presentation. Wardveil context is informational and does not replace `sudo`, OpenSSH, shell policy, or operating-system authorization. The RC2 source line contains the corrected semantic accessible-label implementation that passed live Remote, Container, and Elevated exact-name validation before integration; the exact RC2 package must preserve that behavior in follow-up acceptance.
-
-See `docs/wardveil-session-context.md`, `docs/wardveil-runtime-acceptance.md`, and `docs/wardveil-atspi-accessibility-fix.md`.
-
-### Privacy Shield
-
-The RC adopts a minimized Privacy Shield adapter with only:
-
-- `telemetry-minimization`
-- `data-minimization`
-
-GoreeCloud Terminal adds no analytics or remote tracker telemetry. Release evidence excludes terminal contents, command history, clipboard contents, credentials, raw SSH configuration, private infrastructure inventory, and similar sensitive material.
-
-See `privacy-shield/adapter.json` and `docs/privacy-shield-integration.md`.
-
-## Packaging
-
-### Development acceptance package
-
-`com.goreecloud.Terminal.Devel.json` remains the isolated development package and lifecycle-test identity. Its exact-artifact lifecycle harness verifies hashes, application/runtime identity, packaged smoke behavior, data-preserving local-bundle replacement, and clean ordinary removal without `--delete-data`.
-
-See `docs/flatpak-packaging-and-acceptance.md` and `docs/flatpak-upgrade-and-rollback.md`.
-
-### Production-identity RC package
-
-`com.goreecloud.Terminal.json` is the production-identity Release Candidate manifest. It uses:
-
-- `com.goreecloud.Terminal`;
-- GNOME Platform/SDK 50;
-- canonical `goreecloud-terminal` command;
-- `-Ddevelopment=false`;
-- the same pinned support dependencies as the accepted development package;
-- explicit terminal-oriented permissions that remain subject to Stable permission-minimization acceptance.
-
-The canonical RC2 manifest intentionally retains the existing host-filesystem permission at this source-preparation boundary. The no-host-filesystem build remains an isolated acceptance candidate until the affected supported-workstation behavior is verified.
-
-The `Production RC Flatpak Acceptance` workflow builds and smoke-tests an exact-head RC2 bundle. A successful RC package workflow is not Stable authorization.
+The original native implementation does not yet claim SSH/remote-session, remote-profile, or workspace parity. Those capabilities are planned in `FEATURE-ROADMAP.md` and must be implemented with explicit local/remote identity and evidence-backed lifecycle states before the native path can replace the transitional line.
 
 ## Build and test
 
-Representative native development validation:
+### Original native Development source
+
+```bash
+meson setup native/_build native --buildtype=debugoptimized
+meson compile -C native/_build
+meson test -C native/_build --print-errorlogs
+```
+
+The `Native Foundation Contract` workflow also validates native architecture isolation, the exact Glaze adoption metadata, the native build, session lifecycle tests, and Glaze contract tests.
+
+### Transitional Ptyxis-derived line
+
+Representative Development validation for the transitional source remains:
 
 ```bash
 meson setup _build \
@@ -145,44 +102,47 @@ meson test -C _build --print-errorlogs
 DESTDIR="$PWD/_install" meson install -C _build
 ```
 
-The RC source adds automated gates for maintained-fork provenance, lifecycle safety, Privacy Shield, the local API, Glaze UI source invariants, Wardveil accessibility, supported-workstation evidence contracts, Flatpak permission review, development Flatpak acceptance, production-identity RC Flatpak acceptance, isolated no-host-filesystem candidate builds, and repository-backed transition/rollback validation.
+The repository includes additional Flatpak, release-readiness, rollback, accessibility, permission, and supported-workstation workflows for the transitional package lifecycle.
 
 ## Security and privacy boundaries
 
-Terminal software is security-sensitive. GoreeCloud-specific features therefore preserve these boundaries:
+Terminal software is security-sensitive. GoreeCloud Terminal therefore maintains these boundaries across current and future implementation work:
 
-- no reusable credentials, private keys, tokens, or passwords are committed to source;
-- OpenSSH remains responsible for SSH configuration/authentication;
-- `sudo` and the operating system remain responsible for privilege authorization;
-- host profiles remain non-secret organizational metadata and do not grant access;
-- Wardveil context does not authorize commands or sessions;
-- Privacy Shield prohibits GoreeCloud telemetry of private terminal/session activity;
-- the local API is read-only, local, and privacy-minimized;
-- Flatpak permissions remain explicit and reviewable;
-- package/release evidence is limited to non-secret source/package identity and pass/fail data;
-- upstream security and compatibility fixes are reviewed through controlled synchronization.
+- no reusable credentials, private keys, passwords, tokens, or sensitive infrastructure inventory are committed to source;
+- no GoreeCloud telemetry of private terminal/session content is introduced;
+- VTE terminal contents and user-selected terminal palettes remain outside Glaze UI ownership;
+- OpenSSH remains the authority for SSH authentication/configuration where SSH is implemented;
+- operating-system authorization remains authoritative for privilege changes;
+- Wardveil presentation must not be confused with command/session authorization;
+- Privacy Shield authorization must fail closed at applicable remote/network trust and time boundaries when native remote operations are implemented; and
+- release/test evidence must remain privacy-minimized and must not capture terminal contents, credentials, clipboard contents, private hosts, or command history.
 
-## RC and Stable boundary
+## Roadmap
 
-Release Candidate `50.2-rc.2` may be used for controlled final acceptance. Stable promotion still requires recorded supported-workstation evidence for remaining applicable items including:
+Near-term native priorities are:
 
-- exact RC2 regression coverage for the corrected Wardveil accessible names and accepted core terminal behavior;
-- explicit Glaze UI light/dark palette, transparency, contrast, and reduced-motion behavior;
-- settings persistence and controlled migration/rollback;
-- final Flatpak permission minimization against affected real workflows;
-- production package installation/removal/reinstall and intended upstream Ptyxis coexistence;
-- a second distinct accepted package with repository-backed update and exact rollback;
-- post-rollback data compatibility;
-- crash and recovery behavior.
+1. complete issue #73's Glaze UI native-chrome and repository-local acceptance work;
+2. finish deterministic accessibility and input contracts for the native window/session layer;
+3. add profiles/workspaces and settings persistence;
+4. implement SSH/remote lifecycle with truthful remote/disconnected state;
+5. integrate Wardveil Security, Privacy Shield, and Everkeep through their canonical versioned contracts;
+6. add split panes, shell/context integration, safe clipboard/search workflows, and long-session quality controls; and
+7. complete migration, packaging, rendered accessibility, supported-workstation qualification, rollback, and release gates before replacing the transitional line.
 
-No green CI result alone may promote the candidate to Stable.
+See `FEATURE-ROADMAP.md` for the controlled roadmap.
 
-## Upstream attribution
+## Release and Stable boundary
 
-Ptyxis was created and is maintained upstream by Christian Hergert and contributors through GNOME GitLab. GoreeCloud Terminal builds on that project under GPL-3.0-or-later.
+Neither passing source CI nor completing a Development feature promotes GoreeCloud Terminal to Stable.
+
+The transitional RC remains subject to the blockers in `release/status.json`. The native implementation has its own additional acceptance obligations, including repository-local feature validation, rendered Linux behavior, accessibility and assistive-technology review, platform-system integration evidence, migration/rollback validation, packaging, and supported-workstation qualification.
+
+No acceptance evidence from the transitional implementation may be silently reused as native acceptance unless the applicable governing contract explicitly allows it and the evidence actually covers the native implementation.
+
+## Upstream attribution and license
+
+The transitional implementation derives from Ptyxis, created and maintained upstream by Christian Hergert and contributors through GNOME GitLab. Required upstream licensing, copyright, attribution, and source-history obligations remain preserved.
 
 Canonical upstream source: `https://gitlab.gnome.org/chergert/ptyxis`
 
-## License
-
-GPL-3.0-or-later. The GPL text remains in `COPYING`.
+License: GPL-3.0-or-later. The license text remains in `COPYING`.
