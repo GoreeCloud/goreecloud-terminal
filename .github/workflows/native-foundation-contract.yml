@@ -32,6 +32,9 @@ jobs:
           test -f native/src/glaze-contract.c
           test -f native/src/glaze-contract.h
           test -f native/src/test-glaze-contract.c
+          test -f native/src/theme-engine.c
+          test -f native/src/theme-engine.h
+          test -f native/src/test-theme-engine.c
           test -f native/data/glaze-ui.css
           test -f native/data/glaze-ui-manifest.json
           test -f native/data/goreecloud-terminal-native.gresource.xml
@@ -44,7 +47,15 @@ jobs:
           grep -Fq "dependency('vte-2.91-gtk4'" native/meson.build
           grep -Fq "test('native-session-lifecycle'" native/meson.build
           grep -Fq "test('native-glaze-contract'" native/meson.build
+          grep -Fq "test('native-theme-engine'" native/meson.build
           grep -Fq 'GOREE_TERMINAL_GLAZE_VERSION "1.3.0"' native/src/glaze-contract.h
+          grep -Fq '"deep-dark"' native/src/theme-engine.c
+          grep -Fq 'g_menu_append(edit, "Clear", "terminal.clear")' native/src/main.c
+          grep -Fq 'vte_terminal_feed(VTE_TERMINAL(user_data), "\\033[2J\\033[H", -1)' native/src/main.c
+          if grep -RFn 'sudo apt update' native; then
+            echo 'Native GoreeCloud Terminal must not expose sudo apt update as a product action or context-menu item.' >&2
+            exit 1
+          fi
           if grep -RIE '(^|["<])(ptyxis|org\.gnome\.Ptyxis)' native/src native/meson.build; then
             echo 'Native product source must not import or identify as Ptyxis.' >&2
             exit 1
