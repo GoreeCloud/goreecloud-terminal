@@ -15,11 +15,15 @@ MANIFEST = NATIVE / "data" / "glaze-ui-manifest.json"
 HEADER = NATIVE / "src" / "glaze-contract.h"
 DOC = NATIVE / "GLAZE_UI_13.md"
 CSS = NATIVE / "data" / "glaze-ui.css"
+MAIN = NATIVE / "src" / "main.c"
+THEME_ENGINE = NATIVE / "src" / "theme-engine.c"
 
 EXPECTED_VERSION = "1.3.0"
 EXPECTED_TAG = "v1.3.0"
 EXPECTED_REVISION = "ff34f232f295c9dcb07e4c681f66d4104d0b9323"
 EXPECTED_PRODUCT = "GLAZE UI V1.3 — Adaptive Resonance"
+EXPECTED_APPEARANCE_MODES = ["follow-system", "light", "dark", "deep-dark"]
+EXPECTED_CONTEXT_ACTIONS = ["copy", "paste", "select-all", "clear", "new-session", "close-session"]
 
 
 def require(condition: bool, message: str) -> None:
@@ -39,8 +43,15 @@ def main() -> None:
     require(glaze["requiredConsumerVersion"] == EXPECTED_VERSION, "required consumer version drift")
     require(glaze["tag"] == EXPECTED_TAG, "Glaze tag drift")
     require(glaze["sourceRevision"] == EXPECTED_REVISION, "Glaze source revision drift")
-    require(mapping["terminalSurfaceAuthority"] == "VTE", "VTE terminal-surface authority must be explicit")
+    require(glaze["personalizationContract"] == "contracts/v1.3/personalization.candidate.json", "personalization contract drift")
+    require(mapping["terminalEmulationAuthority"] == "VTE", "VTE emulation authority must be explicit")
     require(mapping["terminalContentStyledByGlaze"] is False, "Glaze must not style terminal content")
+    require(mapping["appearanceModes"] == EXPECTED_APPEARANCE_MODES, "Terminal theme surface drift")
+    require(mapping["themeEngine"]["owner"] == "GoreeCloud Terminal", "Theme Engine ownership drift")
+    require(mapping["themeEngine"]["semanticAnsiPaletteOverride"] is False, "Theme Engine must not silently remap ANSI semantics")
+    require(mapping["contextMenu"]["actions"] == EXPECTED_CONTEXT_ACTIONS, "context-menu action drift")
+    require(mapping["contextMenu"]["sudoAptUpdateExposed"] is False, "sudo apt update must not be exposed")
+    require(mapping["contextMenu"]["clearExecutesShellCommand"] is False, "Clear must not execute a shell command")
     require(mapping["minimumInteractiveTargetPx"] == 48, "48px target floor required")
     require(mapping["touchAssistanceMinimumInteractiveTargetPx"] == 56, "56px Touch Assistance floor required")
     require(mapping["customMotion"] is False, "native mapping must not claim custom motion")
@@ -49,6 +60,8 @@ def main() -> None:
     header = HEADER.read_text(encoding="utf-8")
     doc = DOC.read_text(encoding="utf-8")
     css = CSS.read_text(encoding="utf-8")
+    main_source = MAIN.read_text(encoding="utf-8")
+    theme_source = THEME_ENGINE.read_text(encoding="utf-8")
 
     for value in (EXPECTED_VERSION, EXPECTED_TAG, EXPECTED_REVISION, EXPECTED_PRODUCT):
         require(value in header or value in doc, f"missing synchronized identity value: {value}")
@@ -59,8 +72,13 @@ def main() -> None:
     require("min-width: 48px" in css and "min-height: 48px" in css, "CSS 48px target floor missing")
     require("min-width: 56px" in css and "min-height: 56px" in css, "CSS 56px Touch Assistance floor missing")
     require("vte-terminal" not in css.lower(), "Glaze CSS must not select the VTE terminal surface")
+    require("deep-dark" in theme_source, "deep-dark Theme Engine mode missing")
+    require('g_menu_append(edit, "Clear", "terminal.clear")' in main_source, "Clear context action missing")
+    require("sudo apt update" not in main_source.lower(), "forbidden package-management context action present")
+    require('vte_terminal_feed(VTE_TERMINAL(user_data), "\\033[2J\\033[H", -1)' in main_source,
+            "Clear must use terminal display control rather than a shell command")
 
-    stale_files = [HEADER, DOC, CSS, NATIVE / "README.md"]
+    stale_files = [HEADER, DOC, CSS, NATIVE / "README.md", THEME_ENGINE]
     for path in stale_files:
         text = path.read_text(encoding="utf-8")
         require("Glaze UI 2.1" not in text and "2.1.0" not in text, f"stale 2.1 target in {path.name}")
