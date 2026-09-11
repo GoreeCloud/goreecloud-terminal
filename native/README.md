@@ -25,7 +25,7 @@ The verified source on this branch provides:
 - separation between Glaze-owned application chrome and Terminal-owned VTE presentation policy;
 - Terminal-owned foreground, background, cursor, and selection theme resolution without silent ANSI semantic-palette remapping;
 - high-contrast chrome strengthening without Glaze styling terminal content;
-- 48px general interactive targets and a reserved 56px Touch Assistance adapter state;
+- compact, form-factor-aware pointer/keyboard desktop chrome while preserving the shared 48px touch-oriented reference target and the reserved 56px Touch Assistance target;
 - visible focus treatment and accessible names for native controls;
 - a rebuilt GoreeCloud-owned right-click terminal menu containing Copy, Paste, Select All, Clear, New Session, and Close Session;
 - no `sudo apt update` or other package-management shell command in the native right-click menu;
@@ -64,6 +64,8 @@ bash scripts/testing/native-workstation-acceptance.sh
 The runner checks the exact checked-out Git revision, refuses a dirty working tree, validates the Glaze contract, builds the native application, runs the unit tests, and then launches two isolated physical-device passes. It uses a temporary `XDG_CONFIG_HOME`, so testing the Theme Engine does not overwrite the user's normal GoreeCloud Terminal preferences.
 
 The first launch requires review of all four Theme Engine modes, terminal readability, the rebuilt six-action context menu, absence of `sudo apt update`, Copy/Paste/Select All/Clear, New Session/Close Session, shortcuts, focus, high contrast where available, representative VTE behavior, and assistive technology where available. The first pass intentionally ends on Deep Dark. The second launch uses the same isolated preference store and must restore Deep Dark automatically.
+
+The first Zorin OS 17.3 / Wayland Flatpak rendering of candidate `2e497f9` failed visual acceptance because desktop header and tab geometry incorrectly applied touch-sized target dimensions. That failure is retained as evidence. The current development line uses compact desktop density and must be revalidated physically before any rendered acceptance claim.
 
 For the Fedora 44 reference environment used by CI, the required development packages are:
 
