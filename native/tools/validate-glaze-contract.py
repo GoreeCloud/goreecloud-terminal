@@ -35,6 +35,7 @@ def main() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     glaze = manifest["glazeUi"]
     mapping = manifest["nativeMapping"]
+    materials = mapping["materials"]
     evidence = manifest["evidence"]
 
     require(manifest["integrationLifecycle"] == "development", "native mapping must remain Development")
@@ -51,6 +52,21 @@ def main() -> None:
     require(mapping["touchOrientedReferenceTargetPx"] == 48, "48px touch-oriented reference required")
     require(mapping["touchAssistanceMinimumInteractiveTargetPx"] == 56, "56px Touch Assistance floor required")
     require(mapping["appearanceModes"] == EXPECTED_APPEARANCE_MODES, "Terminal theme surface drift")
+    require(materials["foundation"] == "neutral-glass", "Glaze neutral-glass foundation missing")
+    require(materials["dominantGlazeRegion"] == "header-and-session-tab-chrome",
+            "dominant bounded Glaze region drift")
+    require(materials["terminalCanvas"] == "solid-vte-owned",
+            "terminal canvas must remain solid and VTE-owned")
+    require(materials["alphaTranslucency"] is True, "native alpha translucency mapping missing")
+    require(materials["gradientHighlights"] is True, "native Glaze highlight mapping missing")
+    require(materials["layeredShadows"] is True, "native Glaze depth mapping missing")
+    require(materials["semanticAccentSelection"] is True, "semantic selected/accent mapping missing")
+    require(materials["nativeBackdropBlur"] == "not-claimed-without-verified-compositor-adapter",
+            "native backdrop blur must not be claimed without an accepted adapter")
+    require(materials["reducedTransparencyFallback"] == "opaque-solid-raised",
+            "Reduced Transparency must fail toward opaque Solid/Raised material")
+    require(materials["highContrastFallback"] == "opaque-strong-boundaries",
+            "High Contrast material fallback drift")
     require(mapping["themeEngine"]["owner"] == "GoreeCloud Terminal", "Theme Engine ownership drift")
     require(mapping["themeEngine"]["semanticAnsiPaletteOverride"] is False, "Theme Engine must not silently remap ANSI semantics")
     require(mapping["contextMenu"]["actions"] == EXPECTED_CONTEXT_ACTIONS, "context-menu action drift")
@@ -58,6 +74,8 @@ def main() -> None:
     require(mapping["contextMenu"]["clearExecutesShellCommand"] is False, "Clear must not execute a shell command")
     require(mapping["customMotion"] is False, "native mapping must not claim custom motion")
     require(evidence["productionEligible"] is False, "Development mapping cannot claim production eligibility")
+    require("pending" in evidence["renderedLinuxAcceptance"],
+            "source metadata must not claim rendered acceptance before physical revalidation")
 
     header = HEADER.read_text(encoding="utf-8")
     doc = DOC.read_text(encoding="utf-8")
@@ -77,6 +95,18 @@ def main() -> None:
     require("desktop" in css.lower() and "pointer/keyboard" in css.lower(),
             "desktop density boundary must be documented in CSS")
     require("vte-terminal" not in css.lower(), "Glaze CSS must not select the VTE terminal surface")
+    require("background-color: alpha(@theme_bg_color" in css,
+            "bounded translucent native Glaze material missing")
+    require("linear-gradient" in css, "Glaze optical highlight/gradient mapping missing")
+    require("box-shadow:" in css and "inset" in css, "Glaze material depth/specular highlight missing")
+    require("@theme_selected_bg_color" in css,
+            "semantic native selected/accent mapping missing")
+    require("glaze-reduced-transparency" in css and "background-image: none" in css,
+            "Reduced Transparency solid fallback missing")
+    require("glaze-high-contrast" in css and "box-shadow: none" in css,
+            "High Contrast optical fallback missing")
+    require("backdrop-filter" not in css,
+            "GTK mapping must not pretend to provide unsupported web backdrop-filter blur")
     require("deep-dark" in theme_source, "deep-dark Theme Engine mode missing")
     require('g_menu_append(edit, "Clear", "terminal.clear")' in main_source, "Clear context action missing")
     require('g_menu_append(menu, "Rename Tab", "tab.rename")' in main_source,
@@ -87,6 +117,8 @@ def main() -> None:
             "tab close action missing")
     require("gtk_editable_label_start_editing" in main_source,
             "tab rename must use an explicit editable-label interaction")
+    require("GTK_PHASE_CAPTURE" in main_source,
+            "tab secondary-click menu must capture before GtkEditableLabel's native text menu")
     require("custom_title" in main_source,
             "live-session custom tab title state missing")
     require("sudo apt update" not in main_source.lower(), "forbidden package-management context action present")
