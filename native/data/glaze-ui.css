@@ -1,9 +1,13 @@
-/* GoreeCloud Terminal — native Glaze UI 1.3.0 mapping.
+/* GoreeCloud Terminal — native Glaze UI 1.3.0 desktop mapping.
  *
  * Glaze UI owns application chrome. GoreeCloud Terminal's Theme Engine owns
  * terminal foreground/background/cursor presentation through VTE APIs. This
  * stylesheet must never style shell output, ANSI palette semantics, cursor
  * rendering, selection, or terminal content directly.
+ *
+ * Desktop is pointer/keyboard-oriented. The 48px Glaze touch reference floor is
+ * intentionally not imposed on ordinary desktop chrome; Touch Assistance uses
+ * the dedicated 56px override below.
  */
 
 .glaze-window {
@@ -11,73 +15,135 @@
   color: @theme_fg_color;
 }
 
+/* Compact desktop title chrome: visually calm, layered, and subordinate to the
+ * terminal content rather than consuming a large portion of the workspace. */
 headerbar.glaze-header {
-  min-height: 56px;
-  padding: 6px 10px;
-  border-bottom: 1px solid alpha(@theme_fg_color, 0.14);
-  background-color: alpha(@theme_bg_color, 0.94);
-  box-shadow: 0 1px 10px alpha(black, 0.12);
+  min-height: 40px;
+  padding: 2px 8px;
+  border-bottom: 1px solid alpha(@theme_fg_color, 0.10);
+  background-color: alpha(@theme_bg_color, 0.96);
+  box-shadow: 0 1px 6px alpha(black, 0.10);
 }
 
 .glaze-header .title {
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: 0.005em;
 }
 
 .glaze-header button,
-.glaze-tab-close,
 .glaze-theme-engine {
-  min-width: 48px;
-  min-height: 48px;
-  border-radius: 16px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 4px 9px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  box-shadow: none;
 }
 
-.glaze-theme-engine {
-  min-width: 132px;
-  padding-left: 14px;
-  padding-right: 14px;
+.glaze-header button:hover,
+.glaze-theme-engine:hover {
+  background-color: alpha(@theme_fg_color, 0.055);
+  border-color: alpha(@theme_fg_color, 0.08);
 }
 
+.glaze-header button:active,
+.glaze-theme-engine:active {
+  background-color: alpha(@theme_selected_bg_color, 0.10);
+}
+
+/* The theme selector is a compact capsule, not a large toolbar block. */
+.glaze-theme-engine {
+  min-width: 0;
+  padding-left: 11px;
+  padding-right: 11px;
+  background-color: alpha(@theme_fg_color, 0.035);
+  border-color: alpha(@theme_fg_color, 0.09);
+}
+
+/* Notebook chrome is intentionally thin on desktop. The durable terminal canvas
+ * remains visually dominant, while the active session receives a bounded Glaze
+ * treatment and a clear accent edge. */
 .glaze-session-tabs {
   background-color: @theme_bg_color;
 }
 
+.glaze-session-tabs > header {
+  min-height: 34px;
+  padding: 0 6px;
+  border-bottom: 1px solid alpha(@theme_fg_color, 0.10);
+  background-color: alpha(@theme_bg_color, 0.985);
+  box-shadow: inset 0 -1px alpha(black, 0.025);
+}
+
 .glaze-session-tabs tab {
-  min-height: 48px;
-  padding: 4px 8px;
-  border-radius: 16px 16px 0 0;
+  min-height: 32px;
+  margin: 2px 2px 0 2px;
+  padding: 0 8px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid transparent;
+  border-bottom-width: 2px;
+  background-color: transparent;
+}
+
+.glaze-session-tabs tab:hover {
+  background-color: alpha(@theme_fg_color, 0.045);
 }
 
 .glaze-session-tabs tab:checked {
-  background-color: alpha(@theme_selected_bg_color, 0.16);
+  background-color: alpha(@theme_selected_bg_color, 0.09);
+  border-color: alpha(@theme_selected_bg_color, 0.16);
+  border-bottom-color: @theme_selected_bg_color;
+}
+
+.glaze-tab-label {
+  min-height: 28px;
+}
+
+.glaze-tab-close {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  margin-left: 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background-color: transparent;
+}
+
+.glaze-tab-close:hover {
+  background-color: alpha(@theme_fg_color, 0.07);
+  border-color: alpha(@theme_fg_color, 0.08);
 }
 
 .glaze-session-tabs tab:focus-visible,
 .glaze-header button:focus-visible,
 .glaze-context-menu modelbutton:focus-visible {
-  outline: 3px solid @theme_selected_bg_color;
+  outline: 2px solid @theme_selected_bg_color;
   outline-offset: 2px;
 }
 
+/* Menus use one dominant bounded Glaze surface with compact desktop rows. */
 .glaze-context-menu contents {
-  padding: 6px;
-  border: 1px solid alpha(@theme_fg_color, 0.16);
-  border-radius: 18px;
-  background-color: alpha(@theme_bg_color, 0.98);
-  box-shadow: 0 8px 28px alpha(black, 0.22);
+  padding: 5px;
+  border: 1px solid alpha(@theme_fg_color, 0.14);
+  border-radius: 14px;
+  background-color: alpha(@theme_bg_color, 0.985);
+  box-shadow: 0 10px 30px alpha(black, 0.20);
 }
 
 .glaze-context-menu modelbutton {
-  min-height: 44px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-height: 34px;
+  padding: 5px 10px;
+  border-radius: 9px;
 }
 
 .glaze-context-menu modelbutton:hover {
-  background-color: alpha(@theme_selected_bg_color, 0.14);
+  background-color: alpha(@theme_selected_bg_color, 0.11);
 }
 
-/* Glaze UI V1.3 accessibility contract: Touch Assistance uses a 56px floor. */
+/* Touch Assistance is a distinct accessibility/input mode. It intentionally
+ * expands interaction targets without forcing touch-sized geometry on normal
+ * desktop sessions. */
 .glaze-window.glaze-touch-assistance .glaze-header button,
 .glaze-window.glaze-touch-assistance .glaze-tab-close,
 .glaze-window.glaze-touch-assistance .glaze-theme-engine,
@@ -95,16 +161,28 @@ headerbar.glaze-header {
 }
 
 .glaze-window.glaze-deep-dark headerbar.glaze-header {
-  border-bottom-color: alpha(white, 0.18);
-  box-shadow: 0 1px 10px alpha(black, 0.42);
+  border-bottom-color: alpha(white, 0.12);
+  box-shadow: 0 1px 6px alpha(black, 0.36);
+}
+
+.glaze-window.glaze-deep-dark .glaze-session-tabs > header {
+  background-color: #0C0E11;
+  border-bottom-color: alpha(white, 0.10);
+  box-shadow: inset 0 -1px alpha(black, 0.35);
+}
+
+.glaze-window.glaze-deep-dark .glaze-theme-engine {
+  background-color: alpha(white, 0.055);
+  border-color: alpha(white, 0.10);
 }
 
 .glaze-session-exited {
-  opacity: 0.76;
+  opacity: 0.72;
 }
 
 /* High contrast removes translucent chrome and strengthens non-color borders. */
 .glaze-window.glaze-high-contrast headerbar.glaze-header,
+.glaze-window.glaze-high-contrast .glaze-session-tabs > header,
 .glaze-window.glaze-high-contrast .glaze-session-tabs tab:checked,
 .glaze-window.glaze-high-contrast .glaze-context-menu contents {
   background-color: @theme_bg_color;
@@ -115,12 +193,13 @@ headerbar.glaze-header {
 .glaze-window.glaze-high-contrast button:focus-visible,
 .glaze-window.glaze-high-contrast tab:focus-visible,
 .glaze-window.glaze-high-contrast modelbutton:focus-visible {
-  outline-width: 4px;
+  outline-width: 3px;
 }
 
 /* Reserved platform-adapter state. No automatic claim is made until a verified
  * reduced-transparency preference adapter exists for the supported platform. */
 .glaze-window.glaze-reduced-transparency headerbar.glaze-header,
+.glaze-window.glaze-reduced-transparency .glaze-session-tabs > header,
 .glaze-window.glaze-reduced-transparency .glaze-context-menu contents {
   background-color: @theme_bg_color;
   box-shadow: none;
