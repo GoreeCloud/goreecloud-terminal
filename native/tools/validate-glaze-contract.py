@@ -79,6 +79,16 @@ def main() -> None:
     require("vte-terminal" not in css.lower(), "Glaze CSS must not select the VTE terminal surface")
     require("deep-dark" in theme_source, "deep-dark Theme Engine mode missing")
     require('g_menu_append(edit, "Clear", "terminal.clear")' in main_source, "Clear context action missing")
+    require('g_menu_append(menu, "Rename Tab", "tab.rename")' in main_source,
+            "tab Rename action missing")
+    require('g_menu_append(menu, "Reset Tab Name", "tab.reset-name")' in main_source,
+            "tab reset-name action missing")
+    require('g_menu_append(menu, "Close Tab", "tab.close")' in main_source,
+            "tab close action missing")
+    require("gtk_editable_label_start_editing" in main_source,
+            "tab rename must use an explicit editable-label interaction")
+    require("custom_title" in main_source,
+            "live-session custom tab title state missing")
     require("sudo apt update" not in main_source.lower(), "forbidden package-management context action present")
     require('vte_terminal_feed(VTE_TERMINAL(user_data), "\\033[2J\\033[H", -1)' in main_source,
             "Clear must use terminal display control rather than a shell command")
