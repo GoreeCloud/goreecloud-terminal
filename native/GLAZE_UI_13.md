@@ -30,6 +30,7 @@ Implemented repository-local contract points include:
 
 - current Stable Glaze UI V1.3 / `1.3.0` authority pinned to the exact tag commit;
 - the V1.3 personalization surface `follow-system`, `light`, `dark`, and `deep-dark` exposed through the Terminal Theme Engine;
+- private persistence of the selected Terminal Theme Engine mode across launches;
 - a 48px general interactive-target floor;
 - a 56px Touch Assistance target floor for the reserved platform adapter state;
 - visible keyboard-focus treatment;
@@ -51,13 +52,19 @@ The current Theme Engine provides four bounded theme modes:
 - `dark` — Terminal dark presentation; and
 - `deep-dark` — Terminal deep-dark presentation permitted by the Glaze V1.3 personalization contract.
 
-The Theme Engine owns terminal foreground, background, cursor, selection-background, and theme resolution. It deliberately does **not** silently remap the ANSI semantic palette in this development slice. Glaze continues to own shared application-chrome rules and accessibility precedence.
+The Theme Engine owns terminal foreground, background, cursor, selection-background, theme resolution, and the persisted selected-mode preference. It deliberately does **not** silently remap the ANSI semantic palette in this development slice. Glaze continues to own shared application-chrome rules and accessibility precedence.
 
-Theme persistence, arbitrary user-authored theme import, theme export, cross-device synchronization, wallpaper-derived themes, and native Personalization adapter acceptance are not yet claimed.
+### Persistence contract
+
+The production default preference path is `$XDG_CONFIG_HOME/goreecloud/terminal/theme.ini`. The automated tests may override the path using `GOREE_TERMINAL_THEME_SETTINGS_PATH` so CI never writes a real user preference. The preference directory is created with user-private permissions and the settings file is restricted to the current user where supported.
+
+The persisted payload contains only the selected theme mode identifier. It must not contain terminal contents, commands, shell history, working directories, hostnames, SSH aliases, process arguments, credentials, private keys, tokens, or other session data. Missing state uses Follow System. Invalid state fails safe to Follow System rather than inventing or accepting an unrecognized mode.
+
+Arbitrary user-authored theme import, theme export, cross-device synchronization, wallpaper-derived themes, custom ANSI semantic-palette authoring, and native Personalization adapter acceptance are not yet claimed.
 
 ## Appearance and accessibility behavior
 
-The current GTK-native adapter snapshots the platform preference for dark application themes when a Terminal window is created. Follow System uses that baseline, while Light, Dark, and Deep Dark apply the corresponding application and terminal presentation policy.
+The current GTK-native adapter snapshots the platform preference for dark application themes when a Terminal window is created. Follow System uses that baseline, while Light, Dark, and Deep Dark apply the corresponding application and terminal presentation policy. A persisted mode is restored before the initial Terminal presentation is applied.
 
 High-contrast detection is based on the active GTK theme identity and strengthens application-chrome boundaries while removing translucent treatment. A portable reduced-transparency platform preference adapter is not yet verified; the corresponding CSS class is reserved but is not automatically asserted.
 
@@ -112,12 +119,13 @@ Those remain future evidence-backed extension points and must not be shown as de
 
 ## Validation boundary
 
-Repository-local validation includes the native build, session lifecycle tests, Glaze contract tests, Theme Engine tests, explicit context-menu source invariants, and `tools/validate-glaze-contract.py` drift checks.
+Repository-local validation includes the native build, session lifecycle tests, Glaze contract tests, Theme Engine selection/resolution/persistence tests, explicit context-menu source invariants, and `tools/validate-glaze-contract.py` drift checks.
 
 Still required before any claim of Glaze consumer acceptance or production readiness:
 
-- rendered Linux acceptance across Follow System/Light/Dark/Deep Dark behavior;
+- rendered Linux acceptance across Follow System/Light/Dark/Deep Dark behavior and preference restoration;
 - rendered and keyboard review of the rebuilt context menu;
+- direct runtime verification that Clear clears the visible display without adding a shell-history command;
 - keyboard and focus traversal review;
 - high-contrast review;
 - large-text and reflow review;
