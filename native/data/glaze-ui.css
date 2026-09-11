@@ -5,65 +5,84 @@
  * stylesheet must never style shell output, ANSI palette semantics, cursor
  * rendering, selection, or terminal content directly.
  *
+ * Native material mapping follows the Stable Glaze material hierarchy:
+ * solid terminal canvas + one bounded dominant Glaze chrome region + compact
+ * raised/glazed controls and popovers. GTK supports alpha materials, gradients,
+ * borders, highlights, and shadows here. True compositor backdrop blur is not
+ * claimed without a verified native/compositor adapter; unsupported optical
+ * effects fail toward readable neutral glass/solid surfaces.
+ *
  * Desktop is pointer/keyboard-oriented. The 48px Glaze touch reference floor is
  * intentionally not imposed on ordinary desktop chrome; Touch Assistance uses
  * the dedicated 56px override below.
  */
 
 .glaze-window {
-  background-color: @theme_bg_color;
+  background-color: transparent;
   color: @theme_fg_color;
 }
 
-/* Compact desktop title chrome. Explicit node-level resets are intentional:
- * platform themes may otherwise layer their own gradients, padding, shadows,
- * and oversized natural button geometry over the Glaze mapping. */
+/* One dominant neutral-glass chrome region. Header and tab rail intentionally
+ * share material language so they read as a single application shell rather
+ * than two unrelated GTK toolbars. */
 headerbar.glaze-header {
-  min-height: 36px;
-  padding: 0 7px;
+  min-height: 38px;
+  padding: 0 8px;
   border: 0;
   border-bottom: 1px solid alpha(@theme_fg_color, 0.10);
-  background-color: @theme_bg_color;
-  background-image: none;
-  box-shadow: none;
+  background-color: alpha(@theme_bg_color, 0.82);
+  background-image: linear-gradient(to bottom,
+                                    alpha(white, 0.18),
+                                    alpha(white, 0.035));
+  box-shadow: inset 0 1px 0 alpha(white, 0.34),
+              0 5px 18px alpha(black, 0.10);
 }
 
 headerbar.glaze-header .title {
   font-size: 0.95em;
-  font-weight: 600;
-  letter-spacing: 0.004em;
+  font-weight: 650;
+  letter-spacing: 0.008em;
 }
 
+/* Compact Functional-Glass controls. Accent remains semantic: ordinary controls
+ * are neutral until hover/focus/selection gives them meaning. */
 headerbar.glaze-header button.glaze-action,
 headerbar.glaze-header menubutton.glaze-theme-engine > button,
 headerbar.glaze-header windowcontrols button {
   min-width: 30px;
   min-height: 30px;
   padding: 0 7px;
-  margin: 0 1px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background-color: transparent;
-  background-image: none;
-  box-shadow: none;
+  margin: 0 2px;
+  border: 1px solid alpha(@theme_fg_color, 0.10);
+  border-radius: 9px;
+  background-color: alpha(@theme_bg_color, 0.58);
+  background-image: linear-gradient(to bottom,
+                                    alpha(white, 0.17),
+                                    alpha(white, 0.025));
+  box-shadow: inset 0 1px 0 alpha(white, 0.30),
+              0 2px 7px alpha(black, 0.08);
   text-shadow: none;
 }
 
 headerbar.glaze-header button.glaze-action:hover,
 headerbar.glaze-header menubutton.glaze-theme-engine > button:hover,
 headerbar.glaze-header windowcontrols button:hover {
-  background-color: alpha(@theme_fg_color, 0.055);
-  border-color: alpha(@theme_fg_color, 0.08);
+  background-color: alpha(@theme_selected_bg_color, 0.13);
+  border-color: alpha(@theme_selected_bg_color, 0.32);
+  box-shadow: inset 0 1px 0 alpha(white, 0.34),
+              0 4px 12px alpha(black, 0.11);
 }
 
 headerbar.glaze-header button.glaze-action:active,
 headerbar.glaze-header menubutton.glaze-theme-engine > button:active,
 headerbar.glaze-header windowcontrols button:active {
-  background-color: alpha(@theme_fg_color, 0.09);
+  background-color: alpha(@theme_selected_bg_color, 0.20);
+  border-color: alpha(@theme_selected_bg_color, 0.42);
+  box-shadow: inset 0 1px 2px alpha(black, 0.10);
 }
 
-/* The menu-button container itself must remain visually inert. Only its inner
- * interactive button is rendered, avoiding the double-capsule GTK treatment. */
+/* The menu-button container itself is inert. Only the actual button receives the
+ * Glaze capsule so GTK cannot draw a second nested capsule around it. */
 headerbar.glaze-header menubutton.glaze-theme-engine {
   min-width: 0;
   min-height: 0;
@@ -77,26 +96,29 @@ headerbar.glaze-header menubutton.glaze-theme-engine {
 
 headerbar.glaze-header menubutton.glaze-theme-engine > button {
   min-width: 0;
-  padding-left: 9px;
-  padding-right: 9px;
+  padding-left: 10px;
+  padding-right: 10px;
   font-size: 0.92em;
 }
 
-/* Keep the notebook and title bar visually continuous. The tab row is a slim
- * navigation rail rather than a second toolbar. */
+/* The notebook body is intentionally transparent at the application-chrome
+ * level. VTE remains the solid content canvas and owns its own theme background. */
 notebook.glaze-session-tabs {
-  background-color: @theme_bg_color;
+  background-color: transparent;
   border: 0;
 }
 
 notebook.glaze-session-tabs > header {
-  min-height: 30px;
-  padding: 0 6px;
+  min-height: 32px;
+  padding: 2px 7px 3px;
   border: 0;
   border-bottom: 1px solid alpha(@theme_fg_color, 0.10);
-  background-color: @theme_bg_color;
-  background-image: none;
-  box-shadow: none;
+  background-color: alpha(@theme_bg_color, 0.76);
+  background-image: linear-gradient(to bottom,
+                                    alpha(white, 0.10),
+                                    alpha(white, 0.015));
+  box-shadow: inset 0 1px 0 alpha(white, 0.22),
+              0 3px 12px alpha(black, 0.07);
 }
 
 notebook.glaze-session-tabs > header tabs {
@@ -111,25 +133,32 @@ notebook.glaze-session-tabs > header tabs {
 notebook.glaze-session-tabs tab {
   min-height: 28px;
   margin: 0 2px;
-  padding: 0 8px;
-  border: 0;
+  padding: 0 9px;
+  border: 1px solid transparent;
   border-bottom: 2px solid transparent;
-  border-radius: 7px 7px 0 0;
+  border-radius: 9px 9px 6px 6px;
   background-color: transparent;
   background-image: none;
   box-shadow: none;
 }
 
 notebook.glaze-session-tabs tab:hover {
-  background-color: alpha(@theme_fg_color, 0.04);
+  background-color: alpha(@theme_fg_color, 0.055);
+  border-color: alpha(@theme_fg_color, 0.075);
 }
 
-/* Selection is conveyed through structure, weight, and a neutral current-color
- * edge instead of inheriting a platform-specific blue fill. */
+/* Selected uses the canonical semantic accent/selected role, plus geometry and
+ * weight so the state remains obvious without color. */
 notebook.glaze-session-tabs tab:checked {
-  font-weight: 600;
-  background-color: alpha(@theme_fg_color, 0.045);
-  border-bottom-color: currentColor;
+  font-weight: 650;
+  background-color: alpha(@theme_selected_bg_color, 0.16);
+  background-image: linear-gradient(to bottom,
+                                    alpha(white, 0.11),
+                                    alpha(@theme_selected_bg_color, 0.03));
+  border-color: alpha(@theme_selected_bg_color, 0.24);
+  border-bottom-color: @theme_selected_bg_color;
+  box-shadow: inset 0 1px 0 alpha(white, 0.24),
+              0 2px 8px alpha(black, 0.07);
 }
 
 .glaze-tab-label {
@@ -141,17 +170,18 @@ notebook.glaze-session-tabs tab:checked {
   min-height: 22px;
   padding: 0;
   margin-left: 3px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 7px;
   background-color: transparent;
   background-image: none;
   box-shadow: none;
-  opacity: 0.62;
+  opacity: 0.58;
 }
 
 .glaze-tab-close:hover,
 .glaze-tab-close:focus-visible {
-  background-color: alpha(@theme_fg_color, 0.07);
+  background-color: alpha(@theme_fg_color, 0.08);
+  border-color: alpha(@theme_fg_color, 0.10);
   opacity: 1;
 }
 
@@ -162,25 +192,104 @@ headerbar.glaze-header button:focus-visible,
   outline-offset: 2px;
 }
 
-/* Menus use one bounded Glaze surface with compact desktop rows. */
+/* Popovers are raised bounded Glaze surfaces. They intentionally use a stronger
+ * neutral-glass opacity than persistent chrome for readability. */
 .glaze-context-menu contents {
-  padding: 5px;
+  padding: 6px;
   border: 1px solid alpha(@theme_fg_color, 0.14);
   border-radius: 14px;
-  background-color: @theme_bg_color;
-  background-image: none;
-  box-shadow: 0 10px 30px alpha(black, 0.20);
+  background-color: alpha(@theme_bg_color, 0.90);
+  background-image: linear-gradient(to bottom right,
+                                    alpha(white, 0.17),
+                                    alpha(white, 0.025));
+  box-shadow: inset 0 1px 0 alpha(white, 0.30),
+              0 14px 38px alpha(black, 0.22),
+              0 3px 10px alpha(black, 0.10);
 }
 
 .glaze-context-menu modelbutton {
   min-height: 32px;
   padding: 4px 10px;
+  border: 1px solid transparent;
   border-radius: 9px;
+  background-color: transparent;
   background-image: none;
 }
 
 .glaze-context-menu modelbutton:hover {
-  background-color: alpha(@theme_fg_color, 0.06);
+  background-color: alpha(@theme_selected_bg_color, 0.14);
+  border-color: alpha(@theme_selected_bg_color, 0.22);
+}
+
+.glaze-context-menu modelbutton:active {
+  background-color: alpha(@theme_selected_bg_color, 0.22);
+}
+
+/* Explicit appearance material tuning. The substrate remains neutral; accent is
+ * reserved for interaction/selection instead of tinting all surfaces. */
+.glaze-window.glaze-light headerbar.glaze-header {
+  background-color: rgba(248, 249, 251, 0.82);
+  border-bottom-color: rgba(42, 47, 54, 0.10);
+}
+
+.glaze-window.glaze-light notebook.glaze-session-tabs > header {
+  background-color: rgba(248, 249, 251, 0.76);
+  border-bottom-color: rgba(42, 47, 54, 0.10);
+}
+
+.glaze-window.glaze-light .glaze-context-menu contents {
+  background-color: rgba(250, 251, 253, 0.92);
+}
+
+.glaze-window.glaze-dark headerbar.glaze-header {
+  background-color: rgba(30, 31, 35, 0.82);
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11),
+              0 7px 22px rgba(0, 0, 0, 0.26);
+}
+
+.glaze-window.glaze-dark notebook.glaze-session-tabs > header {
+  background-color: rgba(30, 31, 35, 0.76);
+  border-bottom-color: rgba(255, 255, 255, 0.09);
+}
+
+.glaze-window.glaze-dark .glaze-context-menu contents {
+  background-color: rgba(38, 39, 43, 0.92);
+  border-color: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10),
+              0 18px 46px rgba(0, 0, 0, 0.38),
+              0 4px 12px rgba(0, 0, 0, 0.20);
+}
+
+.glaze-window.glaze-deep-dark {
+  color: #F7F8FA;
+}
+
+.glaze-window.glaze-deep-dark headerbar.glaze-header {
+  background-color: rgba(14, 15, 18, 0.86);
+  color: #F7F8FA;
+  border-bottom-color: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09),
+              0 8px 26px rgba(0, 0, 0, 0.42);
+}
+
+.glaze-window.glaze-deep-dark notebook.glaze-session-tabs > header {
+  background-color: rgba(14, 15, 18, 0.82);
+  color: #F7F8FA;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.glaze-window.glaze-deep-dark .glaze-context-menu contents {
+  background-color: rgba(20, 21, 25, 0.94);
+  color: #F7F8FA;
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09),
+              0 20px 52px rgba(0, 0, 0, 0.52),
+              0 5px 14px rgba(0, 0, 0, 0.26);
+}
+
+.glaze-session-exited {
+  opacity: 0.70;
 }
 
 /* Touch Assistance is a distinct accessibility/input mode. It intentionally
@@ -196,30 +305,16 @@ headerbar.glaze-header button:focus-visible,
   min-height: 56px;
 }
 
-.glaze-window.glaze-deep-dark,
-.glaze-window.glaze-deep-dark headerbar.glaze-header,
-.glaze-window.glaze-deep-dark notebook.glaze-session-tabs,
-.glaze-window.glaze-deep-dark notebook.glaze-session-tabs > header {
-  background-color: #090A0C;
-  color: #F7F8FA;
-}
-
-.glaze-window.glaze-deep-dark headerbar.glaze-header,
-.glaze-window.glaze-deep-dark notebook.glaze-session-tabs > header {
-  border-bottom-color: alpha(white, 0.11);
-}
-
-.glaze-window.glaze-session-exited,
-.glaze-session-exited {
-  opacity: 0.72;
-}
-
-/* High contrast removes translucency and strengthens non-color boundaries. */
+/* High Contrast removes translucent decoration and strengthens structural and
+ * focus boundaries. It keeps state understandable without optical effects. */
+.glaze-window.glaze-high-contrast,
 .glaze-window.glaze-high-contrast headerbar.glaze-header,
 .glaze-window.glaze-high-contrast notebook.glaze-session-tabs > header,
 .glaze-window.glaze-high-contrast notebook.glaze-session-tabs tab:checked,
 .glaze-window.glaze-high-contrast .glaze-context-menu contents {
   background-color: @theme_bg_color;
+  background-image: none;
+  color: @theme_fg_color;
   border-color: currentColor;
   box-shadow: none;
 }
@@ -235,11 +330,16 @@ headerbar.glaze-header button:focus-visible,
   outline-width: 3px;
 }
 
-/* Reserved platform-adapter state. No automatic claim is made until a verified
- * reduced-transparency preference adapter exists for the supported platform. */
+/* Reserved platform-adapter state. Reduced Transparency fails toward opaque
+ * Solid/Raised semantics; no blur or alpha-dependent hierarchy is required. */
+.glaze-window.glaze-reduced-transparency,
 .glaze-window.glaze-reduced-transparency headerbar.glaze-header,
 .glaze-window.glaze-reduced-transparency notebook.glaze-session-tabs > header,
-.glaze-window.glaze-reduced-transparency .glaze-context-menu contents {
+.glaze-window.glaze-reduced-transparency notebook.glaze-session-tabs tab:checked,
+.glaze-window.glaze-reduced-transparency .glaze-context-menu contents,
+.glaze-window.glaze-reduced-transparency headerbar.glaze-header button.glaze-action,
+.glaze-window.glaze-reduced-transparency headerbar.glaze-header menubutton.glaze-theme-engine > button {
   background-color: @theme_bg_color;
+  background-image: none;
   box-shadow: none;
 }
