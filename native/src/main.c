@@ -560,6 +560,9 @@ create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
 
     GtkGesture *tab_context_click = gtk_gesture_click_new();
     gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(tab_context_click), GDK_BUTTON_SECONDARY);
+    gtk_event_controller_set_propagation_phase(
+        GTK_EVENT_CONTROLLER(tab_context_click),
+        GTK_PHASE_CAPTURE);
     g_signal_connect(
         tab_context_click,
         "pressed",
