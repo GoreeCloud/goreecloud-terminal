@@ -1,4 +1,5 @@
 #include <glib.h>
+#include <string.h>
 
 #include "glaze-contract.h"
 
