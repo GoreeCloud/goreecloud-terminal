@@ -73,10 +73,22 @@ for marker in (
 ):
     assert marker in launcher, f"missing local API marker: {marker}"
 
+# The RC source has a historical GTK/libadwaita Glaze mapping, while the current
+# shared GoreeCloud design-system authority is independently versioned. Release
+# readiness must verify that documentation keeps those facts separate instead of
+# pinning the RC lifecycle to an obsolete shared-design-system label.
 glaze = (ROOT / "docs/glaze-ui.md").read_text(encoding="utf-8")
-assert "Glaze UI 1.4.0 Stable" in glaze
-assert "883d40ff51d02885650024723c01d229de456285" in glaze
+for marker in (
+    "GLAZE UI V1.3 — Adaptive Resonance",
+    "`1.3.0`",
+    "ff34f232f295c9dcb07e4c681f66d4104d0b9323",
+    "Transitional Release Candidate implementation",
+    "historical validation record",
+):
+    assert marker in glaze, f"missing current Glaze authority/boundary marker: {marker}"
 
+# Transitional RC appearance source invariants remain required even though the
+# shared Glaze contract version is no longer inferred from these local styles.
 css = (ROOT / "src/style.css").read_text(encoding="utf-8")
 for marker in (
     "@media (prefers-color-scheme: light)",
@@ -86,7 +98,7 @@ for marker in (
     "min-width: 44px",
     ":focus-visible",
 ):
-    assert marker in css, f"missing Glaze source invariant: {marker}"
+    assert marker in css, f"missing transitional RC appearance source invariant: {marker}"
 
 local_api = (ROOT / "docs/local-api.md").read_text(encoding="utf-8")
 for marker in ("read-only local CLI contract", "does not open a network listener", "schema_version"):
@@ -98,8 +110,13 @@ assert "Production Identity RC Flatpak acceptance" in readiness
 assert "50.2-rc.2" in readiness
 
 readme = (ROOT / "README.md").read_text(encoding="utf-8")
-assert "Release Candidate 50.2-rc.2" in readme
-assert "Stable and production approval remain separate" in readme
+for marker in (
+    "`50.2-rc.2` remains the current transitional Release Candidate",
+    "production_approved=false",
+    "stable_approved=false",
+    "original GoreeCloud-owned native GTK 4/VTE implementation",
+):
+    assert marker in readme, f"missing README lifecycle/architecture marker: {marker}"
 
 notes = (ROOT / "release/50.2-rc.2.md").read_text(encoding="utf-8")
 assert "# GoreeCloud Terminal 50.2-rc.2" in notes
