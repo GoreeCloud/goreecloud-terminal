@@ -6,6 +6,7 @@ project(
 )
 
 cc = meson.get_compiler('c')
+python3 = find_program('python3')
 native_executable_c_args = []
 
 # glib-compile-resources may emit a generated C string larger than the ISO C
@@ -22,6 +23,58 @@ gtk = dependency('gtk4', version: '>=4.14', include_type: 'system')
 vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
 gnome = import('gnome')
 
+product_identity = get_option('product_identity')
+product_name = 'GoreeCloud Terminal'
+resource_prefix = '/com/goreecloud/Terminal'
+
+if product_identity == 'production'
+  application_id = 'com.goreecloud.Terminal'
+  development_build = 0
+else
+  application_id = 'com.goreecloud.Terminal.Devel'
+  development_build = 1
+endif
+
+identity_config = configuration_data()
+identity_config.set('PRODUCT_NAME', product_name)
+identity_config.set('APPLICATION_ID', application_id)
+identity_config.set('ICON_NAME', application_id)
+identity_config.set('DEVELOPMENT_BUILD', development_build)
+
+configure_file(
+  input: 'src/product-identity.h.in',
+  output: 'product-identity.h',
+  configuration: identity_config,
+)
+
+configure_file(
+  input: 'data/goreecloud-terminal.desktop.in',
+  output: application_id + '.desktop',
+  configuration: identity_config,
+)
+
+configure_file(
+  input: 'data/goreecloud-terminal.metainfo.xml.in',
+  output: application_id + '.metainfo.xml',
+  configuration: identity_config,
+)
+
+render_product_main = files('tools/render-product-main.py')
+identity_main = custom_target(
+  'goreecloud-terminal-product-main',
+  input: 'src/main.c',
+  output: 'main-product-identity.c',
+  command: [
+    python3,
+    render_product_main,
+    '@INPUT@',
+    '@OUTPUT@',
+    application_id,
+    resource_prefix,
+  ],
+  build_by_default: true,
+)
+
 native_resources = gnome.compile_resources(
   'goreecloud-terminal-native-resources',
   'data/goreecloud-terminal-native.gresource.xml',
@@ -30,9 +83,9 @@ native_resources = gnome.compile_resources(
 )
 
 executable(
-  'goreecloud-terminal-native',
+  'goreecloud-terminal',
   [
-    'src/main.c',
+    identity_main,
     'src/session-lifecycle.c',
     'src/host-session-client.c',
     'src/glaze-contract.c',
@@ -46,7 +99,11 @@ executable(
     'src/workspace-view.c',
     native_resources,
   ],
-  include_directories: include_directories('include'),
+  include_directories: [
+    include_directories('.'),
+    include_directories('include'),
+    include_directories('src'),
+  ],
   dependencies: [glib, gio, gtk, vte],
   c_args: native_executable_c_args,
   install: false,
@@ -144,6 +201,13 @@ workspace_runtime_test = executable(
   dependencies: [glib],
 )
 
+product_identity_test = executable(
+  'test-native-product-identity',
+  'src/test-product-identity.c',
+  include_directories: include_directories('.'),
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
@@ -153,3 +217,14 @@ test('native-session-profile', session_profile_test)
 test('native-workspace-store', workspace_store_test)
 test('native-profile-runtime', profile_runtime_test)
 test('native-workspace-runtime', workspace_runtime_test)
+test('native-product-identity', product_identity_test)
+
+summary(
+  {
+    'Product name': product_name,
+    'Product identity': product_identity,
+    'Application ID': application_id,
+    'Canonical launcher': 'goreecloud-terminal',
+  },
+  section: 'GoreeCloud Terminal native identity',
+)
