@@ -36,12 +36,16 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
 
-      - name: Install focused build dependency
+      - name: Install focused build dependencies
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc pkg-config libglib2.0-dev
+          sudo apt-get install -y --no-install-recommends \
+            gcc \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-4-dev
 
       - name: Validate remote authority separation
         shell: bash
@@ -107,12 +111,13 @@ jobs:
           ! grep -Fq 'g_spawn' native/src/remote-target-view.c
           ! grep -Fq 'vte_terminal_spawn' native/src/remote-target-view.c
 
-      - name: Build focused remote contract tests
+      - name: Build focused remote contract tests and view
         shell: bash
         run: |
           set -euo pipefail
           CFLAGS="-std=c17 -Wall -Wextra -Werror $(pkg-config --cflags glib-2.0)"
           LIBS="$(pkg-config --libs glib-2.0)"
+          GTK_CFLAGS="-std=c17 -Wall -Wextra -Werror $(pkg-config --cflags gtk4)"
 
           cc $CFLAGS \
             native/src/test-remote-session.c \
@@ -143,6 +148,10 @@ jobs:
             native/src/remote-session.c \
             $LIBS \
             -o /tmp/test-native-remote-target-runtime
+
+          cc $GTK_CFLAGS \
+            -c native/src/remote-target-view.c \
+            -o /tmp/remote-target-view.o
 
       - name: Run focused remote contract tests
         shell: bash
