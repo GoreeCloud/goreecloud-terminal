@@ -26,8 +26,8 @@
  * share material language so they read as a single application shell rather
  * than two unrelated GTK toolbars. */
 headerbar.glaze-header {
-  min-height: 34px;
-  padding: 0 6px;
+  min-height: 32px;
+  padding: 0 5px;
   border: 0;
   border-bottom: 1px solid alpha(@theme_fg_color, 0.10);
   background-color: alpha(@theme_bg_color, 0.82);
@@ -39,64 +39,52 @@ headerbar.glaze-header {
 }
 
 headerbar.glaze-header .title {
-  font-size: 0.92em;
+  font-size: 0.90em;
   font-weight: 650;
   letter-spacing: 0.008em;
 }
 
-/* Desktop controls are deliberately compact and low-emphasis at rest. The
- * Glaze material is carried by the shared chrome surface; individual controls
- * should not read as oversized glossy tiles. Touch Assistance expands them
- * separately to the required 56px floor. */
+/* Pointer/keyboard desktop controls keep useful hit areas while the visible
+ * footprint stays restrained. Icon controls are deliberately flat at rest;
+ * Glaze depth and accent appear on interaction rather than as permanent tiles. */
 headerbar.glaze-header button.glaze-action,
-headerbar.glaze-header menubutton.glaze-theme-engine > button,
 headerbar.glaze-header windowcontrols button {
-  min-width: 26px;
-  min-height: 26px;
-  padding: 0 4px;
+  min-width: 25px;
+  min-height: 25px;
+  padding: 0 2px;
   margin: 0 1px;
-  border: 1px solid alpha(@theme_fg_color, 0.08);
-  border-radius: 7px;
-  background-color: alpha(@theme_bg_color, 0.30);
-  background-image: linear-gradient(to bottom,
-                                    alpha(white, 0.09),
-                                    alpha(white, 0.01));
-  box-shadow: inset 0 1px 0 alpha(white, 0.18),
-              0 1px 3px alpha(black, 0.06);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
   text-shadow: none;
 }
 
-headerbar.glaze-header button.glaze-action {
-  min-width: 28px;
-  padding-left: 3px;
-  padding-right: 3px;
-}
-
-headerbar.glaze-header windowcontrols button {
-  min-width: 28px;
-  padding-left: 3px;
-  padding-right: 3px;
+headerbar.glaze-header windowcontrols {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 headerbar.glaze-header button.glaze-action:hover,
-headerbar.glaze-header menubutton.glaze-theme-engine > button:hover,
 headerbar.glaze-header windowcontrols button:hover {
-  background-color: alpha(@theme_selected_bg_color, 0.11);
-  border-color: alpha(@theme_selected_bg_color, 0.26);
-  box-shadow: inset 0 1px 0 alpha(white, 0.22),
-              0 2px 6px alpha(black, 0.08);
+  background-color: alpha(@theme_selected_bg_color, 0.10);
+  border-color: alpha(@theme_selected_bg_color, 0.22);
+  box-shadow: inset 0 1px 0 alpha(white, 0.16),
+              0 1px 4px alpha(black, 0.07);
 }
 
 headerbar.glaze-header button.glaze-action:active,
-headerbar.glaze-header menubutton.glaze-theme-engine > button:active,
 headerbar.glaze-header windowcontrols button:active {
-  background-color: alpha(@theme_selected_bg_color, 0.18);
-  border-color: alpha(@theme_selected_bg_color, 0.34);
-  box-shadow: inset 0 1px 2px alpha(black, 0.09);
+  background-color: alpha(@theme_selected_bg_color, 0.17);
+  border-color: alpha(@theme_selected_bg_color, 0.30);
+  box-shadow: inset 0 1px 2px alpha(black, 0.08);
 }
 
-/* The menu-button container itself is inert. Only the actual button receives the
- * Glaze capsule so GTK cannot draw a second nested capsule around it. */
+/* The Theme Engine remains a discoverable textual control, but it is a quiet
+ * functional-glass capsule rather than a large glossy button. */
 headerbar.glaze-header menubutton.glaze-theme-engine {
   min-width: 0;
   min-height: 0;
@@ -110,11 +98,29 @@ headerbar.glaze-header menubutton.glaze-theme-engine {
 
 headerbar.glaze-header menubutton.glaze-theme-engine > button {
   min-width: 0;
-  min-height: 26px;
-  padding-left: 8px;
-  padding-right: 8px;
-  border-radius: 8px;
-  font-size: 0.88em;
+  min-height: 25px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border: 1px solid alpha(@theme_fg_color, 0.08);
+  border-radius: 7px;
+  background-color: alpha(@theme_bg_color, 0.18);
+  background-image: linear-gradient(to bottom,
+                                    alpha(white, 0.07),
+                                    alpha(white, 0.01));
+  box-shadow: inset 0 1px 0 alpha(white, 0.13);
+  font-size: 0.86em;
+  text-shadow: none;
+}
+
+headerbar.glaze-header menubutton.glaze-theme-engine > button:hover {
+  background-color: alpha(@theme_selected_bg_color, 0.10);
+  border-color: alpha(@theme_selected_bg_color, 0.22);
+}
+
+headerbar.glaze-header menubutton.glaze-theme-engine > button:active {
+  background-color: alpha(@theme_selected_bg_color, 0.17);
+  border-color: alpha(@theme_selected_bg_color, 0.30);
+  box-shadow: inset 0 1px 2px alpha(black, 0.08);
 }
 
 /* The notebook body is intentionally transparent at the application-chrome
