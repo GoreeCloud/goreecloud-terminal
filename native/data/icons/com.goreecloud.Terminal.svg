@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">GoreeCloud Terminal</title>
+  <desc id="desc">A Glaze UI inspired terminal window within a cloud silhouette.</desc>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#102342"/>
+      <stop offset="0.55" stop-color="#173B77"/>
+      <stop offset="1" stop-color="#0B172D"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="120" y1="96" x2="392" y2="408" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7FE7FF"/>
+      <stop offset="0.5" stop-color="#45A8FF"/>
+      <stop offset="1" stop-color="#7E6BFF"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="160" y1="196" x2="360" y2="368" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#132B4F" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#081426" stop-opacity="0.98"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#020812" flood-opacity="0.48"/>
+    </filter>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#bg)"/>
+  <rect x="29.5" y="29.5" width="453" height="453" rx="110.5" fill="none" stroke="#A7D8FF" stroke-opacity="0.16" stroke-width="3"/>
+  <g filter="url(#shadow)">
+    <path d="M151 292c-35 0-63-28-63-63 0-32 24-59 55-63 12-49 56-85 109-85 57 0 104 42 112 97 39 3 70 35 70 75 0 42-34 76-76 76H151Z" fill="#0B1D38" stroke="url(#edge)" stroke-width="16" stroke-linejoin="round"/>
+    <rect x="132" y="188" width="248" height="188" rx="38" fill="url(#panel)" stroke="#B8F0FF" stroke-opacity="0.32" stroke-width="4"/>
+    <rect x="150" y="208" width="212" height="34" rx="17" fill="#FFFFFF" fill-opacity="0.06"/>
+    <circle cx="174" cy="225" r="7" fill="#70E6FF"/>
+    <circle cx="197" cy="225" r="7" fill="#6FA8FF"/>
+    <circle cx="220" cy="225" r="7" fill="#8878FF"/>
+    <path d="M188 285 232 321 188 357" fill="none" stroke="#F7FBFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M255 357h73" stroke="#7FE7FF" stroke-width="18" stroke-linecap="round"/>
+  </g>
+</svg>
