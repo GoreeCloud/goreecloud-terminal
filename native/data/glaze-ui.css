@@ -61,6 +61,29 @@ headerbar.glaze-header windowcontrols button {
   text-shadow: none;
 }
 
+headerbar.glaze-header menubutton.glaze-icon-menu {
+  min-width: 0;
+  min-height: 0;
+  margin: 0 1px;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+
+headerbar.glaze-header menubutton.glaze-icon-menu > button {
+  min-width: 25px;
+  min-height: 25px;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
 headerbar.glaze-header windowcontrols {
   margin: 0;
   padding: 0;
@@ -69,7 +92,8 @@ headerbar.glaze-header windowcontrols {
 }
 
 headerbar.glaze-header button.glaze-action:hover,
-headerbar.glaze-header windowcontrols button:hover {
+headerbar.glaze-header windowcontrols button:hover,
+headerbar.glaze-header menubutton.glaze-icon-menu > button:hover {
   background-color: alpha(@theme_selected_bg_color, 0.10);
   border-color: alpha(@theme_selected_bg_color, 0.22);
   box-shadow: inset 0 1px 0 alpha(white, 0.16),
@@ -77,7 +101,8 @@ headerbar.glaze-header windowcontrols button:hover {
 }
 
 headerbar.glaze-header button.glaze-action:active,
-headerbar.glaze-header windowcontrols button:active {
+headerbar.glaze-header windowcontrols button:active,
+headerbar.glaze-header menubutton.glaze-icon-menu > button:active {
   background-color: alpha(@theme_selected_bg_color, 0.17);
   border-color: alpha(@theme_selected_bg_color, 0.30);
   box-shadow: inset 0 1px 2px alpha(black, 0.08);
@@ -319,6 +344,7 @@ headerbar.glaze-header button:focus-visible,
  * desktop sessions. */
 .glaze-window.glaze-touch-assistance headerbar.glaze-header button.glaze-action,
 .glaze-window.glaze-touch-assistance headerbar.glaze-header menubutton.glaze-theme-engine > button,
+.glaze-window.glaze-touch-assistance headerbar.glaze-header menubutton.glaze-icon-menu > button,
 .glaze-window.glaze-touch-assistance headerbar.glaze-header windowcontrols button,
 .glaze-window.glaze-touch-assistance .glaze-tab-close,
 .glaze-window.glaze-touch-assistance notebook.glaze-session-tabs tab,
@@ -360,7 +386,8 @@ headerbar.glaze-header button:focus-visible,
 .glaze-window.glaze-reduced-transparency notebook.glaze-session-tabs tab:checked,
 .glaze-window.glaze-reduced-transparency .glaze-context-menu contents,
 .glaze-window.glaze-reduced-transparency headerbar.glaze-header button.glaze-action,
-.glaze-window.glaze-reduced-transparency headerbar.glaze-header menubutton.glaze-theme-engine > button {
+.glaze-window.glaze-reduced-transparency headerbar.glaze-header menubutton.glaze-theme-engine > button,
+.glaze-window.glaze-reduced-transparency headerbar.glaze-header menubutton.glaze-icon-menu > button {
   background-color: @theme_bg_color;
   background-image: none;
   box-shadow: none;
