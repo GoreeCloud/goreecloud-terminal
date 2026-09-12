@@ -41,6 +41,8 @@ executable(
     'src/paste-guard.c',
     'src/session-profile.c',
     'src/workspace-store.c',
+    'src/profile-runtime.c',
+    'src/workspace-runtime.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
@@ -114,6 +116,32 @@ workspace_store_test = executable(
   dependencies: [glib],
 )
 
+profile_runtime_test = executable(
+  'test-native-profile-runtime',
+  [
+    'src/test-profile-runtime.c',
+    'src/profile-runtime.c',
+    'src/session-profile.c',
+    'src/terminal-preferences.c',
+  ],
+  include_directories: include_directories('include'),
+  dependencies: [glib],
+)
+
+workspace_runtime_test = executable(
+  'test-native-workspace-runtime',
+  [
+    'src/test-workspace-runtime.c',
+    'src/workspace-runtime.c',
+    'src/profile-runtime.c',
+    'src/session-profile.c',
+    'src/workspace-store.c',
+    'src/terminal-preferences.c',
+  ],
+  include_directories: include_directories('include'),
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
@@ -121,3 +149,5 @@ test('native-terminal-preferences', preferences_test)
 test('native-paste-guard', paste_guard_test)
 test('native-session-profile', session_profile_test)
 test('native-workspace-store', workspace_store_test)
+test('native-profile-runtime', profile_runtime_test)
+test('native-workspace-runtime', workspace_runtime_test)
