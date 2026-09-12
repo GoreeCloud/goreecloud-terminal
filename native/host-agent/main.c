@@ -25,6 +25,16 @@
 static char agent_socket_path[PATH_MAX];
 static int agent_listen_fd = -1;
 
+static const char *const safe_environment_names[] = {
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "LC_MESSAGES",
+    "TZ",
+    NULL,
+};
+
 static ssize_t
 read_full(int fd, void *buffer, size_t length)
 {
@@ -253,13 +263,222 @@ resolve_local_account(struct passwd *account,
     return true;
 }
 
-static void
-exec_default_shell(int slave_fd, int control_fd, const struct passwd *account)
+static bool
+field_is_terminated(const char *field, size_t field_size)
 {
-    const char *shell = account->pw_shell;
-    if (shell == NULL || *shell == '\0' || access(shell, X_OK) != 0)
-        shell = "/bin/sh";
+    return memchr(field, '\0', field_size) != NULL;
+}
 
+static bool
+valid_environment_name(const char *name)
+{
+    if (name == NULL || *name == '\0' ||
+        !(('A' <= *name && *name <= 'Z') ||
+          ('a' <= *name && *name <= 'z') || *name == '_'))
+        return false;
+
+    for (const char *cursor = name + 1; *cursor != '\0'; cursor++) {
+        if (!(('A' <= *cursor && *cursor <= 'Z') ||
+              ('a' <= *cursor && *cursor <= 'z') ||
+              ('0' <= *cursor && *cursor <= '9') || *cursor == '_'))
+            return false;
+    }
+    return true;
+}
+
+static bool
+shell_is_approved(const char *shell, const struct passwd *account)
+{
+    if (shell == NULL || *shell == '\0' || shell[0] != '/')
+        return false;
+
+    struct stat st;
+    if (stat(shell, &st) != 0 || !S_ISREG(st.st_mode) || access(shell, X_OK) != 0)
+        return false;
+
+    if (account->pw_shell != NULL && strcmp(shell, account->pw_shell) == 0)
+        return true;
+
+    bool approved = false;
+    setusershell();
+    const char *candidate;
+    while ((candidate = getusershell()) != NULL) {
+        if (strcmp(shell, candidate) == 0) {
+            approved = true;
+            break;
+        }
+    }
+    endusershell();
+    return approved;
+}
+
+static const char *
+resolve_shell(const GoreeTerminalHostSpawnRequest *request,
+              const struct passwd *account)
+{
+    if (request->shell_path[0] != '\0')
+        return shell_is_approved(request->shell_path, account)
+            ? request->shell_path
+            : NULL;
+
+    if (shell_is_approved(account->pw_shell, account))
+        return account->pw_shell;
+    if (access("/bin/sh", X_OK) == 0)
+        return "/bin/sh";
+    return NULL;
+}
+
+static const char *
+resolve_working_directory(const GoreeTerminalHostSpawnRequest *request,
+                          const struct passwd *account)
+{
+    const char *directory = request->working_directory[0] != '\0'
+        ? request->working_directory
+        : account->pw_dir;
+    struct stat st;
+
+    if (directory == NULL || directory[0] != '/' ||
+        stat(directory, &st) != 0 || !S_ISDIR(st.st_mode) ||
+        access(directory, X_OK) != 0)
+        return NULL;
+
+    return directory;
+}
+
+static bool
+validate_spawn_request(const GoreeTerminalHostSpawnRequest *request)
+{
+    if (request->header.magic != GOREE_TERMINAL_HOST_PROTOCOL_MAGIC ||
+        request->header.version != GOREE_TERMINAL_HOST_PROTOCOL_VERSION ||
+        request->header.type != GOREE_TERMINAL_HOST_MESSAGE_SPAWN_REQUEST ||
+        request->header.value != 0)
+        return false;
+
+    if (request->header.rows > USHRT_MAX || request->header.columns > USHRT_MAX)
+        return false;
+
+    if (request->environment_policy != GOREE_TERMINAL_HOST_ENVIRONMENT_INHERIT_SAFE &&
+        request->environment_policy != GOREE_TERMINAL_HOST_ENVIRONMENT_CLEAN)
+        return false;
+    if (request->environment_count > GOREE_TERMINAL_HOST_ENVIRONMENT_COUNT_MAX)
+        return false;
+
+    if (!field_is_terminated(request->shell_path, sizeof(request->shell_path)) ||
+        !field_is_terminated(request->working_directory,
+                             sizeof(request->working_directory)))
+        return false;
+
+    if (request->shell_path[0] != '\0' && request->shell_path[0] != '/')
+        return false;
+    if (request->working_directory[0] != '\0' &&
+        request->working_directory[0] != '/')
+        return false;
+
+    for (uint32_t index = 0; index < request->environment_count; index++) {
+        if (!field_is_terminated(request->environment_names[index],
+                                 sizeof(request->environment_names[index])) ||
+            !valid_environment_name(request->environment_names[index]))
+            return false;
+
+        for (uint32_t previous = 0; previous < index; previous++) {
+            if (strcmp(request->environment_names[index],
+                       request->environment_names[previous]) == 0)
+                return false;
+        }
+    }
+
+    for (uint32_t index = request->environment_count;
+         index < GOREE_TERMINAL_HOST_ENVIRONMENT_COUNT_MAX;
+         index++) {
+        if (request->environment_names[index][0] != '\0')
+            return false;
+    }
+
+    return true;
+}
+
+static char *
+capture_environment_value(const char *name)
+{
+    const char *value = getenv(name);
+    return value != NULL ? strdup(value) : NULL;
+}
+
+static bool
+set_environment_value(const char *name, const char *value)
+{
+    return value == NULL || setenv(name, value, 1) == 0;
+}
+
+static bool
+rebuild_environment(const GoreeTerminalHostSpawnRequest *request,
+                    const struct passwd *account,
+                    const char *shell,
+                    const char *working_directory)
+{
+    size_t safe_count = 0;
+    while (safe_environment_names[safe_count] != NULL)
+        safe_count++;
+
+    char *safe_values[6] = {0};
+    char *allowed_values[GOREE_TERMINAL_HOST_ENVIRONMENT_COUNT_MAX] = {0};
+
+    for (size_t index = 0; index < safe_count; index++)
+        safe_values[index] = capture_environment_value(safe_environment_names[index]);
+    for (uint32_t index = 0; index < request->environment_count; index++)
+        allowed_values[index] = capture_environment_value(request->environment_names[index]);
+
+    if (clearenv() != 0)
+        goto failure;
+
+    const char *path_value = safe_values[0] != NULL
+        ? safe_values[0]
+        : "/usr/local/bin:/usr/bin:/bin";
+
+    if (setenv("HOME", account->pw_dir != NULL ? account->pw_dir : "/", 1) != 0 ||
+        setenv("USER", account->pw_name != NULL ? account->pw_name : "", 1) != 0 ||
+        setenv("LOGNAME", account->pw_name != NULL ? account->pw_name : "", 1) != 0 ||
+        setenv("SHELL", shell, 1) != 0 ||
+        setenv("PWD", working_directory, 1) != 0 ||
+        setenv("TERM", "xterm-256color", 1) != 0 ||
+        setenv("COLORTERM", "truecolor", 1) != 0 ||
+        setenv("PATH", path_value, 1) != 0)
+        goto failure;
+
+    if (request->environment_policy == GOREE_TERMINAL_HOST_ENVIRONMENT_INHERIT_SAFE) {
+        for (size_t index = 1; index < safe_count; index++) {
+            if (!set_environment_value(safe_environment_names[index], safe_values[index]))
+                goto failure;
+        }
+    }
+
+    for (uint32_t index = 0; index < request->environment_count; index++) {
+        if (!set_environment_value(request->environment_names[index], allowed_values[index]))
+            goto failure;
+    }
+
+    for (size_t index = 0; index < safe_count; index++)
+        free(safe_values[index]);
+    for (uint32_t index = 0; index < request->environment_count; index++)
+        free(allowed_values[index]);
+    return true;
+
+failure:
+    for (size_t index = 0; index < safe_count; index++)
+        free(safe_values[index]);
+    for (uint32_t index = 0; index < request->environment_count; index++)
+        free(allowed_values[index]);
+    return false;
+}
+
+static void
+exec_shell(int slave_fd,
+           int control_fd,
+           const struct passwd *account,
+           const GoreeTerminalHostSpawnRequest *request,
+           const char *shell,
+           const char *working_directory)
+{
     close(control_fd);
 
     if (setsid() < 0)
@@ -276,20 +495,10 @@ exec_default_shell(int slave_fd, int control_fd, const struct passwd *account)
 
     if (tcsetpgrp(STDIN_FILENO, getpgrp()) != 0)
         _exit(125);
-
-    if (account->pw_dir != NULL && *account->pw_dir != '\0') {
-        if (chdir(account->pw_dir) != 0)
-            (void) chdir("/");
-        (void) setenv("HOME", account->pw_dir, 1);
-        (void) setenv("PWD", account->pw_dir, 1);
-    }
-    if (account->pw_name != NULL && *account->pw_name != '\0') {
-        (void) setenv("USER", account->pw_name, 1);
-        (void) setenv("LOGNAME", account->pw_name, 1);
-    }
-    (void) setenv("SHELL", shell, 1);
-    (void) setenv("TERM", "xterm-256color", 1);
-    (void) setenv("COLORTERM", "truecolor", 1);
+    if (chdir(working_directory) != 0)
+        _exit(125);
+    if (!rebuild_environment(request, account, shell, working_directory))
+        _exit(125);
 
     const char *argv0 = strrchr(shell, '/');
     argv0 = argv0 != NULL ? argv0 + 1 : shell;
@@ -300,7 +509,7 @@ exec_default_shell(int slave_fd, int control_fd, const struct passwd *account)
 static void
 handle_session(int client_fd)
 {
-    GoreeTerminalHostMessage request;
+    GoreeTerminalHostSpawnRequest request;
     ssize_t received = read_full(client_fd, &request, sizeof(request));
     if (received != (ssize_t) sizeof(request)) {
         (void) send_message(client_fd, GOREE_TERMINAL_HOST_MESSAGE_ERROR,
@@ -308,9 +517,7 @@ handle_session(int client_fd)
         return;
     }
 
-    if (request.magic != GOREE_TERMINAL_HOST_PROTOCOL_MAGIC ||
-        request.version != GOREE_TERMINAL_HOST_PROTOCOL_VERSION ||
-        request.type != GOREE_TERMINAL_HOST_MESSAGE_SPAWN_REQUEST) {
+    if (!validate_spawn_request(&request)) {
         (void) send_message(client_fd, GOREE_TERMINAL_HOST_MESSAGE_ERROR, EPROTO);
         return;
     }
@@ -322,9 +529,21 @@ handle_session(int client_fd)
         return;
     }
 
+    const char *shell = resolve_shell(&request, &account);
+    if (shell == NULL) {
+        (void) send_message(client_fd, GOREE_TERMINAL_HOST_MESSAGE_ERROR, EPERM);
+        return;
+    }
+
+    const char *working_directory = resolve_working_directory(&request, &account);
+    if (working_directory == NULL) {
+        (void) send_message(client_fd, GOREE_TERMINAL_HOST_MESSAGE_ERROR, ENOENT);
+        return;
+    }
+
     struct winsize window_size = {
-        .ws_row = (unsigned short) (request.rows != 0 ? request.rows : 24),
-        .ws_col = (unsigned short) (request.columns != 0 ? request.columns : 80),
+        .ws_row = (unsigned short) (request.header.rows != 0 ? request.header.rows : 24),
+        .ws_col = (unsigned short) (request.header.columns != 0 ? request.header.columns : 80),
         .ws_xpixel = 0,
         .ws_ypixel = 0,
     };
@@ -347,7 +566,12 @@ handle_session(int client_fd)
 
     if (child == 0) {
         close(master_fd);
-        exec_default_shell(slave_fd, client_fd, &account);
+        exec_shell(slave_fd,
+                   client_fd,
+                   &account,
+                   &request,
+                   shell,
+                   working_directory);
     }
 
     close(slave_fd);
