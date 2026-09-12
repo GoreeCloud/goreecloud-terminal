@@ -1,0 +1,81 @@
+name: Native Workspace Keyboard Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/src/workspace-view.c'
+      - 'native/src/workspace-view.h'
+      - '.github/workflows/native-workspace-keyboard-contract.yml'
+  push:
+    branches:
+      - main
+      - agent/native-pane-keyboard-88
+    paths:
+      - 'native/src/workspace-view.c'
+      - 'native/src/workspace-view.h'
+      - '.github/workflows/native-workspace-keyboard-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-workspace-keyboard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workspace-keyboard:
+    name: Validate split workspace keyboard boundary
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Install focused compile dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc pkg-config libglib2.0-dev libgtk-4-dev
+
+      - name: Validate pane shortcut contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'GDK_KEY_F6' native/src/workspace-view.c
+          grep -Fq 'GDK_SHIFT_MASK' native/src/workspace-view.c
+          grep -Fq 'GDK_CONTROL_MASK | GDK_ALT_MASK' native/src/workspace-view.c
+          grep -Fq 'GDK_KEY_KP_Add' native/src/workspace-view.c
+          grep -Fq 'GDK_KEY_KP_Subtract' native/src/workspace-view.c
+          grep -Fq 'WORKSPACE_PANE_RESIZE_STEP_PIXELS 32' native/src/workspace-view.c
+          grep -Fq 'GTK_PHASE_CAPTURE' native/src/workspace-view.c
+          grep -Fq 'goree_terminal_workspace_view_focus_next' native/src/workspace-view.c
+          grep -Fq 'goree_terminal_workspace_view_focus_previous' native/src/workspace-view.c
+          grep -Fq 'goree_terminal_workspace_view_resize_active' native/src/workspace-view.c
+          grep -Fq 'F6 moves to the next pane' native/src/workspace-view.c
+          grep -Fq 'WORKSPACE_PANE_MIN_PIXELS 80' native/src/workspace-view.c
+          ! grep -Fq 'vte_terminal_feed' native/src/workspace-view.c
+          ! grep -Fq 'g_spawn' native/src/workspace-view.c
+          ! grep -Fq 'system(' native/src/workspace-view.c
+
+      - name: Compile workspace view with fatal warnings
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c17 -Wall -Wextra -Werror \
+            $(pkg-config --cflags gtk4 glib-2.0) \
+            -I native/src -I native/include \
+            -c native/src/workspace-view.c \
+            -o /tmp/workspace-view.o
