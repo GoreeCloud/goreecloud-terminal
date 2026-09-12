@@ -13,6 +13,13 @@
     <p>GoreeCloud Terminal is the original GoreeCloud-owned graphical terminal application for approved Linux workstations. It provides local terminal sessions and is being developed toward governed SSH administration, workspace, security, privacy, recovery, and platform integration.</p>
     <p>The native application retains mature GTK and VTE platform libraries while replacing inherited product architecture, branding, workflows, and application logic.</p>
   </description>
+  <releases>
+    <release version="@PRODUCT_VERSION@" date="2026-09-11" type="development">
+      <description>
+        <p>Development metadata checkpoint for the native GoreeCloud Terminal rebuild and staged package identity.</p>
+      </description>
+    </release>
+  </releases>
   <url type="homepage">https://github.com/GoreeCloud/goreecloud-terminal</url>
   <url type="bugtracker">https://github.com/GoreeCloud/goreecloud-terminal/issues</url>
   <content_rating type="oars-1.1"/>

@@ -30,6 +30,19 @@ Development and production layouts are staged and validated independently. The D
 
 The desktop entry, AppStream metadata, installed icon name, and runtime application ID all derive from the same selected product identity. A production staging root must not contain Development identity files, and a Development staging root must not contain production identity files.
 
+## Version authority
+
+The native Meson `project()` version is the single Development source for version identity. The current source value is `0.1.0-dev`.
+
+That value is propagated into:
+
+- the generated `GOREECLOUD_TERMINAL_VERSION` product identity header;
+- the rendered About-dialog version;
+- the native product-identity test contract; and
+- the installed AppStream `<release>` version for both staged application identities.
+
+The AppStream release remains explicitly `type="development"`. Selecting `-Dproduct_identity=production` changes the application identity being staged; it does not promote the source version or lifecycle to Stable. The `Native Version Contract` workflow must prove Meson introspection, generated runtime identity, rendered About source, and installed AppStream metadata all agree for both identities.
+
 ## Host-session component
 
 The host-session agent remains a separate native Meson project because it runs outside a sandboxed application boundary and has different installation and security responsibilities.
@@ -77,14 +90,15 @@ The repository staging contract must, for both Development and production identi
 7. prove Development and production identities do not cross-contaminate each other's staging roots;
 8. reject `.Native` application identity artifacts;
 9. build and stage the host-agent into the same temporary filesystem root;
-10. verify the systemd user service points to the staged layout's canonical `/usr/libexec/goreecloud-terminal-host-agent` runtime path and remains lifecycle-only so spawned host shells retain normal host semantics.
+10. verify the systemd user service points to the staged layout's canonical `/usr/libexec/goreecloud-terminal-host-agent` runtime path and remains lifecycle-only so spawned host shells retain normal host semantics;
+11. prove the staged AppStream release version equals the Meson/runtime version for both application identities.
 
 ## Remaining production blockers
 
 This staged layout is only one build/package-validation layer. Native production readiness still requires, at minimum:
 
 - a governed native package/artifact format and exact artifact identity;
-- explicit versioning aligned across build, package, and release metadata;
+- governed production/Stable version assignment, package-version policy, release tags, and release notes beyond the current `0.1.0-dev` Development authority;
 - supported-workstation installation and removal behavior;
 - migration, coexistence/replacement, and rollback validation against the transitional line;
 - settings/profile data compatibility and Everkeep recovery treatment;
