@@ -22,6 +22,7 @@ EXPECTED_POLICY = {
 EXPECTED_EVIDENCE = {
     "staged_payload_validation_is_production_acceptance": False,
     "staged_payload_validation_is_stable_acceptance": False,
+    "staged_payload_manifest_required": True,
     "package_manager_acceptance_required": True,
     "physical_workstation_acceptance_required": True,
     "exact_artifact_verification_required": True,
@@ -100,6 +101,7 @@ def validate_contract(contract: dict, identity: str) -> tuple[str, list[dict]]:
     seen_templates: set[str] = set()
     for entry in payload:
         require(isinstance(entry, dict), "each host-native payload entry must be an object")
+        require(set(entry) == {"path", "component", "executable"}, "payload entries must contain only path, component, executable")
         template = entry.get("path")
         component = entry.get("component")
         executable = entry.get("executable")
@@ -155,12 +157,13 @@ def validate_stage(stage: Path, application_id: str, payload: list[dict]) -> Non
 
     for absolute, executable in expected.items():
         path = stage / absolute.lstrip("/")
-        mode = path.stat().st_mode
+        mode = path.lstat().st_mode
+        require(stat.S_ISREG(mode), f"package-owned staged path must be a regular file: {absolute}")
         has_exec_bit = bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
         if executable:
             require(has_exec_bit, f"required executable has no execute bit: {absolute}")
         else:
-            require(stat.S_ISREG(mode), f"required non-executable payload is not a regular file: {absolute}")
+            require(not has_exec_bit, f"non-executable package payload unexpectedly has execute permission: {absolute}")
 
     require(not any("Terminal.Native" in path for path in actual), "obsolete .Native identity returned in staged payload")
 
