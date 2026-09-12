@@ -48,6 +48,7 @@
   "evidence_boundary": {
     "staged_payload_validation_is_production_acceptance": false,
     "staged_payload_validation_is_stable_acceptance": false,
+    "staged_payload_manifest_required": true,
     "package_manager_acceptance_required": true,
     "physical_workstation_acceptance_required": true,
     "exact_artifact_verification_required": true,
