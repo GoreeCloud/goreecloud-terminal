@@ -5,3 +5,10 @@ option(
   value: 'development',
   description: 'GoreeCloud Terminal native product identity. Production must be selected explicitly for a production-identity candidate.',
 )
+
+option(
+  'install_migration_tool',
+  type: 'boolean',
+  value: true,
+  description: 'Install the host-native transitional migration command and compatibility schema. Sandbox packages must disable this option.',
+)
