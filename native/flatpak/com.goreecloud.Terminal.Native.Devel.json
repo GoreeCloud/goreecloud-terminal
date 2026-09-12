@@ -7,6 +7,7 @@
   "finish-args": [
     "--allow=devel",
     "--device=dri",
+    "--filesystem=xdg-run/goreecloud-terminal",
     "--share=ipc",
     "--socket=fallback-x11",
     "--socket=wayland"
