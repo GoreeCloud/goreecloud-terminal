@@ -1,0 +1,140 @@
+name: Native Product Identity Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-product-identity-contract.yml'
+      - '.github/workflows/native-foundation-contract.yml'
+  push:
+    branches:
+      - main
+      - agent/native-product-identity-87
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-product-identity-contract.yml'
+      - '.github/workflows/native-foundation-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-product-identity-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  identity-contract:
+    name: Validate native production and development identity
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install native identity dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            appstream \
+            desktop-file-utils \
+            gcc \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            python3 \
+            vte291-gtk4-devel
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Build and validate default Development identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup build-identity-devel native --buildtype=debugoptimized
+          meson compile -C build-identity-devel
+          meson test -C build-identity-devel --print-errorlogs
+
+          test -x build-identity-devel/goreecloud-terminal
+          test -f build-identity-devel/com.goreecloud.Terminal.Devel.desktop
+          test -f build-identity-devel/com.goreecloud.Terminal.Devel.metainfo.xml
+          test -f build-identity-devel/product-identity.h
+          test -f build-identity-devel/main-product-identity.c
+
+          grep -Fq '#define GOREECLOUD_TERMINAL_APPLICATION_ID "com.goreecloud.Terminal.Devel"' build-identity-devel/product-identity.h
+          grep -Fq '#define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal.Devel"' build-identity-devel/main-product-identity.c
+          grep -Fq 'Exec=goreecloud-terminal' build-identity-devel/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq 'Icon=com.goreecloud.Terminal.Devel' build-identity-devel/com.goreecloud.Terminal.Devel.desktop
+          grep -Fq '<id>com.goreecloud.Terminal.Devel</id>' build-identity-devel/com.goreecloud.Terminal.Devel.metainfo.xml
+          grep -Fq '<binary>goreecloud-terminal</binary>' build-identity-devel/com.goreecloud.Terminal.Devel.metainfo.xml
+          ! grep -RFn 'com.goreecloud.Terminal.Native' \
+            build-identity-devel/product-identity.h \
+            build-identity-devel/main-product-identity.c \
+            build-identity-devel/com.goreecloud.Terminal.Devel.desktop \
+            build-identity-devel/com.goreecloud.Terminal.Devel.metainfo.xml
+
+          desktop-file-validate build-identity-devel/com.goreecloud.Terminal.Devel.desktop
+          appstreamcli validate --no-net build-identity-devel/com.goreecloud.Terminal.Devel.metainfo.xml
+
+      - name: Build and validate explicit production identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup build-identity-production native \
+            --buildtype=debugoptimized \
+            -Dproduct_identity=production
+          meson compile -C build-identity-production
+          meson test -C build-identity-production --print-errorlogs
+
+          test -x build-identity-production/goreecloud-terminal
+          test -f build-identity-production/com.goreecloud.Terminal.desktop
+          test -f build-identity-production/com.goreecloud.Terminal.metainfo.xml
+          test -f build-identity-production/product-identity.h
+          test -f build-identity-production/main-product-identity.c
+
+          grep -Fq '#define GOREECLOUD_TERMINAL_APPLICATION_ID "com.goreecloud.Terminal"' build-identity-production/product-identity.h
+          grep -Fq '#define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal"' build-identity-production/main-product-identity.c
+          grep -Fq 'Exec=goreecloud-terminal' build-identity-production/com.goreecloud.Terminal.desktop
+          grep -Fq 'Icon=com.goreecloud.Terminal' build-identity-production/com.goreecloud.Terminal.desktop
+          grep -Fq '<id>com.goreecloud.Terminal</id>' build-identity-production/com.goreecloud.Terminal.metainfo.xml
+          grep -Fq '<binary>goreecloud-terminal</binary>' build-identity-production/com.goreecloud.Terminal.metainfo.xml
+          ! grep -RFn 'com.goreecloud.Terminal.Native' \
+            build-identity-production/product-identity.h \
+            build-identity-production/main-product-identity.c \
+            build-identity-production/com.goreecloud.Terminal.desktop \
+            build-identity-production/com.goreecloud.Terminal.metainfo.xml
+
+          desktop-file-validate build-identity-production/com.goreecloud.Terminal.desktop
+          appstreamcli validate --no-net build-identity-production/com.goreecloud.Terminal.metainfo.xml
+
+      - name: Verify source identity boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f native/data/icons/com.goreecloud.Terminal.svg
+          test -f native/data/icons/com.goreecloud.Terminal.Devel.svg
+          grep -Fq 'GoreeCloud Terminal' native/data/icons/com.goreecloud.Terminal.svg
+          grep -Fq 'GoreeCloud Terminal Development' native/data/icons/com.goreecloud.Terminal.Devel.svg
+          grep -Fq 'prefix="/com/goreecloud/Terminal"' native/data/goreecloud-terminal-native.gresource.xml
+          ! grep -RIE '(^|["<])(ptyxis|org\.gnome\.Ptyxis)' \
+            native/data/goreecloud-terminal.desktop.in \
+            native/data/goreecloud-terminal.metainfo.xml.in \
+            native/data/icons \
+            native/src/product-identity.h.in \
+            native/src/test-product-identity.c
