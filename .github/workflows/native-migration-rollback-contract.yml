@@ -3,6 +3,7 @@ name: Native Migration and Rollback Contract
 on:
   pull_request:
     paths:
+      - 'native/PACKAGING.md'
       - 'native/meson.build'
       - 'native/meson_options.txt'
       - 'native/flatpak/com.goreecloud.Terminal.Devel.json'
@@ -15,6 +16,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'native/PACKAGING.md'
       - 'native/meson.build'
       - 'native/meson_options.txt'
       - 'native/flatpak/com.goreecloud.Terminal.Devel.json'
@@ -82,6 +84,8 @@ jobs:
           grep -Fq -- '-Dinstall_migration_tool=false' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq 'test ! -e /app/bin/goreecloud-terminal-migrate' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq 'test ! -e /app/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq 'Passing source or staged-install CI is not Stable or production evidence.' native/PACKAGING.md
+          grep -Fq 'This is not yet package-manager or supported-workstation migration acceptance.' native/PACKAGING.md
 
       - name: Build and run migration tests
         shell: bash
