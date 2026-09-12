@@ -38,6 +38,7 @@ jobs:
           dnf -y --setopt=install_weak_deps=False install \
             appstream \
             desktop-file-utils \
+            diffutils \
             gcc \
             git \
             glib2-devel \
