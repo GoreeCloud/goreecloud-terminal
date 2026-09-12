@@ -1,0 +1,119 @@
+name: Native Version Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/meson.build'
+      - 'native/src/product-identity.h.in'
+      - 'native/src/test-product-identity.c'
+      - 'native/tools/render-product-main.py'
+      - '.github/workflows/native-version-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/meson.build'
+      - 'native/src/product-identity.h.in'
+      - 'native/src/test-product-identity.c'
+      - 'native/tools/render-product-main.py'
+      - '.github/workflows/native-version-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Validate one native build/runtime version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install native build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            gcc \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            python3 \
+            vte291-gtk4-devel
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -m py_compile native/tools/render-product-main.py
+          grep -Fq "product_version = meson.project_version()" native/meson.build
+          grep -Fq "identity_config.set('PRODUCT_VERSION', product_version)" native/meson.build
+          grep -Fq '#define GOREECLOUD_TERMINAL_VERSION "@PRODUCT_VERSION@"' native/src/product-identity.h.in
+
+      - name: Build and compare Development version surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup _native-version-development native \
+            --buildtype=debugoptimized \
+            -Dproduct_identity=development
+          meson compile -C _native-version-development
+          meson test -C _native-version-development --print-errorlogs
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+          import subprocess
+
+          build = pathlib.Path('_native-version-development')
+          info = json.loads(subprocess.check_output(['meson', 'introspect', str(build), '--projectinfo'], text=True))
+          version = info['version']
+          header = (build / 'product-identity.h').read_text()
+          rendered = (build / 'main-product-identity.c').read_text()
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', version), version
+          assert f'#define GOREECLOUD_TERMINAL_VERSION "{version}"' in header
+          assert f'"version", "{version}",' in rendered
+          assert 'com.goreecloud.Terminal.Devel' in rendered
+          print(f'development-version={version}')
+          PY
+
+      - name: Build and compare production version surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup _native-version-production native \
+            --buildtype=debugoptimized \
+            -Dproduct_identity=production
+          meson compile -C _native-version-production
+          meson test -C _native-version-production --print-errorlogs
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+          import subprocess
+
+          build = pathlib.Path('_native-version-production')
+          info = json.loads(subprocess.check_output(['meson', 'introspect', str(build), '--projectinfo'], text=True))
+          version = info['version']
+          header = (build / 'product-identity.h').read_text()
+          rendered = (build / 'main-product-identity.c').read_text()
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?', version), version
+          assert f'#define GOREECLOUD_TERMINAL_VERSION "{version}"' in header
+          assert f'"version", "{version}",' in rendered
+          assert 'com.goreecloud.Terminal"' in rendered
+          assert 'com.goreecloud.Terminal.Devel' not in rendered
+          print(f'production-version={version}')
+          PY
