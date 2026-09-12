@@ -24,6 +24,7 @@ vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
 gnome = import('gnome')
 
 product_identity = get_option('product_identity')
+install_migration_tool = get_option('install_migration_tool')
 product_name = 'GoreeCloud Terminal'
 product_version = meson.project_version()
 resource_prefix = '/com/goreecloud/Terminal'
@@ -80,12 +81,14 @@ migration_schema_source = join_paths(
   'data',
   'com.goreecloud.Terminal.Migration.gschema.xml',
 )
-install_data(
-  'data/com.goreecloud.Terminal.Migration.gschema.xml',
-  install_dir: join_paths(get_option('datadir'), 'glib-2.0', 'schemas'),
-)
 
-gnome.post_install(glib_compile_schemas: true)
+if install_migration_tool
+  install_data(
+    'data/com.goreecloud.Terminal.Migration.gschema.xml',
+    install_dir: join_paths(get_option('datadir'), 'glib-2.0', 'schemas'),
+  )
+  gnome.post_install(glib_compile_schemas: true)
+endif
 
 render_product_main = files('tools/render-product-main.py')
 identity_main = custom_target(
@@ -139,20 +142,22 @@ executable(
   install_dir: get_option('bindir'),
 )
 
-executable(
-  'goreecloud-terminal-migrate',
-  [
-    'src/migration-tool.c',
-    'src/legacy-migration.c',
-    'src/terminal-preferences.c',
-    'src/session-profile.c',
-    'src/workspace-store.c',
-  ],
-  include_directories: include_directories('src'),
-  dependencies: [glib, gio],
-  install: true,
-  install_dir: get_option('bindir'),
-)
+if install_migration_tool
+  executable(
+    'goreecloud-terminal-migrate',
+    [
+      'src/migration-tool.c',
+      'src/legacy-migration.c',
+      'src/terminal-preferences.c',
+      'src/session-profile.c',
+      'src/workspace-store.c',
+    ],
+    include_directories: include_directories('src'),
+    dependencies: [glib, gio],
+    install: true,
+    install_dir: get_option('bindir'),
+  )
+endif
 
 session_lifecycle_test = executable(
   'test-native-session-lifecycle',
@@ -288,7 +293,7 @@ summary(
     'Product identity': product_identity,
     'Application ID': application_id,
     'Canonical launcher': 'goreecloud-terminal',
-    'Migration command': 'goreecloud-terminal-migrate',
+    'Install host migration tool': install_migration_tool,
     'Installable staged layout': true,
   },
   section: 'GoreeCloud Terminal native identity',
