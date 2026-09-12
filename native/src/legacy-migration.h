@@ -15,6 +15,7 @@ typedef struct {
     char *backup_directory;
 } GoreeTerminalMigrationReport;
 
+/* Reports must be zero-initialized before first use. */
 void goree_terminal_migration_report_clear(
     GoreeTerminalMigrationReport *report);
 
@@ -24,11 +25,15 @@ void goree_terminal_migration_report_clear(
  *
  * Terminal contents/history, custom command contents, credentials, tokens,
  * private keys, SSH secrets, and environment values are never read or copied.
+ *
+ * Unsupported non-default profiles block migration unless allow_partial is
+ * explicitly true. The transitional source is never removed or modified.
  */
 gboolean goree_terminal_legacy_migrate(
     GoreeTerminalLegacyIdentity identity,
     gboolean replace_native,
     gboolean dry_run,
+    gboolean allow_partial,
     GoreeTerminalMigrationReport *report,
     GError **error);
 
