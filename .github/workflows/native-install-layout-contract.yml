@@ -62,6 +62,8 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -f native/PACKAGING.md
+          test -f native/package-contract.json
+          test -f native/tools/validate-package-contract.py
           test -f native/flatpak/com.goreecloud.Terminal.Devel.json
           test ! -e native/flatpak/com.goreecloud.Terminal.Native.Devel.json
           test -f native/data/icons/goreecloud-terminal.svg
@@ -69,6 +71,8 @@ jobs:
           test -f native/data/com.goreecloud.Terminal.Migration.gschema.xml
           cmp -s data/icons/goreecloud-terminal.svg native/data/icons/goreecloud-terminal.svg
           cmp -s data/icons/goreecloud-terminal-devel.svg native/data/icons/goreecloud-terminal-devel.svg
+          python3 -m json.tool native/package-contract.json >/dev/null
+          python3 -m py_compile native/tools/validate-package-contract.py
           python3 -m json.tool native/flatpak/com.goreecloud.Terminal.Devel.json >/dev/null
           grep -Fq '"app-id": "com.goreecloud.Terminal.Devel"' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq '"command": "goreecloud-terminal"' native/flatpak/com.goreecloud.Terminal.Devel.json
@@ -155,12 +159,26 @@ jobs:
               --expect-exec /usr/libexec/goreecloud-terminal-host-agent
           done
 
+      - name: Validate format-neutral host-native package payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          for identity in development production; do
+            python3 native/tools/validate-package-contract.py \
+              native/package-contract.json \
+              "$PWD/_native-install-stage-${identity}" \
+              "$identity"
+          done
+
       - name: Verify lifecycle boundary remains explicit
         shell: bash
         run: |
           set -euo pipefail
           grep -Fq 'Development / staged-install validation only.' native/PACKAGING.md
           grep -Fq 'Passing source or staged-install CI is not Stable or production evidence.' native/PACKAGING.md
+          grep -Fq '## Format-neutral package payload contract' native/PACKAGING.md
+          grep -Fq 'native/package-contract.json' native/PACKAGING.md
+          grep -Fq 'package format remains unselected' native/PACKAGING.md
           grep -Fq '## Coexistence and migration boundary' native/PACKAGING.md
           grep -Fq 'This is not yet package-manager or supported-workstation migration acceptance.' native/PACKAGING.md
           printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
