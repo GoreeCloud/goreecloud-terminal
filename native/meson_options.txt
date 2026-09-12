@@ -1,0 +1,7 @@
+option(
+  'product_identity',
+  type: 'combo',
+  choices: ['development', 'production'],
+  value: 'development',
+  description: 'GoreeCloud Terminal native product identity. Production must be selected explicitly for a production-identity candidate.',
+)
