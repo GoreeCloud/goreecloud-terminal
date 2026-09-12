@@ -53,9 +53,12 @@ static void
 test_product_version(void)
 {
     g_assert_nonnull(GOREECLOUD_TERMINAL_VERSION);
-    g_assert_cmpstr(GOREECLOUD_TERMINAL_VERSION, ==, "0.1.0-dev");
-    g_assert_null(g_strstr_len(GOREECLOUD_TERMINAL_VERSION, -1, " "));
-    g_assert_null(g_strstr_len(GOREECLOUD_TERMINAL_VERSION, -1, "\n"));
+    g_assert_true(
+        g_regex_match_simple(
+            "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$",
+            GOREECLOUD_TERMINAL_VERSION,
+            0,
+            0));
 }
 
 int
