@@ -123,6 +123,7 @@ profile_runtime_test = executable(
     'src/test-profile-runtime.c',
     'src/profile-runtime.c',
     'src/session-profile.c',
+    'src/workspace-store.c',
     'src/terminal-preferences.c',
   ],
   include_directories: include_directories('include'),
