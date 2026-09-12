@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">GoreeCloud Terminal Development</title>
+  <desc id="desc">Development variant of the GoreeCloud Terminal icon with a diagnostic badge.</desc>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17233A"/>
+      <stop offset="0.55" stop-color="#28406A"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="120" y1="96" x2="392" y2="408" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A8F0FF"/>
+      <stop offset="0.52" stop-color="#6AB5FF"/>
+      <stop offset="1" stop-color="#9B86FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#bg)"/>
+  <path d="M151 292c-35 0-63-28-63-63 0-32 24-59 55-63 12-49 56-85 109-85 57 0 104 42 112 97 39 3 70 35 70 75 0 42-34 76-76 76H151Z" fill="#0B1D38" stroke="url(#edge)" stroke-width="16" stroke-linejoin="round"/>
+  <rect x="132" y="188" width="248" height="188" rx="38" fill="#0B1729" stroke="#C9F4FF" stroke-opacity="0.38" stroke-width="4"/>
+  <path d="M188 285 232 321 188 357" fill="none" stroke="#F7FBFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M255 357h73" stroke="#8CEBFF" stroke-width="18" stroke-linecap="round"/>
+  <g transform="translate(344 344)">
+    <circle cx="58" cy="58" r="58" fill="#F0B429" stroke="#FFF2B8" stroke-width="6"/>
+    <path d="M31 58h54M58 31v54" stroke="#1D2633" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>
