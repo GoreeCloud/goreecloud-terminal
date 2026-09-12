@@ -44,6 +44,8 @@ executable(
     'src/profile-runtime.c',
     'src/workspace-runtime.c',
     'src/workspace-view.c',
+    'src/remote-session.c',
+    'src/remote-openssh.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
@@ -144,6 +146,16 @@ workspace_runtime_test = executable(
   dependencies: [glib],
 )
 
+remote_session_test = executable(
+  'test-native-remote-session',
+  [
+    'src/test-remote-session.c',
+    'src/remote-session.c',
+    'src/remote-openssh.c',
+  ],
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
@@ -153,3 +165,4 @@ test('native-session-profile', session_profile_test)
 test('native-workspace-store', workspace_store_test)
 test('native-profile-runtime', profile_runtime_test)
 test('native-workspace-runtime', workspace_runtime_test)
+test('native-remote-session', remote_session_test)
