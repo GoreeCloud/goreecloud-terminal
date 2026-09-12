@@ -1,0 +1,108 @@
+name: Native Migration and Rollback Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/meson.build'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/test-legacy-migration.c'
+      - '.github/workflows/native-migration-rollback-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/meson.build'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/test-legacy-migration.c'
+      - '.github/workflows/native-migration-rollback-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  migration:
+    name: Validate explicit bounded migration and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install native build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            gcc \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            python3 \
+            vte291-gtk4-devel
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source and privacy boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f native/src/migration-tool.c
+          test -f native/src/test-legacy-migration.c
+          test -f native/data/com.goreecloud.Terminal.Migration.gschema.xml
+          grep -Fq "goreecloud-terminal-migrate" native/meson.build
+          grep -Fq "Migration dry run" native/src/migration-tool.c
+          grep -Fq "G_CHECKSUM_SHA256" native/src/legacy-migration.c
+          grep -Fq "custom command, which native migration intentionally does not read or import" native/src/legacy-migration.c
+          ! grep -Eq '<key name="(custom-command|custom-links|default-container|use-proxy)"' native/data/com.goreecloud.Terminal.Migration.gschema.xml
+          ! grep -Eqi '<key name="[^"]*(password|token|secret|private-key|history|environment)' native/data/com.goreecloud.Terminal.Migration.gschema.xml
+
+      - name: Build and run migration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$PWD/_native-migration"
+          meson setup "$build" native \
+            --buildtype=debugoptimized \
+            --prefix=/usr \
+            -Dproduct_identity=development
+          meson compile -C "$build"
+          meson test -C "$build" --print-errorlogs native-legacy-migration
+
+      - name: Validate installed maintenance surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$PWD/_native-migration"
+          stage="$PWD/_native-migration-stage"
+          DESTDIR="$stage" meson install -C "$build"
+
+          test -x "$stage/usr/bin/goreecloud-terminal-migrate"
+          schema="$stage/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml"
+          test -f "$schema"
+
+          schema_check="$PWD/_native-migration-installed-schemas"
+          mkdir -p "$schema_check"
+          cp "$schema" "$schema_check/"
+          glib-compile-schemas --strict "$schema_check"
+          test -f "$schema_check/gschemas.compiled"
+
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--source'
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--rollback'
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--dry-run'
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--replace-native'
