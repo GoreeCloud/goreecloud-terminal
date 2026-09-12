@@ -161,5 +161,6 @@ jobs:
           set -euo pipefail
           grep -Fq 'Development / staged-install validation only.' native/PACKAGING.md
           grep -Fq 'Passing source or staged-install CI is not Stable or production evidence.' native/PACKAGING.md
-          grep -Fq 'migration/coexistence/rollback' native/PACKAGING.md
+          grep -Fq '## Coexistence and migration boundary' native/PACKAGING.md
+          grep -Fq 'This is not yet package-manager or supported-workstation migration acceptance.' native/PACKAGING.md
           printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
