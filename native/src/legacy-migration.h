@@ -25,15 +25,15 @@ void goree_terminal_migration_report_clear(
  *
  * Terminal contents/history, custom command contents, credentials, tokens,
  * private keys, SSH secrets, and environment values are never read or copied.
- *
- * Unsupported non-default profiles block migration unless allow_partial is
- * explicitly true. The transitional source is never removed or modified.
+ * The installed maintenance command performs a dry-run preflight and requires
+ * explicit --allow-partial authority before it permits skipped secondary
+ * profiles to reach a write operation. The transitional source is never
+ * removed or modified by this API.
  */
 gboolean goree_terminal_legacy_migrate(
     GoreeTerminalLegacyIdentity identity,
     gboolean replace_native,
     gboolean dry_run,
-    gboolean allow_partial,
     GoreeTerminalMigrationReport *report,
     GError **error);
 
