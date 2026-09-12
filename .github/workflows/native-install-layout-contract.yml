@@ -66,12 +66,16 @@ jobs:
           test ! -e native/flatpak/com.goreecloud.Terminal.Native.Devel.json
           test -f native/data/icons/goreecloud-terminal.svg
           test -f native/data/icons/goreecloud-terminal-devel.svg
+          test -f native/data/com.goreecloud.Terminal.Migration.gschema.xml
           cmp -s data/icons/goreecloud-terminal.svg native/data/icons/goreecloud-terminal.svg
           cmp -s data/icons/goreecloud-terminal-devel.svg native/data/icons/goreecloud-terminal-devel.svg
           python3 -m json.tool native/flatpak/com.goreecloud.Terminal.Devel.json >/dev/null
           grep -Fq '"app-id": "com.goreecloud.Terminal.Devel"' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq '"command": "goreecloud-terminal"' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq -- '-Dproduct_identity=development' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq -- '-Dinstall_migration_tool=false' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq 'test ! -e /app/bin/goreecloud-terminal-migrate' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq 'test ! -e /app/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml' native/flatpak/com.goreecloud.Terminal.Devel.json
           ! grep -Fq 'Terminal.Native' native/flatpak/com.goreecloud.Terminal.Devel.json
           ! grep -Fq -- '--filesystem=host' native/flatpak/com.goreecloud.Terminal.Devel.json
           ! grep -Fq -- '--talk-name=org.freedesktop.Flatpak' native/flatpak/com.goreecloud.Terminal.Devel.json
@@ -92,12 +96,15 @@ jobs:
             meson setup "$build" native \
               --buildtype=debugoptimized \
               --prefix=/usr \
-              -Dproduct_identity="$identity"
+              -Dproduct_identity="$identity" \
+              -Dinstall_migration_tool=true
             meson compile -C "$build"
             meson test -C "$build" --print-errorlogs
             DESTDIR="$stage" meson install -C "$build"
 
             test -x "$stage/usr/bin/goreecloud-terminal"
+            test -x "$stage/usr/bin/goreecloud-terminal-migrate"
+            test -f "$stage/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml"
             test -f "$stage/usr/share/applications/${app_id}.desktop"
             test -f "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
             test -f "$stage/usr/share/icons/hicolor/scalable/apps/${app_id}.svg"
