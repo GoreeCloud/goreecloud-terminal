@@ -47,11 +47,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f native/src/remote-session.h
-          test -f native/src/remote-session.c
-          test -f native/src/remote-openssh.h
-          test -f native/src/remote-openssh.c
-          test -f native/src/test-remote-session.c
+          for path in \
+            native/src/remote-session.h \
+            native/src/remote-session.c \
+            native/src/remote-openssh.h \
+            native/src/remote-openssh.c \
+            native/src/remote-target-store.h \
+            native/src/remote-target-store.c \
+            native/src/remote-privacy-adapter.h \
+            native/src/remote-privacy-adapter.c \
+            native/src/test-remote-session.c \
+            native/src/test-remote-target-store.c \
+            native/src/test-remote-privacy-adapter.c; do
+            test -f "$path"
+          done
 
           grep -Fq 'GOREE_TERMINAL_REMOTE_PURPOSE "remote_administration"' native/src/remote-session.h
           grep -Fq 'authority_verified' native/src/remote-session.h
@@ -69,20 +78,52 @@ jobs:
           ! grep -Fq 'g_spawn_command_line' native/src/remote-openssh.c
           ! grep -Fq 'system(' native/src/remote-openssh.c
 
-      - name: Build focused remote contract test
+          grep -Fq 'REMOTE_TARGET_FILE_NAME "remote-targets.ini"' native/src/remote-target-store.c
+          grep -Fq 'g_chmod(path, 0600)' native/src/remote-target-store.c
+          grep -Fq 'g_chmod(directory, 0700)' native/src/remote-target-store.c
+          ! grep -Fq 'password=' native/src/remote-target-store.c
+          ! grep -Fq 'token=' native/src/remote-target-store.c
+          ! grep -Fq 'private-key' native/src/remote-target-store.c
+          ! grep -Fq 'IdentityFile' native/src/remote-target-store.c
+          ! grep -Fq 'ProxyCommand' native/src/remote-target-store.c
+
+          grep -Fq 'GOREE_TERMINAL_REMOTE_PRIVACY_UNAVAILABLE' native/src/remote-privacy-adapter.c
+          grep -Fq 'authority_verified = FALSE' native/src/remote-privacy-adapter.c
+          grep -Fq 'runtime_accepted = FALSE' native/src/remote-privacy-adapter.c
+          grep -Fq 'goree_terminal_remote_target_binding' native/src/remote-privacy-adapter.c
+
+      - name: Build focused remote contract tests
         shell: bash
         run: |
           set -euo pipefail
-          cc -std=c17 -Wall -Wextra -Werror \
-            $(pkg-config --cflags glib-2.0) \
+          CFLAGS="-std=c17 -Wall -Wextra -Werror $(pkg-config --cflags glib-2.0)"
+          LIBS="$(pkg-config --libs glib-2.0)"
+
+          cc $CFLAGS \
             native/src/test-remote-session.c \
             native/src/remote-session.c \
             native/src/remote-openssh.c \
-            $(pkg-config --libs glib-2.0) \
+            $LIBS \
             -o /tmp/test-native-remote-session
 
-      - name: Run focused remote contract test
+          cc $CFLAGS \
+            native/src/test-remote-target-store.c \
+            native/src/remote-target-store.c \
+            native/src/remote-session.c \
+            $LIBS \
+            -o /tmp/test-native-remote-target-store
+
+          cc $CFLAGS \
+            native/src/test-remote-privacy-adapter.c \
+            native/src/remote-privacy-adapter.c \
+            native/src/remote-session.c \
+            $LIBS \
+            -o /tmp/test-native-remote-privacy-adapter
+
+      - name: Run focused remote contract tests
         shell: bash
         run: |
           set -euo pipefail
           /tmp/test-native-remote-session
+          /tmp/test-native-remote-target-store
+          /tmp/test-native-remote-privacy-adapter
