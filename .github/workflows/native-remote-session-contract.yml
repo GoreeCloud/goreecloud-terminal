@@ -58,6 +58,8 @@ jobs:
             native/src/remote-privacy-adapter.c \
             native/src/remote-target-runtime.h \
             native/src/remote-target-runtime.c \
+            native/src/remote-target-view.h \
+            native/src/remote-target-view.c \
             native/src/test-remote-session.c \
             native/src/test-remote-target-store.c \
             native/src/test-remote-privacy-adapter.c \
@@ -99,6 +101,11 @@ jobs:
           grep -Fq 'Blocked — Privacy Shield unavailable' native/src/remote-target-runtime.c
           ! grep -Fq 'g_spawn' native/src/remote-target-runtime.c
           ! grep -Fq 'ssh' native/src/remote-target-runtime.c
+
+          grep -Fq 'Saved Remote Targets' native/src/remote-target-view.c
+          grep -Fq 'this view never starts an SSH process' native/src/remote-target-view.c
+          ! grep -Fq 'g_spawn' native/src/remote-target-view.c
+          ! grep -Fq 'vte_terminal_spawn' native/src/remote-target-view.c
 
       - name: Build focused remote contract tests
         shell: bash
