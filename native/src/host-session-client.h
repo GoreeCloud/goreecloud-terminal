@@ -14,6 +14,14 @@ typedef enum {
 } GoreeTerminalHostEvent;
 
 typedef struct {
+    const char *shell_path;
+    const char *working_directory;
+    GoreeTerminalHostEnvironmentPolicy environment_policy;
+    const char *const *environment_names;
+    gsize environment_count;
+} GoreeTerminalHostLaunchContext;
+
+typedef struct {
     int control_fd;
     int pty_fd;
     pid_t child_pid;
@@ -24,15 +32,29 @@ typedef struct {
 void goree_terminal_host_session_init(GoreeTerminalHostSession *session);
 
 /*
- * Connect to the same-user GoreeCloud Terminal host agent and request the
- * authenticated user's default host shell. No command, terminal contents,
- * credentials, environment dump, or working-directory history crosses this
- * control protocol.
+ * Connect to the same-user GoreeCloud Terminal host agent using the default
+ * authenticated-user launch context. This compatibility wrapper never sends a
+ * command string or arbitrary execution payload.
  */
 gboolean goree_terminal_host_session_connect(
     GoreeTerminalHostSession *session,
     guint rows,
     guint columns,
+    GError **error);
+
+/*
+ * Connect with a bounded interactive-shell launch context. The client sends
+ * only a validated shell path, absolute working directory, environment policy,
+ * and environment variable names. Environment values, terminal contents,
+ * credentials, tokens, private keys, shell history, and command strings are
+ * excluded. The host agent independently validates every supplied field before
+ * spawning the shell.
+ */
+gboolean goree_terminal_host_session_connect_with_context(
+    GoreeTerminalHostSession *session,
+    guint rows,
+    guint columns,
+    const GoreeTerminalHostLaunchContext *context,
     GError **error);
 
 /* Transfer ownership of the received PTY master to VTE. */
