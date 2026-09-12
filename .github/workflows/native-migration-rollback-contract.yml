@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/flatpak/com.goreecloud.Terminal.Devel.json'
       - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
       - 'native/src/legacy-migration.c'
       - 'native/src/legacy-migration.h'
@@ -14,6 +16,8 @@ on:
     branches: [main]
     paths:
       - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/flatpak/com.goreecloud.Terminal.Devel.json'
       - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
       - 'native/src/legacy-migration.c'
       - 'native/src/legacy-migration.h'
@@ -56,7 +60,7 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
-      - name: Verify exact source and privacy boundary
+      - name: Verify exact source privacy and sandbox boundary
         shell: bash
         run: |
           set -euo pipefail
@@ -65,12 +69,17 @@ jobs:
           test -f native/src/migration-tool.c
           test -f native/src/test-legacy-migration.c
           test -f native/data/com.goreecloud.Terminal.Migration.gschema.xml
+          grep -Fq "install_migration_tool" native/meson_options.txt
+          grep -Fq "if install_migration_tool" native/meson.build
           grep -Fq "goreecloud-terminal-migrate" native/meson.build
           grep -Fq "Migration dry run" native/src/migration-tool.c
           grep -Fq "G_CHECKSUM_SHA256" native/src/legacy-migration.c
           grep -Fq "custom command, which native migration intentionally does not read or import" native/src/legacy-migration.c
           ! grep -Eq '<key name="(custom-command|custom-links|default-container|use-proxy)"' native/data/com.goreecloud.Terminal.Migration.gschema.xml
           ! grep -Eqi '<key name="[^"]*(password|token|secret|private-key|history|environment)' native/data/com.goreecloud.Terminal.Migration.gschema.xml
+          grep -Fq -- '-Dinstall_migration_tool=false' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq 'test ! -e /app/bin/goreecloud-terminal-migrate' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq 'test ! -e /app/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml' native/flatpak/com.goreecloud.Terminal.Devel.json
 
       - name: Build and run migration tests
         shell: bash
@@ -80,11 +89,12 @@ jobs:
           meson setup "$build" native \
             --buildtype=debugoptimized \
             --prefix=/usr \
-            -Dproduct_identity=development
+            -Dproduct_identity=development \
+            -Dinstall_migration_tool=true
           meson compile -C "$build"
           meson test -C "$build" --print-errorlogs native-legacy-migration
 
-      - name: Validate installed maintenance surface
+      - name: Validate installed host maintenance surface
         shell: bash
         run: |
           set -euo pipefail
@@ -106,3 +116,22 @@ jobs:
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--rollback'
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--dry-run'
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--replace-native'
+
+      - name: Prove sandbox-style install excludes host migration authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$PWD/_native-migration-sandbox"
+          stage="$PWD/_native-migration-sandbox-stage"
+          meson setup "$build" native \
+            --buildtype=debugoptimized \
+            --prefix=/app \
+            -Dproduct_identity=development \
+            -Dinstall_migration_tool=false
+          meson compile -C "$build"
+          meson test -C "$build" --print-errorlogs native-legacy-migration
+          DESTDIR="$stage" meson install -C "$build"
+
+          test -x "$stage/app/bin/goreecloud-terminal"
+          test ! -e "$stage/app/bin/goreecloud-terminal-migrate"
+          test ! -e "$stage/app/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml"
