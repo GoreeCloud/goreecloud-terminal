@@ -836,10 +836,10 @@ update_open_tabs_menu(TerminalWindow *terminal_window)
         G_MENU_MODEL(menu));
     g_object_unref(menu);
 
-    GtkWidget *popover = gtk_menu_button_get_popover(
+    GtkPopover *popover = gtk_menu_button_get_popover(
         GTK_MENU_BUTTON(terminal_window->open_tabs_button));
     if (popover != NULL)
-        gtk_widget_add_css_class(popover, "glaze-context-menu");
+        gtk_widget_add_css_class(GTK_WIDGET(popover), "glaze-context-menu");
 }
 
 static void
@@ -941,9 +941,9 @@ create_terminal_window(GtkApplication *application)
     GMenuModel *main_menu = build_main_menu();
     gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), main_menu);
     g_object_unref(main_menu);
-    GtkWidget *main_popover = gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button));
+    GtkPopover *main_popover = gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button));
     if (main_popover != NULL)
-        gtk_widget_add_css_class(main_popover, "glaze-context-menu");
+        gtk_widget_add_css_class(GTK_WIDGET(main_popover), "glaze-context-menu");
 
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), menu_button);
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), open_tabs_button);
