@@ -39,7 +39,9 @@ With `--prefix=/usr`, it installs:
 - `/usr/libexec/goreecloud-terminal-host-agent`
 - `/usr/lib/systemd/user/goreecloud-terminal-host-agent.service`
 
-The systemd user service remains constrained to the existing same-user local Unix-socket design and retains its security-hardening directives. Staged install validation may place the application and host-agent files into the same temporary DESTDIR to verify a coherent filesystem layout. That does not constitute host-agent enablement, workstation deployment, or physical PTY/job-control acceptance.
+The systemd user service is intentionally lifecycle-only because it launches the user's interactive host shell. Service-level execution sandboxing, namespace/network-family restrictions, privilege-state restrictions, forced umasks, environment rewriting, and similar process policy would be inherited by descendant shells and would change normal host behavior. The security boundary therefore remains in the private runtime directory/socket, same-user `SO_PEERCRED` checks, bounded versioned protocol, approved-shell and launch-context validation, and the absence of arbitrary-command or network-listener authority. `native/host-agent/test-service-contract.py` locks this service contract in CI.
+
+Staged install validation may place the application and host-agent files into the same temporary DESTDIR to verify a coherent filesystem layout. That does not constitute host-agent enablement, workstation deployment, or physical PTY/job-control acceptance.
 
 ## Flatpak Development boundary
 
@@ -75,7 +77,7 @@ The repository staging contract must, for both Development and production identi
 7. prove Development and production identities do not cross-contaminate each other's staging roots;
 8. reject `.Native` application identity artifacts;
 9. build and stage the host-agent into the same temporary filesystem root;
-10. verify the systemd user service points to the staged layout's canonical `/usr/libexec/goreecloud-terminal-host-agent` runtime path and retains its security boundary.
+10. verify the systemd user service points to the staged layout's canonical `/usr/libexec/goreecloud-terminal-host-agent` runtime path and remains lifecycle-only so spawned host shells retain normal host semantics.
 
 ## Remaining production blockers
 

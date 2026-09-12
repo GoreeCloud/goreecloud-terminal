@@ -38,6 +38,7 @@ jobs:
           dnf -y --setopt=install_weak_deps=False install \
             appstream \
             desktop-file-utils \
+            diffutils \
             gcc \
             git \
             glib2-devel \
@@ -143,9 +144,8 @@ jobs:
             service="$stage/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
             test -f "$service"
             grep -Fq 'ExecStart=/usr/libexec/goreecloud-terminal-host-agent' "$service"
-            grep -Fq 'RestrictAddressFamilies=AF_UNIX' "$service"
-            grep -Fq 'NoNewPrivileges=yes' "$service"
-            grep -Fq 'UMask=0077' "$service"
+            python3 native/host-agent/test-service-contract.py "$service" \
+              --expect-exec /usr/libexec/goreecloud-terminal-host-agent
           done
 
       - name: Verify lifecycle boundary remains explicit

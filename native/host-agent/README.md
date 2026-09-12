@@ -70,7 +70,11 @@ The host agent Meson project installs:
 - `goreecloud-terminal-host-agent` in the configured `libexecdir`; and
 - `goreecloud-terminal-host-agent.service` as a systemd user service.
 
-The service is deliberately constrained to Unix-domain networking and applies user-service hardening including `NoNewPrivileges`, `RestrictAddressFamilies=AF_UNIX`, and a private `0077` umask. Source-level installation support does not by itself establish a production package or supported-distribution qualification.
+The user service intentionally contains lifecycle directives only. It must not apply execution sandboxing, namespace restrictions, network-family restrictions, privilege-state restrictions, a private temporary directory, a forced umask, environment rewriting, or similar process policy that would be inherited by shells spawned by the agent. A host terminal session must retain the logged-in user's normal host behavior for tools such as `sudo`, networking clients, `/tmp`, namespaces, and ordinary file creation.
+
+This is not a reduction of the host-agent security boundary. The boundary is enforced where authority is actually established: the private `0700` runtime directory, `0600` Unix-domain socket, same-user `SO_PEERCRED` verification, bounded versioned protocol, host-side request validation, approved-shell validation, and the absence of arbitrary-command RPC or network listening.
+
+`test-service-contract.py` enforces the lifecycle-only `[Service]` directive allowlist so a future packaging change cannot silently reintroduce descendant-shell restrictions. Source-level installation support does not by itself establish a production package or supported-distribution qualification.
 
 ## Build and contract validation
 
@@ -79,11 +83,14 @@ meson setup _host-agent-build native/host-agent --buildtype=debugoptimized
 meson compile -C _host-agent-build
 python3 native/host-agent/test-host-agent.py \
   _host-agent-build/goreecloud-terminal-host-agent
+python3 native/host-agent/test-service-contract.py \
+  native/host-agent/goreecloud-terminal-host-agent.service.in \
+  --expect-exec '@HOST_AGENT_PATH@'
 ```
 
 The integration test proves the default shell path, a bounded profile launch with an explicit working directory and host-resolved allowlisted environment name, rejection of an unapproved executable as a shell, rejection of a relative working directory, rejection of an invalid environment name, PTY transfer, child exit evidence, and private runtime-socket modes. Synthetic test values are used and no production credential or private host data is required.
 
-The `Native Host Session Contract` workflow also stages the installed host agent and user service, checks the narrow Flatpak permission boundary, validates the client/agent trust contract, and runs the PTY integration test.
+The `Native Host Session Contract` workflow also stages the installed host agent and user service, checks the narrow Flatpak permission boundary, validates that the service preserves descendant host-shell semantics, validates the client/agent trust contract, and runs the PTY integration test.
 
 ## Current phase
 
