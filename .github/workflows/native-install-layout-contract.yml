@@ -1,0 +1,154 @@
+name: Native Install Layout Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-install-layout-contract.yml'
+      - '.github/workflows/native-host-session-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-install-layout-contract.yml'
+      - '.github/workflows/native-host-session-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-install-layout-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  staged-install:
+    name: Validate native Development and production staged layouts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install staged-install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          dnf -y --setopt=install_weak_deps=False install \
+            appstream \
+            desktop-file-utils \
+            gcc \
+            git \
+            glib2-devel \
+            gtk4-devel \
+            meson \
+            ninja-build \
+            pkgconf-pkg-config \
+            python3 \
+            vte291-gtk4-devel
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source and package identity boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f native/PACKAGING.md
+          test -f native/flatpak/com.goreecloud.Terminal.Devel.json
+          test ! -e native/flatpak/com.goreecloud.Terminal.Native.Devel.json
+          python3 -m json.tool native/flatpak/com.goreecloud.Terminal.Devel.json >/dev/null
+          grep -Fq '"app-id": "com.goreecloud.Terminal.Devel"' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq '"command": "goreecloud-terminal"' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq -- '-Dproduct_identity=development' native/flatpak/com.goreecloud.Terminal.Devel.json
+          ! grep -Fq 'Terminal.Native' native/flatpak/com.goreecloud.Terminal.Devel.json
+          ! grep -Fq -- '--filesystem=host' native/flatpak/com.goreecloud.Terminal.Devel.json
+          ! grep -Fq -- '--talk-name=org.freedesktop.Flatpak' native/flatpak/com.goreecloud.Terminal.Devel.json
+          grep -Fq -- '--filesystem=xdg-run/goreecloud-terminal' native/flatpak/com.goreecloud.Terminal.Devel.json
+
+      - name: Build test and stage both application identities
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate_identity() {
+            identity="$1"
+            app_id="$2"
+            other_id="$3"
+            build="$PWD/_native-install-build-${identity}"
+            stage="$PWD/_native-install-stage-${identity}"
+
+            meson setup "$build" native \
+              --buildtype=debugoptimized \
+              --prefix=/usr \
+              -Dproduct_identity="$identity"
+            meson compile -C "$build"
+            meson test -C "$build" --print-errorlogs
+            DESTDIR="$stage" meson install -C "$build"
+
+            test -x "$stage/usr/bin/goreecloud-terminal"
+            test -f "$stage/usr/share/applications/${app_id}.desktop"
+            test -f "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
+            test -f "$stage/usr/share/icons/hicolor/scalable/apps/${app_id}.svg"
+
+            desktop-file-validate "$stage/usr/share/applications/${app_id}.desktop"
+            appstreamcli validate "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
+
+            grep -Fxq 'Exec=goreecloud-terminal' "$stage/usr/share/applications/${app_id}.desktop"
+            grep -Fxq "Icon=${app_id}" "$stage/usr/share/applications/${app_id}.desktop"
+            grep -Fq "<id>${app_id}</id>" "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
+            grep -Fq "<launchable type=\"desktop-id\">${app_id}.desktop</launchable>" "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
+            grep -Fq '<binary>goreecloud-terminal</binary>' "$stage/usr/share/metainfo/${app_id}.metainfo.xml"
+
+            test ! -e "$stage/usr/share/applications/${other_id}.desktop"
+            test ! -e "$stage/usr/share/metainfo/${other_id}.metainfo.xml"
+            test ! -e "$stage/usr/share/icons/hicolor/scalable/apps/${other_id}.svg"
+
+            if find "$stage" -print | grep -F 'Terminal.Native'; then
+              echo 'Obsolete .Native install identity returned in staged filesystem paths.' >&2
+              exit 1
+            fi
+            if grep -R -a -F 'com.goreecloud.Terminal.Native' "$stage"; then
+              echo 'Obsolete .Native application identity returned in staged file content.' >&2
+              exit 1
+            fi
+          }
+
+          validate_identity development com.goreecloud.Terminal.Devel com.goreecloud.Terminal
+          validate_identity production com.goreecloud.Terminal com.goreecloud.Terminal.Devel
+
+      - name: Stage host-session component into both isolated roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup _native-install-host-build native/host-agent \
+            --buildtype=debugoptimized \
+            --prefix=/usr
+          meson compile -C _native-install-host-build
+
+          for identity in development production; do
+            stage="$PWD/_native-install-stage-${identity}"
+            DESTDIR="$stage" meson install -C _native-install-host-build
+            test -x "$stage/usr/libexec/goreecloud-terminal-host-agent"
+            service="$stage/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
+            test -f "$service"
+            grep -Fq 'ExecStart=/usr/libexec/goreecloud-terminal-host-agent' "$service"
+            grep -Fq 'RestrictAddressFamilies=AF_UNIX' "$service"
+            grep -Fq 'NoNewPrivileges=yes' "$service"
+            grep -Fq 'UMask=0077' "$service"
+          done
+
+      - name: Verify lifecycle boundary remains explicit
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Development / staged-install validation only.' native/PACKAGING.md
+          grep -Fq 'Passing source or staged-install CI is not Stable or production evidence.' native/PACKAGING.md
+          grep -Fq 'migration/coexistence/rollback' native/PACKAGING.md
+          printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
