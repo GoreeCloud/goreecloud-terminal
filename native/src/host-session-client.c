@@ -266,6 +266,129 @@ verify_peer_uid(int fd, GError **error)
 #endif
 }
 
+static gboolean
+valid_environment_name(const char *name)
+{
+    if (name == NULL || *name == '\0' ||
+        !(g_ascii_isalpha(*name) || *name == '_'))
+        return FALSE;
+
+    for (const char *cursor = name + 1; *cursor != '\0'; cursor++) {
+        if (!(g_ascii_isalnum(*cursor) || *cursor == '_'))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+static gboolean
+prepare_spawn_request(GoreeTerminalHostSpawnRequest *request,
+                      guint rows,
+                      guint columns,
+                      const GoreeTerminalHostLaunchContext *context,
+                      GError **error)
+{
+    GoreeTerminalHostLaunchContext defaults = {
+        .shell_path = "",
+        .working_directory = "",
+        .environment_policy = GOREE_TERMINAL_HOST_ENVIRONMENT_INHERIT_SAFE,
+        .environment_names = NULL,
+        .environment_count = 0,
+    };
+
+    if (context == NULL)
+        context = &defaults;
+
+    if (context->environment_policy != GOREE_TERMINAL_HOST_ENVIRONMENT_INHERIT_SAFE &&
+        context->environment_policy != GOREE_TERMINAL_HOST_ENVIRONMENT_CLEAN) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_INVALID_ARGUMENT,
+                            "Host-session environment policy is invalid");
+        return FALSE;
+    }
+    if (context->environment_count > GOREE_TERMINAL_HOST_ENVIRONMENT_COUNT_MAX) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_INVALID_ARGUMENT,
+                            "Host-session environment allowlist is too large");
+        return FALSE;
+    }
+
+    const char *shell_path = context->shell_path != NULL ? context->shell_path : "";
+    const char *working_directory = context->working_directory != NULL
+        ? context->working_directory
+        : "";
+
+    if (*shell_path != '\0' && !g_path_is_absolute(shell_path)) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_INVALID_ARGUMENT,
+                            "Host-session shell path must be absolute");
+        return FALSE;
+    }
+    if (*working_directory != '\0' && !g_path_is_absolute(working_directory)) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_INVALID_ARGUMENT,
+                            "Host-session working directory must be absolute");
+        return FALSE;
+    }
+
+    memset(request, 0, sizeof(*request));
+    request->header.magic = GOREE_TERMINAL_HOST_PROTOCOL_MAGIC;
+    request->header.version = GOREE_TERMINAL_HOST_PROTOCOL_VERSION;
+    request->header.type = GOREE_TERMINAL_HOST_MESSAGE_SPAWN_REQUEST;
+    request->header.value = 0;
+    request->header.rows = rows;
+    request->header.columns = columns;
+    request->environment_policy = (uint32_t) context->environment_policy;
+    request->environment_count = (uint32_t) context->environment_count;
+
+    if (g_strlcpy(request->shell_path,
+                  shell_path,
+                  sizeof(request->shell_path)) >= sizeof(request->shell_path)) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_FILENAME_TOO_LONG,
+                            "Host-session shell path is too long");
+        return FALSE;
+    }
+    if (g_strlcpy(request->working_directory,
+                  working_directory,
+                  sizeof(request->working_directory)) >= sizeof(request->working_directory)) {
+        g_set_error_literal(error,
+                            G_IO_ERROR,
+                            G_IO_ERROR_FILENAME_TOO_LONG,
+                            "Host-session working directory is too long");
+        return FALSE;
+    }
+
+    for (gsize index = 0; index < context->environment_count; index++) {
+        const char *name = context->environment_names != NULL
+            ? context->environment_names[index]
+            : NULL;
+        if (!valid_environment_name(name)) {
+            g_set_error_literal(error,
+                                G_IO_ERROR,
+                                G_IO_ERROR_INVALID_ARGUMENT,
+                                "Host-session environment allowlist contains an invalid variable name");
+            return FALSE;
+        }
+        if (g_strlcpy(request->environment_names[index],
+                      name,
+                      sizeof(request->environment_names[index])) >=
+            sizeof(request->environment_names[index])) {
+            g_set_error_literal(error,
+                                G_IO_ERROR,
+                                G_IO_ERROR_INVALID_ARGUMENT,
+                                "Host-session environment variable name is too long");
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
 void
 goree_terminal_host_session_init(GoreeTerminalHostSession *session)
 {
@@ -283,22 +406,34 @@ goree_terminal_host_session_connect(GoreeTerminalHostSession *session,
                                     guint columns,
                                     GError **error)
 {
+    return goree_terminal_host_session_connect_with_context(
+        session,
+        rows,
+        columns,
+        NULL,
+        error);
+}
+
+gboolean
+goree_terminal_host_session_connect_with_context(
+    GoreeTerminalHostSession *session,
+    guint rows,
+    guint columns,
+    const GoreeTerminalHostLaunchContext *context,
+    GError **error)
+{
     char *socket_path = NULL;
     int fd = -1;
     struct sockaddr_un address;
-    GoreeTerminalHostMessage request = {
-        .magic = GOREE_TERMINAL_HOST_PROTOCOL_MAGIC,
-        .version = GOREE_TERMINAL_HOST_PROTOCOL_VERSION,
-        .type = GOREE_TERMINAL_HOST_MESSAGE_SPAWN_REQUEST,
-        .value = 0,
-        .rows = rows,
-        .columns = columns,
-    };
+    GoreeTerminalHostSpawnRequest request;
     GoreeTerminalHostMessage response;
     int pty_fd = -1;
 
     g_return_val_if_fail(session != NULL, FALSE);
     g_return_val_if_fail(session->control_fd < 0 && session->pty_fd < 0, FALSE);
+
+    if (!prepare_spawn_request(&request, rows, columns, context, error))
+        return FALSE;
 
     socket_path = build_socket_path();
     if (socket_path == NULL) {
