@@ -121,12 +121,23 @@ meson compile -C "${build_dir}"
 printf '\n[4/4] Running native unit tests...\n'
 meson test -C "${build_dir}" --print-errorlogs
 
+if [[ ! -x "${build_dir}/goreecloud-terminal" ]]; then
+  printf 'Canonical native launcher was not produced: %s\n' "${build_dir}/goreecloud-terminal" >&2
+  exit 1
+fi
+
+if [[ ! -f "${build_dir}/com.goreecloud.Terminal.Devel.desktop" ]] || \
+   [[ ! -f "${build_dir}/com.goreecloud.Terminal.Devel.metainfo.xml" ]]; then
+  printf 'Default Development identity metadata was not generated.\n' >&2
+  exit 1
+fi
+
 if [[ "${mode}" == "automated" ]]; then
   printf '\nAutomated workstation-acceptance prerequisites passed for %s.\n' "${source_revision}"
   exit 0
 fi
 
-binary="${build_dir}/goreecloud-terminal-native"
+binary="${build_dir}/goreecloud-terminal"
 settings_file="${config_dir}/goreecloud/terminal/theme.ini"
 
 cat <<'EOF'
@@ -135,7 +146,7 @@ Automated checks passed. The remaining steps require physical-device and human
 visual/accessibility judgment and therefore are not auto-approved by this script.
 
 FIRST LAUNCH CHECKLIST
-  1. Verify the window opens and terminal text is readable.
+  1. Verify the window opens as the GoreeCloud Terminal Development identity and terminal text is readable.
   2. Cycle Theme through Follow System, Light, Dark, and Deep Dark.
   3. Visually evaluate the Glaze material system in each appearance:
        - header + tab rail read as one bounded neutral-glass chrome region;
