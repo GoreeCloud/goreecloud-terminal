@@ -37,6 +37,8 @@ executable(
     'src/host-session-client.c',
     'src/glaze-contract.c',
     'src/theme-engine.c',
+    'src/terminal-preferences.c',
+    'src/paste-guard.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
@@ -72,6 +74,27 @@ theme_engine_test = executable(
   dependencies: [glib],
 )
 
+preferences_test = executable(
+  'test-native-terminal-preferences',
+  [
+    'src/test-terminal-preferences.c',
+    'src/terminal-preferences.c',
+  ],
+  dependencies: [glib],
+)
+
+paste_guard_test = executable(
+  'test-native-paste-guard',
+  [
+    'src/test-paste-guard.c',
+    'src/paste-guard.c',
+    'src/terminal-preferences.c',
+  ],
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
+test('native-terminal-preferences', preferences_test)
+test('native-paste-guard', paste_guard_test)

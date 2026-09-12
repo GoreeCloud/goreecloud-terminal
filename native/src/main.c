@@ -1,9 +1,8 @@
 /*
  * GoreeCloud Terminal — native session/tab/window foundation
  *
- * This source is original GoreeCloud-owned product code. It intentionally does not
- * reuse Ptyxis product architecture, UI code, workflows, or application logic.
- * Mature GTK/VTE platform libraries remain external supporting components.
+ * This source is original GoreeCloud-owned product code. Mature GTK/VTE
+ * platform libraries remain external supporting components.
  */
 
 #include <glib-unix.h>
@@ -13,7 +12,9 @@
 
 #include "glaze-contract.h"
 #include "host-session-client.h"
+#include "paste-guard.h"
 #include "session-lifecycle.h"
+#include "terminal-preferences.h"
 #include "theme-engine.h"
 
 #define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal.Native"
@@ -36,11 +37,23 @@ typedef struct {
     GtkWidget *tab_text;
     GtkWidget *tab_menu;
     GtkWidget *context_menu;
+    GtkWidget *search_popover;
+    GtkWidget *search_entry;
     TerminalWindow *owner;
     TerminalSessionOrigin origin;
     guint host_watch_id;
     char *custom_title;
 } TerminalSessionView;
+
+typedef struct {
+    GtkWidget *terminal;
+    GoreeTerminalPasteProtection protection;
+} PasteReadRequest;
+
+typedef struct {
+    GtkWidget *terminal;
+    char *text;
+} PasteConfirmRequest;
 
 struct _TerminalWindow {
     GtkWidget *window;
@@ -52,6 +65,7 @@ struct _TerminalWindow {
     gulong theme_notify_id;
     gboolean system_prefers_dark;
     GoreeTerminalThemeEngine theme_engine;
+    GoreeTerminalPreferences preferences;
     guint next_session_id;
 };
 
@@ -130,6 +144,23 @@ apply_terminal_palette(TerminalWindow *terminal_window, VteTerminal *terminal)
         vte_terminal_set_color_cursor(terminal, &cursor);
     if (parse_rgba(theme->selection_background, &selection))
         vte_terminal_set_color_highlight(terminal, &selection);
+}
+
+static void
+apply_terminal_preferences(TerminalWindow *terminal_window, VteTerminal *terminal)
+{
+    vte_terminal_set_scrollback_lines(
+        terminal,
+        (glong) terminal_window->preferences.scrollback_lines);
+    vte_terminal_set_audible_bell(
+        terminal,
+        terminal_window->preferences.audible_bell);
+    vte_terminal_set_allow_hyperlink(
+        terminal,
+        terminal_window->preferences.allow_hyperlinks);
+    vte_terminal_search_set_wrap_around(
+        terminal,
+        terminal_window->preferences.search_wrap_around);
 }
 
 static void
@@ -456,6 +487,7 @@ start_host_bridge_session(TerminalSessionView *session)
     g_object_unref(pty);
 
     if (!goree_terminal_session_mark_running(&session->lifecycle)) {
+        vte_terminal_set_pty(VTE_TERMINAL(session->terminal), NULL);
         goree_terminal_host_session_close(&session->host_session);
         return FALSE;
     }
@@ -467,7 +499,15 @@ start_host_bridge_session(TerminalSessionView *session)
         G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
         host_control_ready,
         session);
-    return session->host_watch_id != 0;
+    if (session->host_watch_id == 0) {
+        vte_terminal_set_input_enabled(VTE_TERMINAL(session->terminal), FALSE);
+        vte_terminal_set_pty(VTE_TERMINAL(session->terminal), NULL);
+        goree_terminal_host_session_close(&session->host_session);
+        goree_terminal_session_mark_disconnected(&session->lifecycle);
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 static void
@@ -513,6 +553,274 @@ close_session(GtkButton *button, gpointer user_data)
     close_terminal_widget(GTK_WIDGET(user_data));
 }
 
+static GtkWindow *
+terminal_parent_window(GtkWidget *terminal)
+{
+    GtkRoot *root = gtk_widget_get_root(terminal);
+    return GTK_IS_WINDOW(root) ? GTK_WINDOW(root) : NULL;
+}
+
+static gboolean
+terminal_can_accept_paste(GtkWidget *terminal)
+{
+    TerminalSessionView *session = session_view_for(terminal);
+    return session != NULL &&
+           goree_terminal_session_can_accept_input(&session->lifecycle) &&
+           vte_terminal_get_input_enabled(VTE_TERMINAL(terminal));
+}
+
+static void
+show_simple_alert(GtkWidget *terminal, const char *message, const char *detail)
+{
+    GtkAlertDialog *dialog = gtk_alert_dialog_new("%s", message);
+    if (detail != NULL)
+        gtk_alert_dialog_set_detail(dialog, detail);
+    gtk_alert_dialog_show(dialog, terminal_parent_window(terminal));
+    g_object_unref(dialog);
+}
+
+static void
+paste_confirm_request_free(PasteConfirmRequest *request)
+{
+    if (request == NULL)
+        return;
+    g_clear_object(&request->terminal);
+    g_free(request->text);
+    g_free(request);
+}
+
+static void
+paste_confirmation_ready(GObject *source_object, GAsyncResult *result, gpointer user_data)
+{
+    PasteConfirmRequest *request = user_data;
+    GError *error = NULL;
+    int choice = gtk_alert_dialog_choose_finish(
+        GTK_ALERT_DIALOG(source_object),
+        result,
+        &error);
+
+    if (error == NULL && choice == 1 && terminal_can_accept_paste(request->terminal))
+        vte_terminal_paste_text(VTE_TERMINAL(request->terminal), request->text);
+
+    g_clear_error(&error);
+    paste_confirm_request_free(request);
+}
+
+static void
+confirm_guarded_paste(
+    GtkWidget *terminal,
+    char *text,
+    const GoreeTerminalPasteAssessment *assessment)
+{
+    const char *buttons[] = {"Cancel", "Paste", NULL};
+    GtkAlertDialog *dialog = gtk_alert_dialog_new("Paste clipboard text into this terminal?");
+    char *detail = assessment->contains_control_characters
+        ? g_strdup_printf(
+            "The clipboard contains %u line(s) and control characters. Its contents are not displayed or logged. Confirm before sending it to the active session.",
+            assessment->line_count)
+        : g_strdup_printf(
+            "The clipboard contains %u line(s). Its contents are not displayed or logged. Confirm before sending it to the active session.",
+            assessment->line_count);
+
+    gtk_alert_dialog_set_detail(dialog, detail);
+    gtk_alert_dialog_set_buttons(dialog, buttons);
+    gtk_alert_dialog_set_cancel_button(dialog, 0);
+    gtk_alert_dialog_set_default_button(dialog, 0);
+    gtk_alert_dialog_set_modal(dialog, TRUE);
+    g_free(detail);
+
+    PasteConfirmRequest *request = g_new0(PasteConfirmRequest, 1);
+    request->terminal = g_object_ref(terminal);
+    request->text = text;
+
+    gtk_alert_dialog_choose(
+        dialog,
+        terminal_parent_window(terminal),
+        NULL,
+        paste_confirmation_ready,
+        request);
+    g_object_unref(dialog);
+}
+
+static void
+clipboard_text_ready(GObject *source_object, GAsyncResult *result, gpointer user_data)
+{
+    PasteReadRequest *request = user_data;
+    GError *error = NULL;
+    char *text = gdk_clipboard_read_text_finish(
+        GDK_CLIPBOARD(source_object),
+        result,
+        &error);
+
+    if (error != NULL || text == NULL) {
+        if (terminal_can_accept_paste(request->terminal))
+            show_simple_alert(
+                request->terminal,
+                "Clipboard text is unavailable",
+                "GoreeCloud Terminal did not send any clipboard contents to the terminal session.");
+        g_clear_error(&error);
+        g_free(text);
+        g_clear_object(&request->terminal);
+        g_free(request);
+        return;
+    }
+
+    GoreeTerminalPasteAssessment assessment = goree_terminal_assess_paste(
+        text,
+        request->protection);
+
+    if (!terminal_can_accept_paste(request->terminal)) {
+        g_free(text);
+    } else if (assessment.decision == GOREE_TERMINAL_PASTE_REJECT_INVALID_TEXT) {
+        show_simple_alert(
+            request->terminal,
+            "Clipboard text cannot be pasted",
+            "The clipboard is not valid UTF-8 text. No clipboard contents were sent to the terminal session.");
+        g_free(text);
+    } else if (assessment.decision == GOREE_TERMINAL_PASTE_REQUIRES_CONFIRMATION) {
+        confirm_guarded_paste(request->terminal, text, &assessment);
+    } else {
+        vte_terminal_paste_text(VTE_TERMINAL(request->terminal), text);
+        g_free(text);
+    }
+
+    g_clear_object(&request->terminal);
+    g_free(request);
+}
+
+static void
+begin_guarded_paste(GtkWidget *terminal)
+{
+    TerminalSessionView *session = session_view_for(terminal);
+    if (session == NULL || session->owner == NULL || !terminal_can_accept_paste(terminal))
+        return;
+
+    GdkDisplay *display = gtk_widget_get_display(terminal);
+    if (display == NULL)
+        return;
+
+    PasteReadRequest *request = g_new0(PasteReadRequest, 1);
+    request->terminal = g_object_ref(terminal);
+    request->protection = session->owner->preferences.paste_protection;
+
+    gdk_clipboard_read_text_async(
+        gdk_display_get_clipboard(display),
+        NULL,
+        clipboard_text_ready,
+        request);
+}
+
+static void
+set_terminal_search(TerminalSessionView *session, const char *text)
+{
+    if (text == NULL || *text == '\0') {
+        vte_terminal_search_set_regex(VTE_TERMINAL(session->terminal), NULL, 0);
+        return;
+    }
+
+    char *escaped = g_regex_escape_string(text, -1);
+    GError *error = NULL;
+    VteRegex *regex = vte_regex_new_for_search(escaped, -1, 0, &error);
+    g_free(escaped);
+
+    if (regex == NULL) {
+        gtk_widget_set_tooltip_text(session->search_entry, "Search text could not be prepared.");
+        g_clear_error(&error);
+        return;
+    }
+
+    gtk_widget_set_tooltip_text(session->search_entry, NULL);
+    vte_terminal_search_set_regex(VTE_TERMINAL(session->terminal), regex, 0);
+    vte_regex_unref(regex);
+    g_clear_error(&error);
+}
+
+static void
+search_changed(GtkSearchEntry *entry, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
+    set_terminal_search(session, text);
+    if (text != NULL && *text != '\0')
+        vte_terminal_search_find_next(VTE_TERMINAL(session->terminal));
+}
+
+static void
+search_next_clicked(GtkButton *button, gpointer user_data)
+{
+    (void) button;
+    TerminalSessionView *session = user_data;
+    vte_terminal_search_find_next(VTE_TERMINAL(session->terminal));
+}
+
+static void
+search_previous_clicked(GtkButton *button, gpointer user_data)
+{
+    (void) button;
+    TerminalSessionView *session = user_data;
+    vte_terminal_search_find_previous(VTE_TERMINAL(session->terminal));
+}
+
+static void
+search_close_clicked(GtkButton *button, gpointer user_data)
+{
+    (void) button;
+    TerminalSessionView *session = user_data;
+    gtk_popover_popdown(GTK_POPOVER(session->search_popover));
+    gtk_widget_grab_focus(session->terminal);
+}
+
+static GtkWidget *
+build_search_popover(TerminalSessionView *session)
+{
+    GtkWidget *popover = gtk_popover_new();
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    GtkWidget *entry = gtk_search_entry_new();
+    GtkWidget *previous = gtk_button_new_from_icon_name("go-up-symbolic");
+    GtkWidget *next = gtk_button_new_from_icon_name("go-down-symbolic");
+    GtkWidget *close = gtk_button_new_from_icon_name("window-close-symbolic");
+
+    session->search_entry = entry;
+    gtk_widget_set_size_request(entry, 240, -1);
+    gtk_widget_set_tooltip_text(previous, "Previous match");
+    gtk_widget_set_tooltip_text(next, "Next match");
+    gtk_widget_set_tooltip_text(close, "Close search");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(entry),
+        GTK_ACCESSIBLE_PROPERTY_LABEL,
+        "Search terminal output",
+        -1);
+
+    gtk_box_append(GTK_BOX(box), entry);
+    gtk_box_append(GTK_BOX(box), previous);
+    gtk_box_append(GTK_BOX(box), next);
+    gtk_box_append(GTK_BOX(box), close);
+    gtk_popover_set_child(GTK_POPOVER(popover), box);
+    gtk_popover_set_autohide(GTK_POPOVER(popover), TRUE);
+    gtk_popover_set_has_arrow(GTK_POPOVER(popover), TRUE);
+    gtk_widget_add_css_class(popover, "glaze-context-menu");
+    gtk_widget_set_parent(popover, session->terminal);
+
+    g_signal_connect(entry, "search-changed", G_CALLBACK(search_changed), session);
+    g_signal_connect(previous, "clicked", G_CALLBACK(search_previous_clicked), session);
+    g_signal_connect(next, "clicked", G_CALLBACK(search_next_clicked), session);
+    g_signal_connect(close, "clicked", G_CALLBACK(search_close_clicked), session);
+    return popover;
+}
+
+static void
+show_search(TerminalSessionView *session)
+{
+    if (session == NULL)
+        return;
+
+    if (session->search_popover == NULL)
+        session->search_popover = build_search_popover(session);
+
+    gtk_popover_popup(GTK_POPOVER(session->search_popover));
+    gtk_widget_grab_focus(session->search_entry);
+}
+
 static void
 terminal_action_copy(GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
@@ -526,7 +834,15 @@ terminal_action_paste(GSimpleAction *action, GVariant *parameter, gpointer user_
 {
     (void) action;
     (void) parameter;
-    vte_terminal_paste_clipboard(VTE_TERMINAL(user_data));
+    begin_guarded_paste(GTK_WIDGET(user_data));
+}
+
+static void
+terminal_action_find(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    show_search(session_view_for(GTK_WIDGET(user_data)));
 }
 
 static void
@@ -559,6 +875,7 @@ terminal_action_close(GSimpleAction *action, GVariant *parameter, gpointer user_
 static const GActionEntry terminal_actions[] = {
     {"copy", terminal_action_copy, NULL, NULL, NULL, {0, 0, 0}},
     {"paste", terminal_action_paste, NULL, NULL, NULL, {0, 0, 0}},
+    {"find", terminal_action_find, NULL, NULL, NULL, {0, 0, 0}},
     {"select-all", terminal_action_select_all, NULL, NULL, NULL, {0, 0, 0}},
     {"clear", terminal_action_clear, NULL, NULL, NULL, {0, 0, 0}},
     {"close", terminal_action_close, NULL, NULL, NULL, {0, 0, 0}},
@@ -582,6 +899,7 @@ build_terminal_context_menu(GtkWidget *terminal)
 
     g_menu_append(edit, "Copy", "terminal.copy");
     g_menu_append(edit, "Paste", "terminal.paste");
+    g_menu_append(edit, "Find", "terminal.find");
     g_menu_append(edit, "Select All", "terminal.select-all");
     g_menu_append(edit, "Clear", "terminal.clear");
     g_menu_append_section(menu, NULL, G_MENU_MODEL(edit));
@@ -791,6 +1109,7 @@ add_session(TerminalWindow *terminal_window)
     GtkWidget *tab_label = create_tab_label(terminal, session);
     gtk_widget_set_hexpand(terminal, TRUE);
     gtk_widget_set_vexpand(terminal, TRUE);
+    apply_terminal_preferences(terminal_window, VTE_TERMINAL(terminal));
     apply_terminal_palette(terminal_window, VTE_TERMINAL(terminal));
 
     session->context_menu = build_terminal_context_menu(terminal);
@@ -829,6 +1148,16 @@ add_session(TerminalWindow *terminal_window)
     update_open_tabs_menu(terminal_window);
 }
 
+static GtkWidget *
+current_terminal(TerminalWindow *terminal_window)
+{
+    int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(terminal_window->notebook));
+    if (page < 0)
+        return NULL;
+    GtkWidget *terminal = gtk_notebook_get_nth_page(GTK_NOTEBOOK(terminal_window->notebook), page);
+    return VTE_IS_TERMINAL(terminal) ? terminal : NULL;
+}
+
 static void
 new_session_clicked(GtkButton *button, gpointer user_data)
 {
@@ -852,13 +1181,45 @@ action_close_session(GSimpleAction *action, GVariant *parameter, gpointer user_d
     (void) action;
     (void) parameter;
 
-    int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(terminal_window->notebook));
-    if (page < 0)
-        return;
-
-    GtkWidget *terminal = gtk_notebook_get_nth_page(GTK_NOTEBOOK(terminal_window->notebook), page);
+    GtkWidget *terminal = current_terminal(terminal_window);
     if (terminal != NULL)
         close_terminal_widget(terminal);
+}
+
+static void
+action_find(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    (void) action;
+    (void) parameter;
+
+    GtkWidget *terminal = current_terminal(terminal_window);
+    if (terminal != NULL)
+        show_search(session_view_for(terminal));
+}
+
+static void
+action_find_next(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    (void) action;
+    (void) parameter;
+
+    GtkWidget *terminal = current_terminal(terminal_window);
+    if (terminal != NULL)
+        vte_terminal_search_find_next(VTE_TERMINAL(terminal));
+}
+
+static void
+action_find_previous(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    (void) action;
+    (void) parameter;
+
+    GtkWidget *terminal = current_terminal(terminal_window);
+    if (terminal != NULL)
+        vte_terminal_search_find_previous(VTE_TERMINAL(terminal));
 }
 
 static void
@@ -931,6 +1292,9 @@ action_about(GSimpleAction *action, GVariant *parameter, gpointer user_data)
 static const GActionEntry window_actions[] = {
     {"new-session", action_new_session, NULL, NULL, NULL, {0, 0, 0}},
     {"close-session", action_close_session, NULL, NULL, NULL, {0, 0, 0}},
+    {"find", action_find, NULL, NULL, NULL, {0, 0, 0}},
+    {"find-next", action_find_next, NULL, NULL, NULL, {0, 0, 0}},
+    {"find-previous", action_find_previous, NULL, NULL, NULL, {0, 0, 0}},
     {"set-theme", action_set_theme, "s", NULL, NULL, {0, 0, 0}},
     {"activate-tab", action_activate_tab, "i", NULL, NULL, {0, 0, 0}},
     {"show-open-tabs", action_show_open_tabs, NULL, NULL, NULL, {0, 0, 0}},
@@ -969,6 +1333,7 @@ build_main_menu(void)
     g_menu_append(session, "New Tab", "win.new-session");
     g_menu_append(session, "New Window", "win.new-window");
     g_menu_append(session, "Show Open Tabs", "win.show-open-tabs");
+    g_menu_append(session, "Find", "win.find");
     g_menu_append_section(menu, NULL, G_MENU_MODEL(session));
 
     g_menu_append_submenu(application, "Theme", theme_menu);
@@ -1051,7 +1416,20 @@ static TerminalWindow *
 create_terminal_window(GtkApplication *application)
 {
     TerminalWindow *terminal_window = g_new0(TerminalWindow, 1);
+    GError *preferences_error = NULL;
+
     goree_terminal_theme_engine_init(&terminal_window->theme_engine);
+    goree_terminal_preferences_init(&terminal_window->preferences);
+    if (!goree_terminal_preferences_load(
+            &terminal_window->preferences,
+            &preferences_error)) {
+        g_warning(
+            "Unable to load GoreeCloud Terminal preferences; using safe defaults: %s",
+            preferences_error != NULL ? preferences_error->message : "unknown error");
+        g_clear_error(&preferences_error);
+        goree_terminal_preferences_init(&terminal_window->preferences);
+    }
+
     terminal_window->next_session_id = 1;
     terminal_window->settings = gtk_settings_get_default();
 
@@ -1149,10 +1527,16 @@ create_terminal_window(GtkApplication *application)
     const char *close_session_accels[] = {"<Primary><Shift>w", NULL};
     const char *new_window_accels[] = {"<Primary><Shift>n", NULL};
     const char *open_tabs_accels[] = {"<Primary><Shift>o", NULL};
+    const char *find_accels[] = {"<Primary><Shift>f", NULL};
+    const char *find_next_accels[] = {"F3", NULL};
+    const char *find_previous_accels[] = {"<Shift>F3", NULL};
     gtk_application_set_accels_for_action(application, "win.new-session", new_session_accels);
     gtk_application_set_accels_for_action(application, "win.close-session", close_session_accels);
     gtk_application_set_accels_for_action(application, "win.new-window", new_window_accels);
     gtk_application_set_accels_for_action(application, "win.show-open-tabs", open_tabs_accels);
+    gtk_application_set_accels_for_action(application, "win.find", find_accels);
+    gtk_application_set_accels_for_action(application, "win.find-next", find_next_accels);
+    gtk_application_set_accels_for_action(application, "win.find-previous", find_previous_accels);
 
     g_signal_connect(
         new_session,
