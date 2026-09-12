@@ -1,78 +1,114 @@
-# GoreeCloud Terminal — Glaze UI 1.4 Native Adoption
+# GoreeCloud Terminal — Glaze UI Integration
 
-## Target
+## Current shared authority
 
-GoreeCloud Terminal targets **Glaze UI 1.4.0 Stable**. The canonical GoreeCloud Glaze reference reviewed for this RC is revision:
+The current Stable shared GoreeCloud design-system authority is:
 
-```text
-883d40ff51d02885650024723c01d229de456285
+- **Product:** GLAZE UI V1.3 — Adaptive Resonance
+- **Version:** `1.3.0`
+- **Tag:** `v1.3.0`
+- **Tag commit:** `ff34f232f295c9dcb07e4c681f66d4104d0b9323`
+
+This live shared authority controls current Terminal design-system integration. Older Terminal documents or transitional source that refer to later historical/candidate Glaze labels do not override the current Stable shared contract.
+
+## Two implementation tracks
+
+GoreeCloud Terminal currently contains two separate UI integration contexts.
+
+### Original native Development implementation
+
+The GoreeCloud-owned native implementation under `native/` is the active architecture-migration path. Its current repository-local Glaze mapping is defined by:
+
+- `native/GLAZE_UI_13.md`
+- `native/data/glaze-ui-manifest.json`
+- `native/data/glaze-ui.css`
+- `native/src/glaze-contract.[ch]`
+- `native/tools/validate-glaze-contract.py`
+
+The native mapping pins `1.3.0` and the exact canonical tag commit, styles GoreeCloud-owned application chrome, and leaves VTE authoritative for terminal rendering/content.
+
+### Transitional Release Candidate implementation
+
+The Ptyxis-derived Release Candidate line contains an older GTK/libadwaita Glaze mapping created before the current shared V1.3 authority was established. That implementation remains part of the transitional RC source and its historical validation record, but its former version label must not be represented as current shared-design-system conformance.
+
+The transitional line remains subject to its own rendered appearance and Stable acceptance gates in `release/status.json`.
+
+## Native semantic mapping
+
+The current original-native mapping uses these boundaries:
+
+- **Application canvas/chrome:** GoreeCloud-owned GTK widgets using semantic theme roles.
+- **Interaction surfaces:** restrained Glaze presentation for the header, actions, tabs, focus state, and truthful session-state chrome.
+- **Solid accessibility fallback:** high-contrast application chrome removes translucent treatment and strengthens non-color boundaries.
+- **Focus:** visible keyboard focus independent of decorative material effects.
+- **Targets:** 48px minimum general interactive target and 56px Touch Assistance floor as specified by the current Glaze accessibility contract.
+- **Motion:** no custom application motion is currently introduced by the native mapping.
+- **Runtime state:** only states backed by native runtime evidence may be presented.
+
+## Terminal-content boundary
+
+VTE owns terminal glyph rendering, ANSI colors, active palettes, cursor rendering, selection, terminal input/output semantics, and the terminal canvas.
+
+Glaze UI must not override terminal palette choices, recolor shell output, inspect terminal contents, log terminal contents, or reinterpret terminal semantics for decorative presentation.
+
+This boundary protects terminal correctness, ANSI meaning, user-selected themes, privacy, and VTE accessibility behavior.
+
+## Appearance
+
+The native Development implementation provides System, Light, and Dark application appearance choices using GTK semantic theme behavior rather than maintaining a duplicated local color palette.
+
+High-contrast GTK themes trigger stronger application-chrome boundaries and solid header treatment. A portable reduced-transparency preference adapter has not yet been verified for the supported Linux matrix; the native CSS reserves the state but does not automatically claim it.
+
+## Accessibility contract
+
+The native Glaze layer must preserve:
+
+- keyboard navigation and logical focus order;
+- visible focus treatment;
+- accessible names, roles, state, and relationships where applicable;
+- 48px general interactive-target minimums;
+- 56px Touch Assistance target minimums when that adapter is active;
+- non-color state/boundary signals;
+- high-contrast legibility;
+- terminal-input preservation;
+- task and focus continuity when presentation adapts; and
+- separation between generated/product presentation and actual runtime truth.
+
+Repository-local automated tests establish source-contract evidence only. They do **not** establish screen-reader acceptance, physical-device acceptance, human optical review, native-platform parity, production performance acceptance, or Stable status.
+
+## Runtime truth and extension points
+
+The original native implementation currently has evidence-backed local/running and local/exited session presentation.
+
+The following remain unimplemented or pending in the native path and must not be shown as completed Glaze state merely for visual completeness:
+
+- SSH/remote identity;
+- disconnected remote state;
+- elevated-context state;
+- Wardveil Security state;
+- Privacy Shield authorization state;
+- Everkeep restored/recovery state; and
+- verified reduced-transparency platform adaptation.
+
+Each future state requires its own runtime contract and validation evidence.
+
+## Validation
+
+Current repository-local validation for the original native mapping includes:
+
+```bash
+python3 native/tools/validate-glaze-contract.py
+meson setup native/_build native --buildtype=debugoptimized
+meson compile -C native/_build
+meson test -C native/_build --print-errorlogs
 ```
 
-Terminal is a native Linux GTK/libadwaita application. Glaze UI is therefore mapped into native semantic surfaces rather than copying web CSS or requiring a browser rendering layer.
+The `Native Foundation Contract` GitHub workflow enforces the same source/build/test boundary on exact PR heads.
 
-## Supported form factor
+Before any claim of native Glaze consumer acceptance or production eligibility, GoreeCloud Terminal still requires the applicable rendered Linux review, keyboard/focus review, high-contrast review, large-text/reflow review, representative VTE content review, assistive-technology validation, native-platform/physical-device evidence where required, and normal GoreeCloud release approval.
 
-- Desktop: supported and primary.
-- Phone: unsupported in this RC.
-- Tablet: unsupported in this RC.
-- TV: unsupported in this RC.
+## Lifecycle boundary
 
-## Semantic mapping
+Glaze source integration does not promote either Terminal implementation track to Stable.
 
-GoreeCloud Terminal maps Glaze semantics as follows:
-
-- **Canvas** — application/window background and terminal-adjacent layout.
-- **Solid** — accessibility/high-contrast fallbacks and native surfaces requiring opaque presentation.
-- **Raised** — preferences cards and raised native controls.
-- **Functional Glass** — header, search, popover, and tab-overview application chrome where translucency does not reduce readability.
-- **Clear Glass** — not consumed by Terminal in this RC.
-- **Overlay** — menus, popovers, dialogs, and transient native surfaces.
-- **Focus** — strong focus-visible outlines independent of decorative glass edges.
-- **Status** — Wardveil context chips and other typed state presentation.
-- **Motion** — restrained application-chrome transitions that honor reduced-motion preference.
-- **Targets** — interactive palette/theme controls retain at least 44×44 CSS-pixel-equivalent target geometry where Terminal adds custom sizing.
-
-## Terminal canvas boundary
-
-VTE owns terminal glyph rendering, palette colors, selection, cursor, and terminal canvas behavior. Glaze UI styles application chrome around the terminal but must not override the active terminal palette merely to create a branded visual effect.
-
-This boundary protects readability, user-selected terminal themes, ANSI color meaning, and VTE accessibility behavior.
-
-## Native controls
-
-GTK/libadwaita widgets remain native controls. GoreeCloud styling may shape geometry, emphasis, surface treatment, and focus presentation, but does not replace native input semantics with custom web-style widgets.
-
-## Light and dark presentation
-
-The base Glaze treatment is optimized for the dark terminal shell while `src/style.css` contains an explicit light color-scheme mapping for headers and find surfaces. Final visual acceptance must verify both modes with real terminal palettes and transparency settings.
-
-## Reduced motion
-
-GTK 4.22 supports the CSS media preference used by the RC source. Under `prefers-reduced-motion: reduce`, GoreeCloud-added preference-card transitions are disabled. Terminal/runtime motion inherited from GTK, libadwaita, or VTE remains subject to their native accessibility behavior.
-
-## Increased contrast
-
-Under `prefers-contrast: more`, GoreeCloud glass surfaces fall back to solid native backgrounds with stronger borders and focus outlines. This deliberately prefers legibility over decorative translucency.
-
-## Accessibility source invariants
-
-The Glaze layer must preserve:
-
-- keyboard navigation and native focus order;
-- visible focus treatment;
-- minimum custom target sizing;
-- native semantic widget roles;
-- readable text/icons independent of translucency;
-- reduced-motion preference;
-- increased-contrast preference;
-- no reliance on color alone for Wardveil context meaning.
-
-Source conformance does not replace real assistive-technology acceptance. Mixed-tab Wardveil presentation, source order, focus traversal, resize behavior, light/dark palettes, and real high-contrast behavior remain Stable acceptance gates.
-
-## Performance and dependency boundary
-
-The native mapping uses local GTK CSS and local artwork. It does not require blur shaders, remote assets, browser engines, remote fonts, analytics, or network access. Terminal rendering remains on the inherited VTE path.
-
-## RC boundary
-
-Glaze UI 1.4 source conformance is an RC requirement. Supported-workstation appearance and accessibility acceptance are still required before Stable promotion.
+The transitional package remains Release Candidate `50.2-rc.2` with `stable_approved=false`. The original native implementation remains Development source until its independent migration, packaging, accessibility, platform-system, supported-workstation, and release gates are satisfied.

@@ -5,17 +5,40 @@ project(
   default_options: ['c_std=c17', 'warning_level=3', 'werror=true'],
 )
 
+cc = meson.get_compiler('c')
+native_executable_c_args = []
+
+# glib-compile-resources may emit a generated C string larger than the ISO C
+# minimum guaranteed 4095-character literal length when embedding the Glaze UI
+# stylesheet. Keep every other warning fatal and demote only this generated-
+# resource portability warning for the native application target.
+if cc.has_argument('-Wno-error=overlength-strings')
+  native_executable_c_args += '-Wno-error=overlength-strings'
+endif
+
 glib = dependency('glib-2.0', version: '>=2.76', include_type: 'system')
 gtk = dependency('gtk4', version: '>=4.14', include_type: 'system')
 vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
+gnome = import('gnome')
+
+native_resources = gnome.compile_resources(
+  'goreecloud-terminal-native-resources',
+  'data/goreecloud-terminal-native.gresource.xml',
+  source_dir: 'data',
+  c_name: 'goreecloud_terminal_native',
+)
 
 executable(
   'goreecloud-terminal-native',
   [
     'src/main.c',
     'src/session-lifecycle.c',
+    'src/glaze-contract.c',
+    'src/theme-engine.c',
+    native_resources,
   ],
   dependencies: [glib, gtk, vte],
+  c_args: native_executable_c_args,
   install: false,
 )
 
@@ -28,4 +51,24 @@ session_lifecycle_test = executable(
   dependencies: [glib],
 )
 
+glaze_contract_test = executable(
+  'test-native-glaze-contract',
+  [
+    'src/test-glaze-contract.c',
+    'src/glaze-contract.c',
+  ],
+  dependencies: [glib],
+)
+
+theme_engine_test = executable(
+  'test-native-theme-engine',
+  [
+    'src/test-theme-engine.c',
+    'src/theme-engine.c',
+  ],
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
+test('native-glaze-contract', glaze_contract_test)
+test('native-theme-engine', theme_engine_test)

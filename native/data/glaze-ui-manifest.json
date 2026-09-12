@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "product": "GoreeCloud Terminal",
+  "integrationLifecycle": "development",
+  "glazeUi": {
+    "productLabel": "GLAZE UI V1.3 — Adaptive Resonance",
+    "version": "1.3.0",
+    "tag": "v1.3.0",
+    "sourceRevision": "ff34f232f295c9dcb07e4c681f66d4104d0b9323",
+    "implementationAnchor": "fc7cc91d2eace8da2371371c2855c24cbcb326a1",
+    "releasePublished": "2026-09-08",
+    "requiredConsumerVersion": "1.3.0",
+    "contract": "GLAZE_UI_V1_3.md",
+    "accessibilityContract": "contracts/v1.3/accessibility.candidate.json",
+    "personalizationContract": "contracts/v1.3/personalization.candidate.json"
+  },
+  "nativeMapping": {
+    "platform": "linux-gtk4",
+    "formFactor": "desktop-pointer-keyboard",
+    "chromeAuthority": "GoreeCloud Terminal native source mapped to Glaze UI 1.3.0",
+    "terminalSurfaceAuthority": "GoreeCloud Terminal Theme Engine over VTE presentation APIs",
+    "terminalEmulationAuthority": "VTE",
+    "terminalContentStyledByGlaze": false,
+    "desktopInteractiveDensityPolicy": "compact-form-factor-aware",
+    "touchOrientedReferenceTargetPx": 48,
+    "touchAssistanceMinimumInteractiveTargetPx": 56,
+    "appearanceModes": ["follow-system", "light", "dark", "deep-dark"],
+    "materials": {
+      "foundation": "neutral-glass",
+      "dominantGlazeRegion": "header-and-session-tab-chrome",
+      "terminalCanvas": "solid-vte-owned",
+      "alphaTranslucency": true,
+      "gradientHighlights": true,
+      "layeredShadows": true,
+      "semanticAccentSelection": true,
+      "nativeBackdropBlur": "not-claimed-without-verified-compositor-adapter",
+      "reducedTransparencyFallback": "opaque-solid-raised",
+      "highContrastFallback": "opaque-strong-boundaries"
+    },
+    "themeEngine": {
+      "owner": "GoreeCloud Terminal",
+      "scope": "terminal foreground, background, cursor, selection, and theme resolution",
+      "persistence": "private-xdg-mode-only",
+      "semanticAnsiPaletteOverride": false
+    },
+    "contextMenu": {
+      "owner": "GoreeCloud Terminal",
+      "actions": ["copy", "paste", "select-all", "clear", "new-session", "close-session"],
+      "shellCommands": [],
+      "sudoAptUpdateExposed": false,
+      "clearExecutesShellCommand": false
+    },
+    "customMotion": false
+  },
+  "evidence": {
+    "automatedContractTests": ["native-glaze-contract", "native-theme-engine"],
+    "sourceBuild": "required",
+    "renderedLinuxAcceptance": "failed-through-f8742e4; material-depth-revalidation-pending",
+    "assistiveTechnologyAcceptance": "pending",
+    "physicalDeviceAcceptance": "revalidation-pending",
+    "productionEligible": false
+  },
+  "integrationClaims": {
+    "wardveil": "extension-point-only",
+    "privacyShield": "extension-point-only",
+    "everkeep": "extension-point-only",
+    "remoteSessionState": "not-implemented",
+    "elevatedContextState": "not-implemented",
+    "recoveryState": "not-implemented"
+  }
+}

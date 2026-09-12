@@ -9,21 +9,184 @@
 #include <gtk/gtk.h>
 #include <vte/vte.h>
 
+#include "glaze-contract.h"
 #include "session-lifecycle.h"
+#include "theme-engine.h"
 
 #define GOREECLOUD_TERMINAL_APP_ID "com.goreecloud.Terminal.Native"
 #define SESSION_STATE_KEY "goreecloud-native-session-state"
+#define GLAZE_CSS_RESOURCE "/com/goreecloud/Terminal/Native/glaze-ui.css"
+
+typedef struct _TerminalWindow TerminalWindow;
 
 typedef struct {
     GoreeTerminalSessionLifecycle lifecycle;
+    GtkWidget *terminal;
+    GtkWidget *tab_root;
     GtkWidget *tab_text;
+    GtkWidget *tab_menu;
+    GtkWidget *context_menu;
+    TerminalWindow *owner;
+    char *custom_title;
 } TerminalSessionView;
 
-typedef struct {
+struct _TerminalWindow {
     GtkWidget *window;
     GtkWidget *notebook;
+    GtkWidget *theme_button;
+    GtkWidget *open_tabs_button;
+    GtkWidget *menu_button;
+    GtkSettings *settings;
+    gulong theme_notify_id;
+    gboolean system_prefers_dark;
+    GoreeTerminalThemeEngine theme_engine;
     guint next_session_id;
-} TerminalWindow;
+};
+
+static void add_session(TerminalWindow *terminal_window);
+static void apply_theme(TerminalWindow *terminal_window);
+static void close_terminal_widget(GtkWidget *terminal);
+static void update_open_tabs_menu(TerminalWindow *terminal_window);
+static TerminalWindow *create_terminal_window(GtkApplication *application);
+
+static void
+install_glaze_ui(void)
+{
+    static gboolean installed = FALSE;
+
+    if (installed)
+        return;
+
+    GdkDisplay *display = gdk_display_get_default();
+    if (display == NULL)
+        return;
+
+    GtkCssProvider *provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_resource(provider, GLAZE_CSS_RESOURCE);
+    gtk_style_context_add_provider_for_display(
+        display,
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(provider);
+    installed = TRUE;
+}
+
+static gboolean
+system_uses_high_contrast(GtkSettings *settings)
+{
+    char *theme_name = NULL;
+    gboolean high_contrast = FALSE;
+
+    if (settings == NULL)
+        return FALSE;
+
+    g_object_get(settings, "gtk-theme-name", &theme_name, NULL);
+    if (theme_name != NULL) {
+        char *normalized = g_utf8_strdown(theme_name, -1);
+        high_contrast = g_strrstr(normalized, "highcontrast") != NULL ||
+                        g_strrstr(normalized, "high-contrast") != NULL;
+        g_free(normalized);
+    }
+    g_free(theme_name);
+    return high_contrast;
+}
+
+static gboolean
+parse_rgba(const char *value, GdkRGBA *rgba)
+{
+    return value != NULL && gdk_rgba_parse(rgba, value);
+}
+
+static void
+apply_terminal_palette(TerminalWindow *terminal_window, VteTerminal *terminal)
+{
+    GoreeTerminalTheme selected = goree_terminal_theme_engine_get(&terminal_window->theme_engine);
+    const GoreeTerminalThemeDefinition *theme = goree_terminal_theme_resolve(
+        selected,
+        terminal_window->system_prefers_dark);
+    GdkRGBA foreground;
+    GdkRGBA background;
+    GdkRGBA cursor;
+    GdkRGBA selection;
+
+    if (parse_rgba(theme->foreground, &foreground))
+        vte_terminal_set_color_foreground(terminal, &foreground);
+    if (parse_rgba(theme->background, &background))
+        vte_terminal_set_color_background(terminal, &background);
+    if (parse_rgba(theme->cursor, &cursor))
+        vte_terminal_set_color_cursor(terminal, &cursor);
+    if (parse_rgba(theme->selection_background, &selection))
+        vte_terminal_set_color_highlight(terminal, &selection);
+}
+
+static void
+apply_theme(TerminalWindow *terminal_window)
+{
+    GtkWidget *window = terminal_window->window;
+    GtkWidget *button = terminal_window->theme_button;
+    GoreeTerminalTheme selected = goree_terminal_theme_engine_get(&terminal_window->theme_engine);
+    const GoreeTerminalThemeDefinition *selected_definition = goree_terminal_theme_definition(selected);
+    const GoreeTerminalThemeDefinition *effective = goree_terminal_theme_resolve(
+        selected,
+        terminal_window->system_prefers_dark);
+
+    gtk_widget_remove_css_class(window, "glaze-system");
+    gtk_widget_remove_css_class(window, "glaze-light");
+    gtk_widget_remove_css_class(window, "glaze-dark");
+    gtk_widget_remove_css_class(window, "glaze-deep-dark");
+    gtk_widget_remove_css_class(window, "glaze-high-contrast");
+
+    if (selected == GOREE_TERMINAL_THEME_FOLLOW_SYSTEM)
+        gtk_widget_add_css_class(window, "glaze-system");
+    else if (selected == GOREE_TERMINAL_THEME_LIGHT)
+        gtk_widget_add_css_class(window, "glaze-light");
+    else if (selected == GOREE_TERMINAL_THEME_DEEP_DARK)
+        gtk_widget_add_css_class(window, "glaze-deep-dark");
+    else
+        gtk_widget_add_css_class(window, "glaze-dark");
+
+    if (terminal_window->settings != NULL) {
+        g_object_set(
+            terminal_window->settings,
+            "gtk-application-prefer-dark-theme",
+            effective->prefers_dark,
+            NULL);
+
+        if (system_uses_high_contrast(terminal_window->settings))
+            gtk_widget_add_css_class(window, "glaze-high-contrast");
+    }
+
+    char *button_label = g_strdup_printf("Theme: %s", selected_definition->label);
+    char *accessible_label = g_strdup_printf(
+        "Terminal theme: %s",
+        selected_definition->label);
+    gtk_menu_button_set_label(GTK_MENU_BUTTON(button), button_label);
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(button),
+        GTK_ACCESSIBLE_PROPERTY_LABEL,
+        accessible_label,
+        -1);
+    gtk_widget_set_tooltip_text(button, accessible_label);
+    g_free(button_label);
+    g_free(accessible_label);
+
+    int pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(terminal_window->notebook));
+    for (int page = 0; page < pages; page++) {
+        GtkWidget *terminal = gtk_notebook_get_nth_page(
+            GTK_NOTEBOOK(terminal_window->notebook),
+            page);
+        if (VTE_IS_TERMINAL(terminal))
+            apply_terminal_palette(terminal_window, VTE_TERMINAL(terminal));
+    }
+}
+
+static void
+theme_changed(GObject *settings, GParamSpec *pspec, gpointer user_data)
+{
+    (void) settings;
+    (void) pspec;
+    apply_theme(user_data);
+}
 
 static void
 spawn_default_shell(VteTerminal *terminal)
@@ -57,22 +220,54 @@ session_view_for(GtkWidget *terminal)
 }
 
 static void
+session_view_free(gpointer data)
+{
+    TerminalSessionView *session = data;
+
+    if (session == NULL)
+        return;
+
+    g_free(session->custom_title);
+    g_free(session);
+}
+
+static void
 update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
 {
+    const gboolean has_custom_title = session->custom_title != NULL &&
+                                      *session->custom_title != '\0';
     char *tab_title = NULL;
     char *accessible_label = NULL;
 
     if (session->lifecycle.state == GOREE_TERMINAL_SESSION_EXITED) {
-        tab_title = g_strdup_printf("Session %u — Exited", session->lifecycle.id);
-        accessible_label = g_strdup_printf(
-            "Terminal session %u, exited; output preserved",
-            session->lifecycle.id);
+        tab_title = has_custom_title
+            ? g_strdup_printf("%s — Exited", session->custom_title)
+            : g_strdup_printf("Session %u — Exited", session->lifecycle.id);
+        accessible_label = has_custom_title
+            ? g_strdup_printf(
+                "%s, local terminal session %u, exited; output preserved",
+                session->custom_title,
+                session->lifecycle.id)
+            : g_strdup_printf(
+                "Local terminal session %u, exited; output preserved",
+                session->lifecycle.id);
+        gtk_widget_add_css_class(session->tab_root, "glaze-session-exited");
     } else {
-        tab_title = g_strdup_printf("Session %u", session->lifecycle.id);
-        accessible_label = g_strdup_printf("Terminal session %u", session->lifecycle.id);
+        tab_title = has_custom_title
+            ? g_strdup(session->custom_title)
+            : g_strdup_printf("Session %u", session->lifecycle.id);
+        accessible_label = has_custom_title
+            ? g_strdup_printf(
+                "%s, local terminal session %u",
+                session->custom_title,
+                session->lifecycle.id)
+            : g_strdup_printf(
+                "Local terminal session %u",
+                session->lifecycle.id);
+        gtk_widget_remove_css_class(session->tab_root, "glaze-session-exited");
     }
 
-    gtk_label_set_text(GTK_LABEL(session->tab_text), tab_title);
+    gtk_editable_set_text(GTK_EDITABLE(session->tab_text), tab_title);
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(terminal),
         GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -81,6 +276,31 @@ update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
 
     g_free(tab_title);
     g_free(accessible_label);
+
+    if (session->owner != NULL)
+        update_open_tabs_menu(session->owner);
+}
+
+static void
+tab_title_editing_changed(GObject *object, GParamSpec *pspec, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) pspec;
+
+    if (gtk_editable_label_get_editing(GTK_EDITABLE_LABEL(object)))
+        return;
+
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(object));
+    char *normalized = g_strdup(text != NULL ? text : "");
+    g_strstrip(normalized);
+
+    g_clear_pointer(&session->custom_title, g_free);
+    if (*normalized != '\0')
+        session->custom_title = g_strdup(normalized);
+
+    g_free(normalized);
+    update_session_presentation(session->terminal, session);
 }
 
 static void
@@ -93,13 +313,11 @@ session_child_exited(VteTerminal *terminal, int status, gpointer user_data)
 }
 
 static void
-close_session(GtkButton *button, gpointer user_data)
+close_terminal_widget(GtkWidget *terminal)
 {
-    GtkWidget *terminal = GTK_WIDGET(user_data);
-    GtkWidget *notebook = gtk_widget_get_parent(terminal);
+    GtkWidget *notebook = gtk_widget_get_ancestor(terminal, GTK_TYPE_NOTEBOOK);
     TerminalSessionView *session = session_view_for(terminal);
-
-    (void) button;
+    TerminalWindow *owner = session != NULL ? session->owner : NULL;
 
     if (!GTK_IS_NOTEBOOK(notebook))
         return;
@@ -110,17 +328,232 @@ close_session(GtkButton *button, gpointer user_data)
     int page = gtk_notebook_page_num(GTK_NOTEBOOK(notebook), terminal);
     if (page >= 0)
         gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), page);
+
+    if (owner != NULL)
+        update_open_tabs_menu(owner);
+}
+
+static void
+close_session(GtkButton *button, gpointer user_data)
+{
+    (void) button;
+    close_terminal_widget(GTK_WIDGET(user_data));
+}
+
+static void
+terminal_action_copy(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_copy_clipboard_format(VTE_TERMINAL(user_data), VTE_FORMAT_TEXT);
+}
+
+static void
+terminal_action_paste(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_paste_clipboard(VTE_TERMINAL(user_data));
+}
+
+static void
+terminal_action_select_all(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    vte_terminal_select_all(VTE_TERMINAL(user_data));
+}
+
+static void
+terminal_action_clear(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+
+    /* Clear only the visible terminal display and home the cursor. This does not
+     * execute a shell command and therefore does not alter shell history. */
+    vte_terminal_feed(VTE_TERMINAL(user_data), "\033[2J\033[H", -1);
+}
+
+static void
+terminal_action_close(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    close_terminal_widget(GTK_WIDGET(user_data));
+}
+
+static const GActionEntry terminal_actions[] = {
+    {"copy", terminal_action_copy, NULL, NULL, NULL, {0, 0, 0}},
+    {"paste", terminal_action_paste, NULL, NULL, NULL, {0, 0, 0}},
+    {"select-all", terminal_action_select_all, NULL, NULL, NULL, {0, 0, 0}},
+    {"clear", terminal_action_clear, NULL, NULL, NULL, {0, 0, 0}},
+    {"close", terminal_action_close, NULL, NULL, NULL, {0, 0, 0}},
+};
+
+static GtkWidget *
+build_terminal_context_menu(GtkWidget *terminal)
+{
+    GSimpleActionGroup *actions = g_simple_action_group_new();
+    g_action_map_add_action_entries(
+        G_ACTION_MAP(actions),
+        terminal_actions,
+        G_N_ELEMENTS(terminal_actions),
+        terminal);
+    gtk_widget_insert_action_group(terminal, "terminal", G_ACTION_GROUP(actions));
+    g_object_unref(actions);
+
+    GMenu *menu = g_menu_new();
+    GMenu *edit = g_menu_new();
+    GMenu *session = g_menu_new();
+
+    g_menu_append(edit, "Copy", "terminal.copy");
+    g_menu_append(edit, "Paste", "terminal.paste");
+    g_menu_append(edit, "Select All", "terminal.select-all");
+    g_menu_append(edit, "Clear", "terminal.clear");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(edit));
+
+    g_menu_append(session, "New Session", "win.new-session");
+    g_menu_append(session, "Close Session", "terminal.close");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(session));
+
+    GtkWidget *popover = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
+    gtk_widget_add_css_class(popover, "glaze-context-menu");
+    gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+    gtk_widget_set_parent(popover, terminal);
+
+    g_object_unref(edit);
+    g_object_unref(session);
+    g_object_unref(menu);
+    return popover;
+}
+
+static void
+context_menu_pressed(GtkGestureClick *gesture,
+                     int n_press,
+                     double x,
+                     double y,
+                     gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    GdkRectangle pointing_to = {(int) x, (int) y, 1, 1};
+
+    (void) n_press;
+    gtk_popover_set_pointing_to(GTK_POPOVER(session->context_menu), &pointing_to);
+    gtk_popover_popup(GTK_POPOVER(session->context_menu));
+    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
+static void
+tab_action_rename(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    gtk_editable_label_start_editing(GTK_EDITABLE_LABEL(session->tab_text));
+}
+
+static void
+tab_action_reset_name(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    g_clear_pointer(&session->custom_title, g_free);
+    update_session_presentation(session->terminal, session);
+}
+
+static void
+tab_action_close(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) action;
+    (void) parameter;
+    close_terminal_widget(session->terminal);
+}
+
+static const GActionEntry tab_actions[] = {
+    {"rename", tab_action_rename, NULL, NULL, NULL, {0, 0, 0}},
+    {"reset-name", tab_action_reset_name, NULL, NULL, NULL, {0, 0, 0}},
+    {"close", tab_action_close, NULL, NULL, NULL, {0, 0, 0}},
+};
+
+static GtkWidget *
+build_tab_context_menu(TerminalSessionView *session)
+{
+    GSimpleActionGroup *actions = g_simple_action_group_new();
+    g_action_map_add_action_entries(
+        G_ACTION_MAP(actions),
+        tab_actions,
+        G_N_ELEMENTS(tab_actions),
+        session);
+    gtk_widget_insert_action_group(session->tab_root, "tab", G_ACTION_GROUP(actions));
+    g_object_unref(actions);
+
+    GMenu *menu = g_menu_new();
+    g_menu_append(menu, "Rename Tab", "tab.rename");
+    g_menu_append(menu, "Reset Tab Name", "tab.reset-name");
+    g_menu_append(menu, "Close Tab", "tab.close");
+
+    GtkWidget *popover = gtk_popover_menu_new_from_model(G_MENU_MODEL(menu));
+    gtk_widget_add_css_class(popover, "glaze-context-menu");
+    gtk_popover_set_has_arrow(GTK_POPOVER(popover), FALSE);
+    gtk_widget_set_parent(popover, session->tab_root);
+    g_object_unref(menu);
+    return popover;
+}
+
+static void
+tab_menu_pressed(GtkGestureClick *gesture,
+                 int n_press,
+                 double x,
+                 double y,
+                 gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    GdkRectangle pointing_to = {(int) x, (int) y, 1, 1};
+
+    (void) n_press;
+    gtk_popover_set_pointing_to(GTK_POPOVER(session->tab_menu), &pointing_to);
+    gtk_popover_popup(GTK_POPOVER(session->tab_menu));
+    gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+}
+
+static void
+tab_primary_pressed(GtkGestureClick *gesture,
+                    int n_press,
+                    double x,
+                    double y,
+                    gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+
+    (void) x;
+    (void) y;
+
+    if (n_press == 2) {
+        gtk_editable_label_start_editing(GTK_EDITABLE_LABEL(session->tab_text));
+        gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+    }
 }
 
 static GtkWidget *
 create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    GtkWidget *label = gtk_label_new(NULL);
+    GtkWidget *label = gtk_editable_label_new("");
     GtkWidget *close = gtk_button_new_from_icon_name("window-close-symbolic");
 
+    session->tab_root = box;
     session->tab_text = label;
+    gtk_widget_add_css_class(box, "glaze-tab-label");
+    gtk_widget_add_css_class(box, "glaze-session-local");
+    gtk_widget_add_css_class(close, "glaze-tab-close");
     gtk_button_set_has_frame(GTK_BUTTON(close), FALSE);
+    gtk_widget_set_tooltip_text(box, "Right-click for tab actions; double-click the name to rename");
     gtk_widget_set_tooltip_text(close, "Close terminal session");
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(close),
@@ -131,6 +564,35 @@ create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
     gtk_box_append(GTK_BOX(box), label);
     gtk_box_append(GTK_BOX(box), close);
     g_signal_connect(close, "clicked", G_CALLBACK(close_session), terminal);
+    g_signal_connect(
+        label,
+        "notify::editing",
+        G_CALLBACK(tab_title_editing_changed),
+        session);
+
+    session->tab_menu = build_tab_context_menu(session);
+
+    GtkGesture *tab_context_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(tab_context_click), GDK_BUTTON_SECONDARY);
+    gtk_event_controller_set_propagation_phase(
+        GTK_EVENT_CONTROLLER(tab_context_click),
+        GTK_PHASE_CAPTURE);
+    g_signal_connect(
+        tab_context_click,
+        "pressed",
+        G_CALLBACK(tab_menu_pressed),
+        session);
+    gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(tab_context_click));
+
+    GtkGesture *tab_primary_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(tab_primary_click), GDK_BUTTON_PRIMARY);
+    g_signal_connect(
+        tab_primary_click,
+        "pressed",
+        G_CALLBACK(tab_primary_pressed),
+        session);
+    gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(tab_primary_click));
+
     update_session_presentation(terminal, session);
     return box;
 }
@@ -143,11 +605,28 @@ add_session(TerminalWindow *terminal_window)
     TerminalSessionView *session = g_new0(TerminalSessionView, 1);
 
     goree_terminal_session_lifecycle_init(&session->lifecycle, session_id);
-    g_object_set_data_full(G_OBJECT(terminal), SESSION_STATE_KEY, session, g_free);
+    session->terminal = terminal;
+    session->owner = terminal_window;
+    g_object_set_data_full(
+        G_OBJECT(terminal),
+        SESSION_STATE_KEY,
+        session,
+        session_view_free);
 
     GtkWidget *tab_label = create_tab_label(terminal, session);
     gtk_widget_set_hexpand(terminal, TRUE);
     gtk_widget_set_vexpand(terminal, TRUE);
+    apply_terminal_palette(terminal_window, VTE_TERMINAL(terminal));
+
+    session->context_menu = build_terminal_context_menu(terminal);
+    GtkGesture *context_click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(context_click), GDK_BUTTON_SECONDARY);
+    g_signal_connect(
+        context_click,
+        "pressed",
+        G_CALLBACK(context_menu_pressed),
+        session);
+    gtk_widget_add_controller(terminal, GTK_EVENT_CONTROLLER(context_click));
 
     int page = gtk_notebook_append_page(
         GTK_NOTEBOOK(terminal_window->notebook),
@@ -164,6 +643,8 @@ add_session(TerminalWindow *terminal_window)
 
     if (goree_terminal_session_mark_running(&session->lifecycle))
         spawn_default_shell(VTE_TERMINAL(terminal));
+
+    update_open_tabs_menu(terminal_window);
 }
 
 static void
@@ -174,31 +655,259 @@ new_session_clicked(GtkButton *button, gpointer user_data)
 }
 
 static void
+action_new_session(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    (void) action;
+    (void) parameter;
+    add_session(user_data);
+}
+
+static void
+action_close_session(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+
+    (void) action;
+    (void) parameter;
+
+    int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(terminal_window->notebook));
+    if (page < 0)
+        return;
+
+    GtkWidget *terminal = gtk_notebook_get_nth_page(GTK_NOTEBOOK(terminal_window->notebook), page);
+    if (terminal != NULL)
+        close_terminal_widget(terminal);
+}
+
+static void
+action_set_theme(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    const char *theme_id = g_variant_get_string(parameter, NULL);
+
+    (void) action;
+    if (goree_terminal_theme_engine_set(&terminal_window->theme_engine, theme_id))
+        apply_theme(terminal_window);
+}
+
+static void
+action_activate_tab(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    int page = g_variant_get_int32(parameter);
+
+    (void) action;
+    if (page >= 0 && page < gtk_notebook_get_n_pages(GTK_NOTEBOOK(terminal_window->notebook))) {
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(terminal_window->notebook), page);
+        GtkWidget *terminal = gtk_notebook_get_nth_page(GTK_NOTEBOOK(terminal_window->notebook), page);
+        if (terminal != NULL)
+            gtk_widget_grab_focus(terminal);
+    }
+}
+
+static void
+action_show_open_tabs(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+
+    (void) action;
+    (void) parameter;
+    update_open_tabs_menu(terminal_window);
+    gtk_menu_button_popup(GTK_MENU_BUTTON(terminal_window->open_tabs_button));
+}
+
+static void
+action_new_window(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+    GtkApplication *application = gtk_window_get_application(GTK_WINDOW(terminal_window->window));
+
+    (void) action;
+    (void) parameter;
+    if (application == NULL)
+        return;
+
+    TerminalWindow *new_window = create_terminal_window(application);
+    gtk_window_present(GTK_WINDOW(new_window->window));
+}
+
+static void
+action_about(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    TerminalWindow *terminal_window = user_data;
+
+    (void) action;
+    (void) parameter;
+    gtk_show_about_dialog(
+        GTK_WINDOW(terminal_window->window),
+        "program-name", "GoreeCloud Terminal",
+        "version", "0.1.0-dev",
+        "comments", "Native GoreeCloud terminal built with GTK, VTE, and Glaze UI.",
+        NULL);
+}
+
+static const GActionEntry window_actions[] = {
+    {"new-session", action_new_session, NULL, NULL, NULL, {0, 0, 0}},
+    {"close-session", action_close_session, NULL, NULL, NULL, {0, 0, 0}},
+    {"set-theme", action_set_theme, "s", NULL, NULL, {0, 0, 0}},
+    {"activate-tab", action_activate_tab, "i", NULL, NULL, {0, 0, 0}},
+    {"show-open-tabs", action_show_open_tabs, NULL, NULL, NULL, {0, 0, 0}},
+    {"new-window", action_new_window, NULL, NULL, NULL, {0, 0, 0}},
+    {"about", action_about, NULL, NULL, NULL, {0, 0, 0}},
+};
+
+static GMenuModel *
+build_theme_menu(void)
+{
+    GMenu *menu = g_menu_new();
+
+    for (int i = 0; i < GOREE_TERMINAL_THEME_COUNT; i++) {
+        GoreeTerminalTheme theme = (GoreeTerminalTheme) i;
+        GMenuItem *item = g_menu_item_new(goree_terminal_theme_label(theme), NULL);
+        g_menu_item_set_action_and_target(
+            item,
+            "win.set-theme",
+            "s",
+            goree_terminal_theme_id(theme));
+        g_menu_append_item(menu, item);
+        g_object_unref(item);
+    }
+
+    return G_MENU_MODEL(menu);
+}
+
+static GMenuModel *
+build_main_menu(void)
+{
+    GMenu *menu = g_menu_new();
+    GMenu *session = g_menu_new();
+    GMenu *application = g_menu_new();
+    GMenuModel *theme_menu = build_theme_menu();
+
+    g_menu_append(session, "New Tab", "win.new-session");
+    g_menu_append(session, "New Window", "win.new-window");
+    g_menu_append(session, "Show Open Tabs", "win.show-open-tabs");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(session));
+
+    g_menu_append_submenu(application, "Theme", theme_menu);
+    g_menu_append(application, "About GoreeCloud Terminal", "win.about");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(application));
+
+    g_object_unref(theme_menu);
+    g_object_unref(session);
+    g_object_unref(application);
+    return G_MENU_MODEL(menu);
+}
+
+static void
+update_open_tabs_menu(TerminalWindow *terminal_window)
+{
+    if (terminal_window == NULL || terminal_window->open_tabs_button == NULL)
+        return;
+
+    GMenu *menu = g_menu_new();
+    int pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(terminal_window->notebook));
+
+    for (int page = 0; page < pages; page++) {
+        GtkWidget *terminal = gtk_notebook_get_nth_page(
+            GTK_NOTEBOOK(terminal_window->notebook),
+            page);
+        TerminalSessionView *session = terminal != NULL ? session_view_for(terminal) : NULL;
+        const char *label = NULL;
+
+        if (session != NULL && session->tab_text != NULL)
+            label = gtk_editable_get_text(GTK_EDITABLE(session->tab_text));
+        if (label == NULL || *label == '\0')
+            label = "Terminal Session";
+
+        GMenuItem *item = g_menu_item_new(label, NULL);
+        g_menu_item_set_action_and_target(item, "win.activate-tab", "i", page);
+        g_menu_append_item(menu, item);
+        g_object_unref(item);
+    }
+
+    GMenu *commands = g_menu_new();
+    g_menu_append(commands, "New Tab", "win.new-session");
+    g_menu_append_section(menu, NULL, G_MENU_MODEL(commands));
+    g_object_unref(commands);
+
+    gtk_menu_button_set_menu_model(
+        GTK_MENU_BUTTON(terminal_window->open_tabs_button),
+        G_MENU_MODEL(menu));
+    g_object_unref(menu);
+
+    GtkPopover *popover = gtk_menu_button_get_popover(
+        GTK_MENU_BUTTON(terminal_window->open_tabs_button));
+    if (popover != NULL)
+        gtk_widget_add_css_class(GTK_WIDGET(popover), "glaze-context-menu");
+}
+
+static void
 terminal_window_destroyed(GtkWidget *widget, gpointer user_data)
 {
+    TerminalWindow *terminal_window = user_data;
+
     (void) widget;
-    g_free(user_data);
+
+    if (terminal_window->settings != NULL) {
+        if (terminal_window->theme_notify_id != 0)
+            g_signal_handler_disconnect(
+                terminal_window->settings,
+                terminal_window->theme_notify_id);
+
+        g_object_set(
+            terminal_window->settings,
+            "gtk-application-prefer-dark-theme",
+            terminal_window->system_prefers_dark,
+            NULL);
+    }
+
+    g_free(terminal_window);
 }
 
 static TerminalWindow *
 create_terminal_window(GtkApplication *application)
 {
     TerminalWindow *terminal_window = g_new0(TerminalWindow, 1);
+    goree_terminal_theme_engine_init(&terminal_window->theme_engine);
     terminal_window->next_session_id = 1;
+    terminal_window->settings = gtk_settings_get_default();
+
+    if (terminal_window->settings != NULL) {
+        g_object_get(
+            terminal_window->settings,
+            "gtk-application-prefer-dark-theme",
+            &terminal_window->system_prefers_dark,
+            NULL);
+    }
 
     GtkWidget *window = gtk_application_window_new(application);
     GtkWidget *header = gtk_header_bar_new();
+    GtkWidget *title = gtk_label_new("GoreeCloud Terminal");
     GtkWidget *new_session = gtk_button_new_from_icon_name("tab-new-symbolic");
+    GtkWidget *theme_button = gtk_menu_button_new();
+    GtkWidget *open_tabs_button = gtk_menu_button_new();
+    GtkWidget *menu_button = gtk_menu_button_new();
     GtkWidget *notebook = gtk_notebook_new();
 
     terminal_window->window = window;
     terminal_window->notebook = notebook;
+    terminal_window->theme_button = theme_button;
+    terminal_window->open_tabs_button = open_tabs_button;
+    terminal_window->menu_button = menu_button;
 
     gtk_window_set_title(GTK_WINDOW(window), "GoreeCloud Terminal");
     gtk_window_set_default_size(GTK_WINDOW(window), 960, 640);
+    gtk_widget_set_size_request(window, 360, 240);
+    gtk_widget_add_css_class(window, "glaze-window");
+    gtk_widget_add_css_class(header, "glaze-header");
+    gtk_widget_add_css_class(title, "title");
+    gtk_header_bar_set_title_widget(GTK_HEADER_BAR(header), title);
     gtk_header_bar_set_show_title_buttons(GTK_HEADER_BAR(header), TRUE);
 
-    gtk_widget_set_tooltip_text(new_session, "New terminal session");
+    gtk_widget_add_css_class(new_session, "glaze-action");
+    gtk_button_set_has_frame(GTK_BUTTON(new_session), FALSE);
+    gtk_widget_set_tooltip_text(new_session, "New terminal session (Ctrl+Shift+T)");
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(new_session),
         GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -206,12 +915,62 @@ create_terminal_window(GtkApplication *application)
         -1);
     gtk_header_bar_pack_start(GTK_HEADER_BAR(header), new_session);
 
+    gtk_widget_add_css_class(theme_button, "glaze-action");
+    gtk_widget_add_css_class(theme_button, "glaze-theme-engine");
+    GMenuModel *theme_menu = build_theme_menu();
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(theme_button), theme_menu);
+    g_object_unref(theme_menu);
+
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(open_tabs_button), "view-grid-symbolic");
+    gtk_widget_add_css_class(open_tabs_button, "glaze-icon-menu");
+    gtk_widget_set_tooltip_text(open_tabs_button, "Open Tabs (Ctrl+Shift+O)");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(open_tabs_button),
+        GTK_ACCESSIBLE_PROPERTY_LABEL,
+        "Open Tabs",
+        -1);
+
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(menu_button), "open-menu-symbolic");
+    gtk_widget_add_css_class(menu_button, "glaze-icon-menu");
+    gtk_widget_set_tooltip_text(menu_button, "Menu");
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(menu_button),
+        GTK_ACCESSIBLE_PROPERTY_LABEL,
+        "Menu",
+        -1);
+    GMenuModel *main_menu = build_main_menu();
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(menu_button), main_menu);
+    g_object_unref(main_menu);
+    GtkPopover *main_popover = gtk_menu_button_get_popover(GTK_MENU_BUTTON(menu_button));
+    if (main_popover != NULL)
+        gtk_widget_add_css_class(GTK_WIDGET(main_popover), "glaze-context-menu");
+
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), menu_button);
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), open_tabs_button);
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), theme_button);
+
+    gtk_widget_add_css_class(notebook, "glaze-session-tabs");
     gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
 
     gtk_window_set_titlebar(GTK_WINDOW(window), header);
     gtk_window_set_child(GTK_WINDOW(window), notebook);
+
+    g_action_map_add_action_entries(
+        G_ACTION_MAP(window),
+        window_actions,
+        G_N_ELEMENTS(window_actions),
+        terminal_window);
+
+    const char *new_session_accels[] = {"<Primary><Shift>t", NULL};
+    const char *close_session_accels[] = {"<Primary><Shift>w", NULL};
+    const char *new_window_accels[] = {"<Primary><Shift>n", NULL};
+    const char *open_tabs_accels[] = {"<Primary><Shift>o", NULL};
+    gtk_application_set_accels_for_action(application, "win.new-session", new_session_accels);
+    gtk_application_set_accels_for_action(application, "win.close-session", close_session_accels);
+    gtk_application_set_accels_for_action(application, "win.new-window", new_window_accels);
+    gtk_application_set_accels_for_action(application, "win.show-open-tabs", open_tabs_accels);
 
     g_signal_connect(
         new_session,
@@ -224,7 +983,17 @@ create_terminal_window(GtkApplication *application)
         G_CALLBACK(terminal_window_destroyed),
         terminal_window);
 
+    if (terminal_window->settings != NULL) {
+        terminal_window->theme_notify_id = g_signal_connect(
+            terminal_window->settings,
+            "notify::gtk-theme-name",
+            G_CALLBACK(theme_changed),
+            terminal_window);
+    }
+
+    apply_theme(terminal_window);
     add_session(terminal_window);
+    update_open_tabs_menu(terminal_window);
     return terminal_window;
 }
 
@@ -233,6 +1002,7 @@ activate(GtkApplication *application, gpointer user_data)
 {
     (void) user_data;
 
+    install_glaze_ui();
     TerminalWindow *terminal_window = create_terminal_window(application);
     gtk_window_present(GTK_WINDOW(terminal_window->window));
 }
