@@ -49,6 +49,15 @@ test_selected_application_identity(void)
             ".Native"));
 }
 
+static void
+test_product_version(void)
+{
+    g_assert_nonnull(GOREECLOUD_TERMINAL_VERSION);
+    g_assert_cmpstr(GOREECLOUD_TERMINAL_VERSION, ==, "0.1.0-dev");
+    g_assert_null(g_strstr_len(GOREECLOUD_TERMINAL_VERSION, -1, " "));
+    g_assert_null(g_strstr_len(GOREECLOUD_TERMINAL_VERSION, -1, "\n"));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -59,5 +68,8 @@ main(int argc, char **argv)
     g_test_add_func(
         "/product-identity/application-id",
         test_selected_application_identity);
+    g_test_add_func(
+        "/product-identity/version",
+        test_product_version);
     return g_test_run();
 }
