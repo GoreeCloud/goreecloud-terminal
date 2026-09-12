@@ -14,7 +14,13 @@
 #define MIGRATION_MANIFEST "manifest.ini"
 #define MIGRATION_VERSION 1
 #define PROFILE_NAME_MAX 128
-#define PROFILE_ID_MAX 64
+#define LEGACY_PROFILE_ID_MAX 128
+
+typedef enum {
+    PROFILE_IMPORT_OK = 0,
+    PROFILE_IMPORT_SKIPPED,
+    PROFILE_IMPORT_ERROR,
+} ProfileImportResult;
 
 static const char *
 legacy_root_path(GoreeTerminalLegacyIdentity identity)
@@ -24,10 +30,29 @@ legacy_root_path(GoreeTerminalLegacyIdentity identity)
         : "/com/goreecloud/Terminal/";
 }
 
+static const char *
+legacy_identity_name(GoreeTerminalLegacyIdentity identity)
+{
+    return identity == GOREE_TERMINAL_LEGACY_DEVELOPMENT
+        ? "development"
+        : "production";
+}
+
 static void
 set_migration_error(GError **error, const char *message)
 {
     g_set_error_literal(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED, message);
+}
+
+static void
+propagate_or_free(GError **error, GError *source)
+{
+    if (source == NULL)
+        return;
+    if (error != NULL)
+        g_propagate_error(error, source);
+    else
+        g_error_free(source);
 }
 
 void
@@ -42,12 +67,26 @@ goree_terminal_migration_report_clear(GoreeTerminalMigrationReport *report)
 static gboolean
 valid_native_id(const char *id)
 {
-    if (id == NULL || *id == '\0' || strlen(id) > PROFILE_ID_MAX)
+    if (id == NULL || *id == '\0' || strlen(id) > 64)
         return FALSE;
 
     for (const char *cursor = id; *cursor != '\0'; cursor++) {
         if (!(g_ascii_islower(*cursor) || g_ascii_isdigit(*cursor) ||
               *cursor == '-' || *cursor == '_'))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+static gboolean
+valid_legacy_path_component(const char *id)
+{
+    if (id == NULL || *id == '\0' || strlen(id) > LEGACY_PROFILE_ID_MAX)
+        return FALSE;
+
+    for (const char *cursor = id; *cursor != '\0'; cursor++) {
+        if (!(g_ascii_islower(*cursor) || g_ascii_isdigit(*cursor) ||
+              *cursor == '-'))
             return FALSE;
     }
     return TRUE;
@@ -82,22 +121,39 @@ new_migration_settings(const char *schema_id, const char *path, GError **error)
 }
 
 static gboolean
-ensure_parent_directory(const char *path, GError **error)
+ensure_private_directory(const char *path, GError **error)
 {
-    char *directory = g_path_get_dirname(path);
-    gboolean ok = TRUE;
-
-    if (g_mkdir_with_parents(directory, 0700) != 0) {
+    if (g_mkdir_with_parents(path, 0700) != 0) {
         int saved_errno = errno;
         g_set_error(
             error,
             G_FILE_ERROR,
             g_file_error_from_errno(saved_errno),
-            "Unable to create migration target directory: %s",
+            "Unable to create migration directory %s: %s",
+            path,
             g_strerror(saved_errno));
-        ok = FALSE;
+        return FALSE;
     }
 
+    if (g_chmod(path, 0700) != 0) {
+        int saved_errno = errno;
+        g_set_error(
+            error,
+            G_FILE_ERROR,
+            g_file_error_from_errno(saved_errno),
+            "Unable to secure migration directory %s: %s",
+            path,
+            g_strerror(saved_errno));
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static gboolean
+ensure_parent_directory(const char *path, GError **error)
+{
+    char *directory = g_path_get_dirname(path);
+    gboolean ok = ensure_private_directory(directory, error);
     g_free(directory);
     return ok;
 }
@@ -126,14 +182,15 @@ write_private_file(const char *path, const char *data, gsize length, GError **er
 static gboolean
 backup_one(
     GKeyFile *manifest,
-    const char *key,
+    const char *exists_key,
+    const char *checksum_key,
     const char *source_path,
     const char *backup_directory,
     const char *backup_name,
     GError **error)
 {
     gboolean existed = g_file_test(source_path, G_FILE_TEST_EXISTS);
-    g_key_file_set_boolean(manifest, "Migration", key, existed);
+    g_key_file_set_boolean(manifest, "Migration", exists_key, existed);
 
     if (!existed)
         return TRUE;
@@ -145,13 +202,22 @@ backup_one(
 
     char *backup_path = g_build_filename(backup_directory, backup_name, NULL);
     gboolean ok = write_private_file(backup_path, data, length, error);
+    if (ok) {
+        char *checksum = g_compute_checksum_for_data(
+            G_CHECKSUM_SHA256,
+            (const guchar *) data,
+            length);
+        g_key_file_set_string(manifest, "Migration", checksum_key, checksum);
+        g_free(checksum);
+    }
+
     g_free(backup_path);
     g_free(data);
     return ok;
 }
 
 static char *
-create_backup(GError **error)
+create_backup_directory(GError **error)
 {
     const char *override = g_getenv("GOREE_TERMINAL_MIGRATION_BACKUP_ROOT");
     char *root = override != NULL && *override != '\0'
@@ -163,14 +229,7 @@ create_backup(GError **error)
             "migrations",
             NULL);
 
-    if (g_mkdir_with_parents(root, 0700) != 0) {
-        int saved_errno = errno;
-        g_set_error(
-            error,
-            G_FILE_ERROR,
-            g_file_error_from_errno(saved_errno),
-            "Unable to create migration backup root: %s",
-            g_strerror(saved_errno));
+    if (!ensure_private_directory(root, error)) {
         g_free(root);
         return NULL;
     }
@@ -196,6 +255,7 @@ create_backup(GError **error)
             g_file_error_from_errno(saved_errno),
             "Unable to secure migration backup directory: %s",
             g_strerror(saved_errno));
+        g_rmdir(template);
         g_free(template);
         return NULL;
     }
@@ -203,18 +263,24 @@ create_backup(GError **error)
 }
 
 static char *
-backup_native_files(GError **error)
+backup_native_files(GoreeTerminalLegacyIdentity identity, GError **error)
 {
-    char *backup_directory = create_backup(error);
+    char *backup_directory = create_backup_directory(error);
     if (backup_directory == NULL)
         return NULL;
 
     GKeyFile *manifest = g_key_file_new();
     g_key_file_set_integer(manifest, "Migration", "version", MIGRATION_VERSION);
+    g_key_file_set_string(
+        manifest,
+        "Migration",
+        "legacy-source-identity",
+        legacy_identity_name(identity));
 
     if (!backup_one(
             manifest,
             "preferences-existed",
+            "preferences-sha256",
             goree_terminal_preferences_path(),
             backup_directory,
             "preferences.ini",
@@ -222,6 +288,7 @@ backup_native_files(GError **error)
         !backup_one(
             manifest,
             "profiles-existed",
+            "profiles-sha256",
             goree_terminal_session_profiles_path(),
             backup_directory,
             "profiles.ini",
@@ -229,6 +296,7 @@ backup_native_files(GError **error)
         !backup_one(
             manifest,
             "workspaces-existed",
+            "workspaces-sha256",
             goree_terminal_workspaces_path(),
             backup_directory,
             "workspaces.ini",
@@ -258,9 +326,42 @@ backup_native_files(GError **error)
 }
 
 static gboolean
+verify_backup_checksum(
+    GKeyFile *manifest,
+    const char *checksum_key,
+    const char *data,
+    gsize length,
+    GError **error)
+{
+    GError *manifest_error = NULL;
+    char *expected = g_key_file_get_string(
+        manifest,
+        "Migration",
+        checksum_key,
+        &manifest_error);
+    if (manifest_error != NULL) {
+        propagate_or_free(error, manifest_error);
+        return FALSE;
+    }
+
+    char *actual = g_compute_checksum_for_data(
+        G_CHECKSUM_SHA256,
+        (const guchar *) data,
+        length);
+    gboolean matches = g_strcmp0(expected, actual) == 0;
+    if (!matches)
+        set_migration_error(error, "Migration backup checksum verification failed.");
+
+    g_free(actual);
+    g_free(expected);
+    return matches;
+}
+
+static gboolean
 restore_one(
     GKeyFile *manifest,
-    const char *key,
+    const char *exists_key,
+    const char *checksum_key,
     const char *target_path,
     const char *backup_directory,
     const char *backup_name,
@@ -270,10 +371,10 @@ restore_one(
     gboolean existed = g_key_file_get_boolean(
         manifest,
         "Migration",
-        key,
+        exists_key,
         &manifest_error);
     if (manifest_error != NULL) {
-        g_propagate_error(error, manifest_error);
+        propagate_or_free(error, manifest_error);
         return FALSE;
     }
 
@@ -297,11 +398,24 @@ restore_one(
     gsize length = 0;
     gboolean ok = g_file_get_contents(backup_path, &data, &length, error);
     if (ok)
+        ok = verify_backup_checksum(manifest, checksum_key, data, length, error);
+    if (ok)
         ok = write_private_file(target_path, data, length, error);
 
     g_free(data);
     g_free(backup_path);
     return ok;
+}
+
+static void
+remember_first_error(GError **first_error, GError *candidate)
+{
+    if (candidate == NULL)
+        return;
+    if (*first_error == NULL)
+        *first_error = candidate;
+    else
+        g_error_free(candidate);
 }
 
 gboolean
@@ -334,7 +448,7 @@ goree_terminal_legacy_rollback(
         "version",
         &version_error);
     if (version_error != NULL) {
-        g_propagate_error(error, version_error);
+        propagate_or_free(error, version_error);
         g_key_file_unref(manifest);
         return FALSE;
     }
@@ -344,31 +458,48 @@ goree_terminal_legacy_rollback(
         return FALSE;
     }
 
-    gboolean ok =
-        restore_one(
+    GError *first_error = NULL;
+    GError *local_error = NULL;
+
+    if (!restore_one(
             manifest,
             "preferences-existed",
+            "preferences-sha256",
             goree_terminal_preferences_path(),
             backup_directory,
             "preferences.ini",
-            error) &&
-        restore_one(
+            &local_error)) {
+        remember_first_error(&first_error, local_error);
+        local_error = NULL;
+    }
+    if (!restore_one(
             manifest,
             "profiles-existed",
+            "profiles-sha256",
             goree_terminal_session_profiles_path(),
             backup_directory,
             "profiles.ini",
-            error) &&
-        restore_one(
+            &local_error)) {
+        remember_first_error(&first_error, local_error);
+        local_error = NULL;
+    }
+    if (!restore_one(
             manifest,
             "workspaces-existed",
+            "workspaces-sha256",
             goree_terminal_workspaces_path(),
             backup_directory,
             "workspaces.ini",
-            error);
+            &local_error)) {
+        remember_first_error(&first_error, local_error);
+    }
 
     g_key_file_unref(manifest);
-    return ok;
+    if (first_error != NULL) {
+        propagate_or_free(error, first_error);
+        return FALSE;
+    }
+    return TRUE;
 }
 
 static gboolean
@@ -380,9 +511,9 @@ native_state_exists(void)
 }
 
 static char *
-next_import_id(guint index, GHashTable *used_ids)
+next_import_id(guint ordinal, GHashTable *used_ids)
 {
-    for (guint candidate = index + 1; candidate < G_MAXUINT; candidate++) {
+    for (guint candidate = ordinal + 1; candidate < G_MAXUINT; candidate++) {
         char *id = g_strdup_printf("imported-%u", candidate);
         if (!g_hash_table_contains(used_ids, id))
             return id;
@@ -399,16 +530,28 @@ profile_name_is_supported(const char *name)
            g_utf8_strlen(name, -1) <= PROFILE_NAME_MAX;
 }
 
-static GoreeTerminalSessionProfile *
+static ProfileImportResult
 read_legacy_profile(
     const char *root_path,
     const char *source_id,
     gboolean is_default,
     guint ordinal,
     GHashTable *used_ids,
+    GoreeTerminalSessionProfile **profile_out,
     GoreeTerminalMigrationReport *report,
     GError **error)
 {
+    *profile_out = NULL;
+
+    if (!valid_legacy_path_component(source_id)) {
+        if (is_default) {
+            set_migration_error(error, "The transitional default profile ID is not a valid GSettings path component.");
+            return PROFILE_IMPORT_ERROR;
+        }
+        report->profiles_skipped++;
+        return PROFILE_IMPORT_SKIPPED;
+    }
+
     char *profile_path = g_strdup_printf(
         "%sProfiles/%s/",
         root_path,
@@ -419,7 +562,7 @@ read_legacy_profile(
         error);
     g_free(profile_path);
     if (settings == NULL)
-        return NULL;
+        return PROFILE_IMPORT_ERROR;
 
     gboolean use_custom_command = g_settings_get_boolean(
         settings,
@@ -436,10 +579,10 @@ read_legacy_profile(
                 use_custom_command
                     ? "The transitional default profile uses a custom command, which native migration intentionally does not read or import."
                     : "The transitional default profile has unlimited scrollback, which has no exact native migration mapping.");
-            return NULL;
+            return PROFILE_IMPORT_ERROR;
         }
         report->profiles_skipped++;
-        return GINT_TO_POINTER(1);
+        return PROFILE_IMPORT_SKIPPED;
     }
 
     char *label = g_settings_get_string(settings, "label");
@@ -449,13 +592,11 @@ read_legacy_profile(
     if (scrollback < 0 || (guint64) scrollback > GOREE_TERMINAL_SCROLLBACK_MAX) {
         g_free(label);
         if (is_default) {
-            set_migration_error(
-                error,
-                "The transitional default profile scrollback exceeds the native supported bound.");
-            return NULL;
+            set_migration_error(error, "The transitional default profile scrollback exceeds the native supported bound.");
+            return PROFILE_IMPORT_ERROR;
         }
         report->profiles_skipped++;
-        return GINT_TO_POINTER(1);
+        return PROFILE_IMPORT_SKIPPED;
     }
 
     GoreeTerminalSessionProfile *profile = goree_terminal_session_profile_new_default();
@@ -474,7 +615,7 @@ read_legacy_profile(
         g_free(label);
         goree_terminal_session_profile_free(profile);
         set_migration_error(error, "Unable to allocate a unique imported profile ID.");
-        return NULL;
+        return PROFILE_IMPORT_ERROR;
     }
 
     g_free(profile->name);
@@ -487,25 +628,24 @@ read_legacy_profile(
         g_free(label);
         goree_terminal_session_profile_free(profile);
         if (is_default) {
-            set_migration_error(
-                error,
-                "The transitional default profile label cannot be represented safely by the native profile format.");
-            return NULL;
+            set_migration_error(error, "The transitional default profile label cannot be represented safely by the native profile format.");
+            return PROFILE_IMPORT_ERROR;
         }
         report->profiles_skipped++;
-        return GINT_TO_POINTER(1);
+        return PROFILE_IMPORT_SKIPPED;
     }
     g_free(label);
 
     profile->scrollback_lines = (guint) scrollback;
     if (!goree_terminal_session_profile_validate(profile, error)) {
         goree_terminal_session_profile_free(profile);
-        return NULL;
+        return PROFILE_IMPORT_ERROR;
     }
 
     g_hash_table_add(used_ids, g_strdup(profile->id));
     report->profiles_migrated++;
-    return profile;
+    *profile_out = profile;
+    return PROFILE_IMPORT_OK;
 }
 
 static gboolean
@@ -578,16 +718,19 @@ build_migrated_state(
         }
         g_hash_table_add(seen_source_ids, g_strdup(source_id));
 
-        GoreeTerminalSessionProfile *profile = read_legacy_profile(
+        GoreeTerminalSessionProfile *profile = NULL;
+        ProfileImportResult result = read_legacy_profile(
             root_path,
             source_id,
+            index == default_index,
             index,
             used_ids,
+            &profile,
             report,
             error);
-        if (profile == NULL)
+        if (result == PROFILE_IMPORT_ERROR)
             goto failure;
-        if (profile == GINT_TO_POINTER(1))
+        if (result == PROFILE_IMPORT_SKIPPED)
             continue;
         g_ptr_array_add(profiles, profile);
     }
@@ -598,6 +741,9 @@ build_migrated_state(
         set_migration_error(error, "Migration did not produce a usable native default profile.");
         goto failure;
     }
+
+    GoreeTerminalSessionProfile *default_profile = g_ptr_array_index(profiles, 0);
+    preferences->scrollback_lines = default_profile->scrollback_lines;
 
     GPtrArray *workspaces = g_ptr_array_new_with_free_func(
         (GDestroyNotify) goree_terminal_workspace_free);
@@ -637,7 +783,7 @@ goree_terminal_legacy_migrate(
         return FALSE;
     }
 
-    if (native_state_exists() && !replace_native) {
+    if (native_state_exists() && !replace_native && !dry_run) {
         set_migration_error(
             error,
             "Native GoreeCloud Terminal state already exists; use explicit replacement only after reviewing backup/rollback policy.");
@@ -645,10 +791,12 @@ goree_terminal_legacy_migrate(
     }
 
     GoreeTerminalPreferences preferences;
-    if (replace_native && !goree_terminal_preferences_load(&preferences, error))
-        return FALSE;
-    if (!replace_native)
+    if (replace_native) {
+        if (!goree_terminal_preferences_load(&preferences, error))
+            return FALSE;
+    } else {
         goree_terminal_preferences_init(&preferences);
+    }
 
     GPtrArray *profiles = NULL;
     GPtrArray *workspaces = NULL;
@@ -667,7 +815,7 @@ goree_terminal_legacy_migrate(
         return TRUE;
     }
 
-    char *backup_directory = backup_native_files(error);
+    char *backup_directory = backup_native_files(identity, error);
     if (backup_directory == NULL) {
         g_ptr_array_unref(profiles);
         g_ptr_array_unref(workspaces);
@@ -699,7 +847,7 @@ goree_terminal_legacy_migrate(
             g_free(backup_directory);
             return FALSE;
         }
-        g_propagate_error(error, write_error);
+        propagate_or_free(error, write_error);
         g_free(backup_directory);
         return FALSE;
     }
