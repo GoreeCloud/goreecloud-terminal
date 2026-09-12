@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=@PRODUCT_NAME@
+GenericName=Terminal
+Comment=Native GoreeCloud terminal for Linux workstations
+Exec=goreecloud-terminal
+Icon=@APPLICATION_ID@
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=terminal;shell;command;ssh;administration;
+StartupNotify=true
+StartupWMClass=@APPLICATION_ID@
+X-GNOME-SingleWindow=false
