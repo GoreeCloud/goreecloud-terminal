@@ -56,9 +56,12 @@ jobs:
             native/src/remote-target-store.c \
             native/src/remote-privacy-adapter.h \
             native/src/remote-privacy-adapter.c \
+            native/src/remote-target-runtime.h \
+            native/src/remote-target-runtime.c \
             native/src/test-remote-session.c \
             native/src/test-remote-target-store.c \
-            native/src/test-remote-privacy-adapter.c; do
+            native/src/test-remote-privacy-adapter.c \
+            native/src/test-remote-target-runtime.c; do
             test -f "$path"
           done
 
@@ -92,6 +95,11 @@ jobs:
           grep -Fq 'runtime_accepted = FALSE' native/src/remote-privacy-adapter.c
           grep -Fq 'goree_terminal_remote_target_binding' native/src/remote-privacy-adapter.c
 
+          grep -Fq 'goree_terminal_remote_session_init_from_privacy_adapter' native/src/remote-target-runtime.c
+          grep -Fq 'Blocked — Privacy Shield unavailable' native/src/remote-target-runtime.c
+          ! grep -Fq 'g_spawn' native/src/remote-target-runtime.c
+          ! grep -Fq 'ssh' native/src/remote-target-runtime.c
+
       - name: Build focused remote contract tests
         shell: bash
         run: |
@@ -120,6 +128,15 @@ jobs:
             $LIBS \
             -o /tmp/test-native-remote-privacy-adapter
 
+          cc $CFLAGS \
+            native/src/test-remote-target-runtime.c \
+            native/src/remote-target-runtime.c \
+            native/src/remote-target-store.c \
+            native/src/remote-privacy-adapter.c \
+            native/src/remote-session.c \
+            $LIBS \
+            -o /tmp/test-native-remote-target-runtime
+
       - name: Run focused remote contract tests
         shell: bash
         run: |
@@ -127,3 +144,4 @@ jobs:
           /tmp/test-native-remote-session
           /tmp/test-native-remote-target-store
           /tmp/test-native-remote-privacy-adapter
+          /tmp/test-native-remote-target-runtime
