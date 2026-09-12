@@ -63,6 +63,10 @@ jobs:
           test -f native/PACKAGING.md
           test -f native/flatpak/com.goreecloud.Terminal.Devel.json
           test ! -e native/flatpak/com.goreecloud.Terminal.Native.Devel.json
+          test -f native/data/icons/goreecloud-terminal.svg
+          test -f native/data/icons/goreecloud-terminal-devel.svg
+          cmp -s data/icons/goreecloud-terminal.svg native/data/icons/goreecloud-terminal.svg
+          cmp -s data/icons/goreecloud-terminal-devel.svg native/data/icons/goreecloud-terminal-devel.svg
           python3 -m json.tool native/flatpak/com.goreecloud.Terminal.Devel.json >/dev/null
           grep -Fq '"app-id": "com.goreecloud.Terminal.Devel"' native/flatpak/com.goreecloud.Terminal.Devel.json
           grep -Fq '"command": "goreecloud-terminal"' native/flatpak/com.goreecloud.Terminal.Devel.json
