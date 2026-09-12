@@ -25,11 +25,12 @@
 static char agent_socket_path[PATH_MAX];
 static int agent_listen_fd = -1;
 
-static const char *safe_environment_names[] = {
+static const char *const safe_environment_names[] = {
     "PATH",
     "LANG",
     "LC_ALL",
     "LC_CTYPE",
+    "LC_MESSAGES",
     "TZ",
     NULL,
 };
@@ -645,16 +646,13 @@ install_signal_handlers(void)
         sigaction(SIGTERM, &terminate_action, NULL) != 0)
         return false;
 
-    /* SIGCHLD deliberately retains its default disposition. handle_session()
-     * synchronously waitpid(2)s the exact child so it can send authoritative
-     * EXIT evidence over the control channel. Ignoring SIGCHLD on Linux may
-     * auto-reap the child and races that evidence path. */
-    struct sigaction ignore_pipe;
-    memset(&ignore_pipe, 0, sizeof(ignore_pipe));
-    ignore_pipe.sa_handler = SIG_IGN;
-    sigemptyset(&ignore_pipe.sa_mask);
+    struct sigaction ignore_action;
+    memset(&ignore_action, 0, sizeof(ignore_action));
+    ignore_action.sa_handler = SIG_IGN;
+    sigemptyset(&ignore_action.sa_mask);
 
-    if (sigaction(SIGPIPE, &ignore_pipe, NULL) != 0)
+    if (sigaction(SIGPIPE, &ignore_action, NULL) != 0 ||
+        sigaction(SIGCHLD, &ignore_action, NULL) != 0)
         return false;
 
     return true;
@@ -762,6 +760,9 @@ main(int argc, char **argv)
         return 1;
     }
 
+    printf("GoreeCloud Terminal host agent ready: %s\n", socket_path);
+    fflush(stdout);
+
     for (;;) {
         int client_fd = accept4(agent_listen_fd, NULL, NULL, SOCK_CLOEXEC);
         if (client_fd < 0) {
@@ -777,7 +778,30 @@ main(int argc, char **argv)
             continue;
         }
 
-        handle_session(client_fd);
+        pid_t supervisor = fork();
+        if (supervisor < 0) {
+            int saved_errno = errno;
+            (void) send_message(client_fd,
+                                GOREE_TERMINAL_HOST_MESSAGE_ERROR,
+                                saved_errno);
+            close(client_fd);
+            continue;
+        }
+
+        if (supervisor == 0) {
+            struct sigaction default_child;
+            memset(&default_child, 0, sizeof(default_child));
+            default_child.sa_handler = SIG_DFL;
+            sigemptyset(&default_child.sa_mask);
+            (void) sigaction(SIGCHLD, &default_child, NULL);
+            (void) sigaction(SIGPIPE, &default_child, NULL);
+            close(agent_listen_fd);
+            agent_listen_fd = -1;
+            handle_session(client_fd);
+            close(client_fd);
+            _exit(0);
+        }
+
         close(client_fd);
     }
 }
