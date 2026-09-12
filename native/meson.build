@@ -49,6 +49,7 @@ executable(
     'src/remote-target-store.c',
     'src/remote-privacy-adapter.c',
     'src/remote-target-runtime.c',
+    'src/remote-target-view.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
