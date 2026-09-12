@@ -48,6 +48,7 @@ executable(
     'src/remote-openssh.c',
     'src/remote-target-store.c',
     'src/remote-privacy-adapter.c',
+    'src/remote-target-runtime.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
@@ -178,6 +179,18 @@ remote_privacy_adapter_test = executable(
   dependencies: [glib],
 )
 
+remote_target_runtime_test = executable(
+  'test-native-remote-target-runtime',
+  [
+    'src/test-remote-target-runtime.c',
+    'src/remote-target-runtime.c',
+    'src/remote-target-store.c',
+    'src/remote-privacy-adapter.c',
+    'src/remote-session.c',
+  ],
+  dependencies: [glib],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
@@ -190,3 +203,4 @@ test('native-workspace-runtime', workspace_runtime_test)
 test('native-remote-session', remote_session_test)
 test('native-remote-target-store', remote_target_store_test)
 test('native-remote-privacy-adapter', remote_privacy_adapter_test)
+test('native-remote-target-runtime', remote_target_runtime_test)
