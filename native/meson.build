@@ -75,6 +75,18 @@ configure_file(
   install_dir: join_paths(get_option('datadir'), 'icons', 'hicolor', 'scalable', 'apps'),
 )
 
+migration_schema_source = join_paths(
+  meson.current_source_dir(),
+  'data',
+  'com.goreecloud.Terminal.Migration.gschema.xml',
+)
+install_data(
+  'data/com.goreecloud.Terminal.Migration.gschema.xml',
+  install_dir: join_paths(get_option('datadir'), 'glib-2.0', 'schemas'),
+)
+
+gnome.post_install(glib_compile_schemas: true)
+
 render_product_main = files('tools/render-product-main.py')
 identity_main = custom_target(
   'goreecloud-terminal-product-main',
@@ -123,6 +135,21 @@ executable(
   ],
   dependencies: [glib, gio, gtk, vte],
   c_args: native_executable_c_args,
+  install: true,
+  install_dir: get_option('bindir'),
+)
+
+executable(
+  'goreecloud-terminal-migrate',
+  [
+    'src/migration-tool.c',
+    'src/legacy-migration.c',
+    'src/terminal-preferences.c',
+    'src/session-profile.c',
+    'src/workspace-store.c',
+  ],
+  include_directories: include_directories('src'),
+  dependencies: [glib, gio],
   install: true,
   install_dir: get_option('bindir'),
 )
@@ -226,6 +253,22 @@ product_identity_test = executable(
   dependencies: [glib],
 )
 
+legacy_migration_test = executable(
+  'test-native-legacy-migration',
+  [
+    'src/test-legacy-migration.c',
+    'src/legacy-migration.c',
+    'src/terminal-preferences.c',
+    'src/session-profile.c',
+    'src/workspace-store.c',
+  ],
+  include_directories: include_directories('src'),
+  dependencies: [glib, gio],
+  c_args: [
+    '-DMIGRATION_SCHEMA_SOURCE="@0@"'.format(migration_schema_source),
+  ],
+)
+
 test('native-session-lifecycle', session_lifecycle_test)
 test('native-glaze-contract', glaze_contract_test)
 test('native-theme-engine', theme_engine_test)
@@ -236,6 +279,7 @@ test('native-workspace-store', workspace_store_test)
 test('native-profile-runtime', profile_runtime_test)
 test('native-workspace-runtime', workspace_runtime_test)
 test('native-product-identity', product_identity_test)
+test('native-legacy-migration', legacy_migration_test)
 
 summary(
   {
@@ -244,6 +288,7 @@ summary(
     'Product identity': product_identity,
     'Application ID': application_id,
     'Canonical launcher': 'goreecloud-terminal',
+    'Migration command': 'goreecloud-terminal-migrate',
     'Installable staged layout': true,
   },
   section: 'GoreeCloud Terminal native identity',
