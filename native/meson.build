@@ -30,9 +30,11 @@ resource_prefix = '/com/goreecloud/Terminal'
 if product_identity == 'production'
   application_id = 'com.goreecloud.Terminal'
   development_build = 0
+  icon_source = 'data/icons/goreecloud-terminal.svg'
 else
   application_id = 'com.goreecloud.Terminal.Devel'
   development_build = 1
+  icon_source = 'data/icons/goreecloud-terminal-devel.svg'
 endif
 
 identity_config = configuration_data()
@@ -51,12 +53,24 @@ configure_file(
   input: 'data/goreecloud-terminal.desktop.in',
   output: application_id + '.desktop',
   configuration: identity_config,
+  install: true,
+  install_dir: join_paths(get_option('datadir'), 'applications'),
 )
 
 configure_file(
   input: 'data/goreecloud-terminal.metainfo.xml.in',
   output: application_id + '.metainfo.xml',
   configuration: identity_config,
+  install: true,
+  install_dir: join_paths(get_option('datadir'), 'metainfo'),
+)
+
+configure_file(
+  input: icon_source,
+  output: application_id + '.svg',
+  copy: true,
+  install: true,
+  install_dir: join_paths(get_option('datadir'), 'icons', 'hicolor', 'scalable', 'apps'),
 )
 
 render_product_main = files('tools/render-product-main.py')
@@ -106,7 +120,8 @@ executable(
   ],
   dependencies: [glib, gio, gtk, vte],
   c_args: native_executable_c_args,
-  install: false,
+  install: true,
+  install_dir: get_option('bindir'),
 )
 
 session_lifecycle_test = executable(
@@ -225,6 +240,7 @@ summary(
     'Product identity': product_identity,
     'Application ID': application_id,
     'Canonical launcher': 'goreecloud-terminal',
+    'Installable staged layout': true,
   },
   section: 'GoreeCloud Terminal native identity',
 )

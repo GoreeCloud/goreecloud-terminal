@@ -1,9 +1,9 @@
 {
-  "app-id": "com.goreecloud.Terminal.Native.Devel",
+  "app-id": "com.goreecloud.Terminal.Devel",
   "runtime": "org.gnome.Platform",
   "runtime-version": "50",
   "sdk": "org.gnome.Sdk",
-  "command": "goreecloud-terminal-native",
+  "command": "goreecloud-terminal",
   "finish-args": [
     "--allow=devel",
     "--device=dri",
@@ -81,12 +81,14 @@
       "name": "goreecloud-terminal-native",
       "buildsystem": "simple",
       "build-commands": [
-        "sed -i 's/#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native\"/#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native.Devel\"/' native/src/main.c",
-        "grep -Fq '#define GOREECLOUD_TERMINAL_APP_ID \"com.goreecloud.Terminal.Native.Devel\"' native/src/main.c",
-        "meson setup _native-build native --buildtype=debugoptimized",
+        "meson setup _native-build native --buildtype=debugoptimized --prefix=/app -Dproduct_identity=development",
         "meson compile -C _native-build",
         "meson test -C _native-build --print-errorlogs",
-        "install -Dm755 _native-build/goreecloud-terminal-native /app/bin/goreecloud-terminal-native"
+        "meson install -C _native-build",
+        "test -x /app/bin/goreecloud-terminal",
+        "test -f /app/share/applications/com.goreecloud.Terminal.Devel.desktop",
+        "test -f /app/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml",
+        "test -f /app/share/icons/hicolor/scalable/apps/com.goreecloud.Terminal.Devel.svg"
       ],
       "sources": [
         {

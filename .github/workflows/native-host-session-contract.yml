@@ -72,15 +72,20 @@ jobs:
           ! grep -Fq -- '--filesystem=host' native/host-agent/main.c native/include/host-session-protocol.h native/src/host-session-client.c
           python3 -m py_compile native/host-agent/test-host-agent.py
 
-      - name: Validate native Flatpak permission boundary
+      - name: Validate native Flatpak permission and identity boundary
         shell: bash
         run: |
           set -euo pipefail
-          manifest='native/flatpak/com.goreecloud.Terminal.Native.Devel.json'
+          manifest='native/flatpak/com.goreecloud.Terminal.Devel.json'
+          test -f "$manifest"
+          test ! -e native/flatpak/com.goreecloud.Terminal.Native.Devel.json
           python3 -m json.tool "$manifest" >/dev/null
+          grep -Fq '"app-id": "com.goreecloud.Terminal.Devel"' "$manifest"
+          grep -Fq '"command": "goreecloud-terminal"' "$manifest"
           grep -Fq -- '--filesystem=xdg-run/goreecloud-terminal' "$manifest"
           ! grep -Fq -- '--filesystem=host' "$manifest"
           ! grep -Fq -- '--talk-name=org.freedesktop.Flatpak' "$manifest"
+          ! grep -Fq 'Terminal.Native' "$manifest"
           grep -Fq 'RestrictAddressFamilies=AF_UNIX' native/host-agent/goreecloud-terminal-host-agent.service.in
           grep -Fq 'NoNewPrivileges=yes' native/host-agent/goreecloud-terminal-host-agent.service.in
           grep -Fq 'UMask=0077' native/host-agent/goreecloud-terminal-host-agent.service.in
