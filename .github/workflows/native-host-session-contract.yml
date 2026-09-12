@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - agent/native-glaze-ui-13
+      - agent/native-host-session-client-80
   pull_request:
 
 permissions:
@@ -16,7 +17,7 @@ concurrency:
 
 jobs:
   host-agent:
-    name: Validate native host-session PTY agent
+    name: Validate native host-session PTY boundary
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -43,27 +44,63 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gcc meson ninja-build python3
 
-      - name: Validate narrow host-agent source contract
+      - name: Validate narrow host-agent and client source contract
         shell: bash
         run: |
           set -euo pipefail
+          test -f native/src/host-session-client.c
+          test -f native/src/host-session-client.h
+          test -f native/host-agent/goreecloud-terminal-host-agent.service.in
+
           grep -Fq 'SO_PEERCRED' native/host-agent/main.c
           grep -Fq 'SCM_RIGHTS' native/host-agent/main.c
           grep -Fq 'openpty' native/host-agent/main.c
           grep -Fq 'TIOCSCTTY' native/host-agent/main.c
           grep -Fq 'GOREE_TERMINAL_HOST_PROTOCOL_VERSION' native/include/host-session-protocol.h
           grep -Fq 'host-agent.sock' native/include/host-session-protocol.h
-          ! grep -Eq '\bAF_INET6?\b' native/host-agent/main.c
-          ! grep -Fq 'org.freedesktop.Flatpak' native/host-agent/main.c native/include/host-session-protocol.h
-          ! grep -Fq -- '--filesystem=host' native/host-agent/main.c native/include/host-session-protocol.h
+
+          grep -Fq 'SO_PEERCRED' native/src/host-session-client.c
+          grep -Fq 'SCM_RIGHTS' native/src/host-session-client.c
+          grep -Fq 'vte_pty_new_foreign_sync' native/src/main.c
+          grep -Fq 'vte_terminal_set_pty' native/src/main.c
+          grep -Fq 'vte_terminal_set_input_enabled' native/src/main.c
+          grep -Fq 'The sandboxed application will not silently substitute a sandbox shell.' native/src/main.c
+          grep -Fq 'GOREE_TERMINAL_SESSION_DISCONNECTED' native/src/session-lifecycle.h
+
+          ! grep -Eq '\bAF_INET6?\b' native/host-agent/main.c native/src/host-session-client.c
+          ! grep -Fq 'org.freedesktop.Flatpak' native/host-agent/main.c native/include/host-session-protocol.h native/src/host-session-client.c
+          ! grep -Fq -- '--filesystem=host' native/host-agent/main.c native/include/host-session-protocol.h native/src/host-session-client.c
           python3 -m py_compile native/host-agent/test-host-agent.py
 
-      - name: Build host agent
+      - name: Validate native Flatpak permission boundary
         shell: bash
         run: |
           set -euo pipefail
-          meson setup _host-agent-build native/host-agent --buildtype=debugoptimized
+          manifest='native/flatpak/com.goreecloud.Terminal.Native.Devel.json'
+          python3 -m json.tool "$manifest" >/dev/null
+          grep -Fq -- '--filesystem=xdg-run/goreecloud-terminal' "$manifest"
+          ! grep -Fq -- '--filesystem=host' "$manifest"
+          ! grep -Fq -- '--talk-name=org.freedesktop.Flatpak' "$manifest"
+          grep -Fq 'RestrictAddressFamilies=AF_UNIX' native/host-agent/goreecloud-terminal-host-agent.service.in
+          grep -Fq 'NoNewPrivileges=yes' native/host-agent/goreecloud-terminal-host-agent.service.in
+          grep -Fq 'UMask=0077' native/host-agent/goreecloud-terminal-host-agent.service.in
+
+      - name: Build and stage host agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          meson setup _host-agent-build native/host-agent \
+            --buildtype=debugoptimized \
+            --prefix=/usr
           meson compile -C _host-agent-build
+          staging="$PWD/_host-agent-install"
+          DESTDIR="$staging" meson install -C _host-agent-build
+          test -x "$staging/usr/libexec/goreecloud-terminal-host-agent"
+          test -f "$staging/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
+          grep -Fq 'ExecStart=/usr/libexec/goreecloud-terminal-host-agent' \
+            "$staging/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
+          grep -Fq 'RestrictAddressFamilies=AF_UNIX' \
+            "$staging/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
 
       - name: Run host PTY integration contract
         shell: bash
