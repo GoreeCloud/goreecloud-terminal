@@ -295,6 +295,74 @@ test_dry_run_and_replace_restore(void)
 }
 
 static void
+test_corrupted_backup_fails_closed(void)
+{
+    remove_native_state();
+
+    GoreeTerminalPreferences original;
+    goree_terminal_preferences_init(&original);
+    original.scrollback_lines = 2222;
+    original.audible_bell = FALSE;
+    GError *error = NULL;
+    g_assert_true(goree_terminal_preferences_save(&original, &error));
+    g_assert_no_error(error);
+
+    const char *ids[] = {"checksum-default", NULL};
+    configure_root(
+        GOREE_TERMINAL_LEGACY_PRODUCTION,
+        ids,
+        "checksum-default",
+        TRUE);
+    configure_profile(
+        GOREE_TERMINAL_LEGACY_PRODUCTION,
+        "checksum-default",
+        "Checksum Default",
+        TRUE,
+        8888,
+        FALSE);
+
+    GoreeTerminalMigrationReport report = {0};
+    g_assert_true(goree_terminal_legacy_migrate(
+        GOREE_TERMINAL_LEGACY_PRODUCTION,
+        TRUE,
+        FALSE,
+        &report,
+        &error));
+    g_assert_no_error(error);
+    g_assert_nonnull(report.backup_directory);
+
+    char *backup_preferences = g_build_filename(
+        report.backup_directory,
+        "preferences.ini",
+        NULL);
+    g_assert_true(g_file_set_contents(
+        backup_preferences,
+        "corrupted-backup\n",
+        -1,
+        &error));
+    g_assert_no_error(error);
+    g_free(backup_preferences);
+
+    g_assert_false(goree_terminal_legacy_rollback(report.backup_directory, &error));
+    g_assert_nonnull(error);
+    g_assert_nonnull(g_strstr_len(error->message, -1, "checksum"));
+    g_clear_error(&error);
+
+    GoreeTerminalPreferences still_migrated;
+    g_assert_true(goree_terminal_preferences_load(&still_migrated, &error));
+    g_assert_no_error(error);
+    g_assert_true(still_migrated.audible_bell);
+    g_assert_cmpuint(still_migrated.scrollback_lines, ==, 8888);
+
+    /* Rollback continues through other stores even after the checksum failure. */
+    g_assert_false(g_file_test(profiles_path, G_FILE_TEST_EXISTS));
+    g_assert_false(g_file_test(workspaces_path, G_FILE_TEST_EXISTS));
+
+    goree_terminal_migration_report_clear(&report);
+    remove_native_state();
+}
+
+static void
 test_default_custom_command_fails_closed(void)
 {
     remove_native_state();
@@ -420,6 +488,9 @@ main(int argc, char **argv)
     g_test_add_func(
         "/goreecloud/terminal/migration/dry-run-replace-restore",
         test_dry_run_and_replace_restore);
+    g_test_add_func(
+        "/goreecloud/terminal/migration/corrupted-backup-fail-closed",
+        test_corrupted_backup_fails_closed);
     g_test_add_func(
         "/goreecloud/terminal/migration/custom-command-fail-closed",
         test_default_custom_command_fails_closed);
