@@ -60,7 +60,7 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
-      - name: Verify exact source privacy and sandbox boundary
+      - name: Verify exact source privacy consent and sandbox boundary
         shell: bash
         run: |
           set -euo pipefail
@@ -73,6 +73,8 @@ jobs:
           grep -Fq "if install_migration_tool" native/meson.build
           grep -Fq "goreecloud-terminal-migrate" native/meson.build
           grep -Fq "Migration dry run" native/src/migration-tool.c
+          grep -Fq '"allow-partial"' native/src/migration-tool.c
+          grep -Fq "No native state was written" native/src/migration-tool.c
           grep -Fq "G_CHECKSUM_SHA256" native/src/legacy-migration.c
           grep -Fq "custom command, which native migration intentionally does not read or import" native/src/legacy-migration.c
           ! grep -Eq '<key name="(custom-command|custom-links|default-container|use-proxy)"' native/data/com.goreecloud.Terminal.Migration.gschema.xml
@@ -116,6 +118,7 @@ jobs:
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--rollback'
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--dry-run'
           "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--replace-native'
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help | grep -Fq -- '--allow-partial'
 
       - name: Prove sandbox-style install excludes host migration authority
         shell: bash
