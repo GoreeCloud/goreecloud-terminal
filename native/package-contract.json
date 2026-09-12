@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "development",
+  "tracking_issue": 97,
+  "package_format": {
+    "status": "unselected",
+    "selected_formats": [],
+    "rule": "Do not infer a distro package format from CI, a test workstation, or transitional Flatpak packaging."
+  },
+  "artifact_identity": {
+    "package_name": "goreecloud-terminal",
+    "install_prefix": "/usr",
+    "version_authority": "native/meson.build:project.version",
+    "current_development_version": "0.1.0-dev"
+  },
+  "application_identities": {
+    "development": "com.goreecloud.Terminal.Devel",
+    "production": "com.goreecloud.Terminal"
+  },
+  "host_native_payload": [
+    {"path": "/usr/bin/goreecloud-terminal", "component": "application", "executable": true},
+    {"path": "/usr/bin/goreecloud-terminal-migrate", "component": "migration-maintenance", "executable": true},
+    {"path": "/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml", "component": "migration-compatibility-schema", "executable": false},
+    {"path": "/usr/share/applications/{application_id}.desktop", "component": "desktop-integration", "executable": false},
+    {"path": "/usr/share/metainfo/{application_id}.metainfo.xml", "component": "appstream-metadata", "executable": false},
+    {"path": "/usr/share/icons/hicolor/scalable/apps/{application_id}.svg", "component": "product-icon", "executable": false},
+    {"path": "/usr/libexec/goreecloud-terminal-host-agent", "component": "host-session-agent", "executable": true},
+    {"path": "/usr/lib/systemd/user/goreecloud-terminal-host-agent.service", "component": "host-session-user-service", "executable": false}
+  ],
+  "sandbox_exclusions": [
+    "/app/bin/goreecloud-terminal-migrate",
+    "/app/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml",
+    "/app/libexec/goreecloud-terminal-host-agent",
+    "/app/lib/systemd/user/goreecloud-terminal-host-agent.service"
+  ],
+  "preserved_user_state": [
+    "$XDG_CONFIG_HOME/goreecloud/terminal",
+    "$XDG_STATE_HOME/goreecloud/terminal",
+    "transitional GSettings source state"
+  ],
+  "package_action_policy": {
+    "automatic_migration": false,
+    "automatic_partial_migration": false,
+    "automatic_transitional_state_deletion": false,
+    "automatic_user_state_deletion": false,
+    "automatic_host_agent_enablement": false,
+    "automatic_host_agent_start": false
+  },
+  "evidence_boundary": {
+    "staged_payload_validation_is_production_acceptance": false,
+    "staged_payload_validation_is_stable_acceptance": false,
+    "package_manager_acceptance_required": true,
+    "physical_workstation_acceptance_required": true,
+    "exact_artifact_verification_required": true,
+    "everkeep_recovery_acceptance_required": true
+  }
+}
