@@ -10,8 +10,7 @@
   "artifact_identity": {
     "package_name": "goreecloud-terminal",
     "install_prefix": "/usr",
-    "version_authority": "native/meson.build:project.version",
-    "current_development_version": "0.1.0-dev"
+    "version_authority": "native/meson.build:project.version"
   },
   "application_identities": {
     "development": "com.goreecloud.Terminal.Devel",
