@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <glib/gstdio.h>
+#include <string.h>
 
 #define PROFILE_FILE_NAME "profiles.ini"
 #define PROFILE_GROUP_PREFIX "Profile:"
