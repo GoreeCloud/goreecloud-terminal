@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import stat
 import sys
 from pathlib import Path, PurePosixPath
@@ -43,7 +42,7 @@ EXPECTED_PRESERVED_STATE = {
 }
 
 
-def die(message: str) -> "NoReturn":
+def die(message: str) -> None:
     print(f"package-contract: {message}", file=sys.stderr)
     raise SystemExit(1)
 
@@ -80,7 +79,10 @@ def validate_contract(contract: dict, identity: str) -> tuple[str, list[dict]]:
     require(artifact.get("package_name") == "goreecloud-terminal", "canonical package name drifted")
     require(artifact.get("install_prefix") == "/usr", "host-native install prefix must be /usr")
     require(artifact.get("version_authority") == "native/meson.build:project.version", "version authority drifted")
-    require(artifact.get("current_development_version") == "0.1.0-dev", "Development version contract drifted")
+    require(
+        set(artifact) == {"package_name", "install_prefix", "version_authority"},
+        "artifact_identity must reference version authority without duplicating the current version value",
+    )
 
     identities = contract.get("application_identities")
     require(
