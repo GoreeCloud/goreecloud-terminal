@@ -25,6 +25,21 @@ test_start_running_exit(void)
 }
 
 static void
+test_disconnect_fails_closed_and_preserves_output(void)
+{
+    GoreeTerminalSessionLifecycle lifecycle;
+
+    goree_terminal_session_lifecycle_init(&lifecycle, 8);
+    g_assert_true(goree_terminal_session_mark_running(&lifecycle));
+
+    goree_terminal_session_mark_disconnected(&lifecycle);
+    g_assert_cmpint(lifecycle.state, ==, GOREE_TERMINAL_SESSION_DISCONNECTED);
+    g_assert_false(goree_terminal_session_can_accept_input(&lifecycle));
+    g_assert_true(goree_terminal_session_preserves_output(&lifecycle));
+    g_assert_false(lifecycle.has_exit_status);
+}
+
+static void
 test_close_running_session(void)
 {
     GoreeTerminalSessionLifecycle lifecycle;
@@ -53,6 +68,24 @@ test_child_exit_does_not_reopen_closing_session(void)
 }
 
 static void
+test_disconnect_does_not_override_terminal_states(void)
+{
+    GoreeTerminalSessionLifecycle lifecycle;
+
+    goree_terminal_session_lifecycle_init(&lifecycle, 4);
+    g_assert_true(goree_terminal_session_mark_running(&lifecycle));
+    goree_terminal_session_mark_child_exited(&lifecycle, 0);
+    goree_terminal_session_mark_disconnected(&lifecycle);
+    g_assert_cmpint(lifecycle.state, ==, GOREE_TERMINAL_SESSION_EXITED);
+
+    goree_terminal_session_lifecycle_init(&lifecycle, 5);
+    g_assert_true(goree_terminal_session_mark_running(&lifecycle));
+    goree_terminal_session_request_close(&lifecycle);
+    goree_terminal_session_mark_disconnected(&lifecycle);
+    g_assert_cmpint(lifecycle.state, ==, GOREE_TERMINAL_SESSION_CLOSING);
+}
+
+static void
 test_running_transition_is_one_way(void)
 {
     GoreeTerminalSessionLifecycle lifecycle;
@@ -69,10 +102,16 @@ main(int argc, char **argv)
 {
     g_test_init(&argc, &argv, NULL);
     g_test_add_func("/native-session/start-running-exit", test_start_running_exit);
+    g_test_add_func(
+        "/native-session/disconnected",
+        test_disconnect_fails_closed_and_preserves_output);
     g_test_add_func("/native-session/close-running", test_close_running_session);
     g_test_add_func(
         "/native-session/closing-child-exit",
         test_child_exit_does_not_reopen_closing_session);
+    g_test_add_func(
+        "/native-session/disconnect-terminal-state",
+        test_disconnect_does_not_override_terminal_states);
     g_test_add_func("/native-session/running-one-way", test_running_transition_is_one_way);
     return g_test_run();
 }
