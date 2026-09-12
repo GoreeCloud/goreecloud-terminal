@@ -1,0 +1,135 @@
+schema_version: '0.2'
+component:
+  type: application
+  id: goreecloud-terminal
+  product_name: GoreeCloud Terminal
+  repository: GoreeCloud/goreecloud-terminal
+lifecycle: development
+version: 0.1.0-dev
+supported_platforms:
+- linux
+api:
+  versions: []
+  endpoints: []
+platform_systems:
+  manager:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    notes: Native Terminal Manager inventory, lifecycle, health, version, dependency, configuration, and operational-evidence integration has not yet been implemented or accepted.
+  privacy_shield:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    - FEATURE-ROADMAP.md
+    notes: Native Terminal uses privacy-minimizing local behavior, but an accepted current Privacy Shield runtime adapter and application acceptance are not present on this source line.
+  wardveil_security:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    - FEATURE-ROADMAP.md
+    notes: Transitional-product Wardveil evidence does not establish native Terminal conformance. Current native Wardveil runtime integration and acceptance remain open.
+  everkeep:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    - FEATURE-ROADMAP.md
+    notes: Native Terminal state has no accepted Everkeep backup, restore, preservation, portability, continuity, or recovery-evidence integration yet.
+  glaze_ui:
+    result: applicable-migration-required
+    version: 1.3.0
+    evidence:
+    - native/GLAZE_UI_13.md
+    - native/data/glaze-ui-manifest.json
+    - docs/PLATFORM_CONFORMANCE.md
+    notes: Native Terminal source is pinned to verified Glaze UI 1.3.0, while Platform Contract v0.2 currently requires compatibility.glaze_ui_required 1.1.0. Central contract-baseline reconciliation and complete rendered application acceptance remain open.
+  mesh:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    - FEATURE-ROADMAP.md
+    notes: Terminal has not yet implemented or accepted its applicable GoreeCloud Mesh declaration, capability, dependency, event, or coordination integration. Mesh discovery would not grant Terminal authority.
+    capabilities: []
+    dependencies: []
+    published_events: []
+    consumed_events: []
+  identity:
+    result: applicable-blocked
+    version: null
+    evidence:
+    - docs/PLATFORM_CONFORMANCE.md
+    - FEATURE-ROADMAP.md
+    notes: GoreeCloud Identity applicability for application, device, service, and session boundaries remains unresolved. Terminal must not replace Linux shell, sudo, or OpenSSH authority with a parallel identity model.
+health:
+  health_endpoint: null
+  readiness_endpoint: null
+continuity:
+  backup:
+    required: true
+    requirements:
+    - Protect eligible native Terminal preferences, profiles, workspaces, and future durable state through an accepted Everkeep policy before production approval.
+  restore:
+    required: true
+    requirements:
+    - Validate restoration of eligible native Terminal state and application behavior before Stable qualification.
+  export:
+    required: true
+    requirements:
+    - Provide a documented privacy-conscious export or migration path for eligible user-owned Terminal configuration that must survive native replacement.
+  portability:
+    required: true
+    requirements:
+    - Preserve standards-compatible shell, profile, SSH, and configuration behavior so native Terminal state does not create unnecessary GoreeCloud lock-in.
+external_dependencies:
+- name: GLib and GIO
+  purpose: Core event loop, application, filesystem, settings-support, and operating-system integration primitives.
+  required: true
+  version_constraint: '>=2.76'
+- name: GTK 4
+  purpose: Native Linux application UI, accessibility primitives, input, focus, menus, windows, and Glaze UI platform mapping.
+  required: true
+  version_constraint: '>=4.14'
+- name: VTE GTK4
+  purpose: Mature terminal emulation, PTY attachment, ANSI interpretation, selection, rendering, and terminal input/output semantics.
+  required: true
+  version_constraint: '>=0.76'
+compatibility:
+  platform_contract: '0.2'
+  glaze_ui_required: 1.1.0
+  requires:
+  - goreecloud-platform-contract==0.2
+  - glaze-ui==1.3.0
+  - glib-2.0>=2.76
+  - gtk4>=4.14
+  - vte-2.91-gtk4>=0.76
+  provides: []
+evidence:
+  acceptance_tests: []
+  release: []
+conformance:
+  status: nonconformant
+  validated_at: null
+  evidence:
+  - docs/PLATFORM_CONFORMANCE.md
+  - FEATURE-ROADMAP.md
+  - native/GLAZE_UI_13.md
+  - native/data/glaze-ui-manifest.json
+  blockers:
+  - Native GoreeCloud Terminal remains in the Development lifecycle and is not production or Stable accepted.
+  - Platform Contract v0.2 still pins Glaze UI 1.1.0 while the verified current native Terminal source authority is Glaze UI 1.3.0; central contract-baseline reconciliation is required.
+  - GoreeCloud Manager native operational integration remains unimplemented.
+  - Privacy Shield accepted runtime integration and application-specific acceptance remain missing.
+  - Wardveil Security current native runtime integration and acceptance remain missing.
+  - Everkeep backup, restore, recovery, preservation, and portability integration and acceptance remain missing.
+  - GoreeCloud Mesh native coordination integration remains unimplemented.
+  - GoreeCloud Identity applicability and accepted integration remain unresolved.
+  - The production-readiness requirement for supported built-in API access is not yet implemented for native Terminal.
+  - Physical supported-workstation rendered, accessibility, PTY, shell, keyboard, clipboard, Unicode, and session-lifecycle acceptance remains incomplete.
+  - Native packaging, exact artifact versioning, coexistence or replacement, settings and profile migration, rollback, independent artifact verification, and governed release promotion remain incomplete.
+  - Production host-session installation, enablement, PTY and job-control acceptance remain incomplete.
+  - Real Privacy Shield-authorized OpenSSH host-key, authentication, failure, disconnect, and reconnect acceptance remains incomplete.
