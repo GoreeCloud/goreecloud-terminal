@@ -6,10 +6,13 @@
  * Mature GTK/VTE platform libraries remain external supporting components.
  */
 
+#include <glib-unix.h>
 #include <gtk/gtk.h>
+#include <unistd.h>
 #include <vte/vte.h>
 
 #include "glaze-contract.h"
+#include "host-session-client.h"
 #include "session-lifecycle.h"
 #include "theme-engine.h"
 
@@ -19,14 +22,23 @@
 
 typedef struct _TerminalWindow TerminalWindow;
 
+typedef enum {
+    TERMINAL_SESSION_LOCAL_HOST,
+    TERMINAL_SESSION_HOST_BRIDGE,
+    TERMINAL_SESSION_HOST_UNAVAILABLE,
+} TerminalSessionOrigin;
+
 typedef struct {
     GoreeTerminalSessionLifecycle lifecycle;
+    GoreeTerminalHostSession host_session;
     GtkWidget *terminal;
     GtkWidget *tab_root;
     GtkWidget *tab_text;
     GtkWidget *tab_menu;
     GtkWidget *context_menu;
     TerminalWindow *owner;
+    TerminalSessionOrigin origin;
+    guint host_watch_id;
     char *custom_title;
 } TerminalSessionView;
 
@@ -47,6 +59,7 @@ static void add_session(TerminalWindow *terminal_window);
 static void apply_theme(TerminalWindow *terminal_window);
 static void close_terminal_widget(GtkWidget *terminal);
 static void update_open_tabs_menu(TerminalWindow *terminal_window);
+static void update_session_presentation(GtkWidget *terminal, TerminalSessionView *session);
 static TerminalWindow *create_terminal_window(GtkApplication *application);
 
 static void
@@ -188,6 +201,12 @@ theme_changed(GObject *settings, GParamSpec *pspec, gpointer user_data)
     apply_theme(user_data);
 }
 
+static gboolean
+running_in_flatpak(void)
+{
+    return g_file_test("/.flatpak-info", G_FILE_TEST_EXISTS);
+}
+
 static void
 spawn_default_shell(VteTerminal *terminal)
 {
@@ -227,8 +246,27 @@ session_view_free(gpointer data)
     if (session == NULL)
         return;
 
+    if (session->host_watch_id != 0) {
+        g_source_remove(session->host_watch_id);
+        session->host_watch_id = 0;
+    }
+    goree_terminal_host_session_close(&session->host_session);
     g_free(session->custom_title);
     g_free(session);
+}
+
+static const char *
+session_origin_description(const TerminalSessionView *session)
+{
+    switch (session->origin) {
+    case TERMINAL_SESSION_HOST_BRIDGE:
+        return "verified local host session";
+    case TERMINAL_SESSION_HOST_UNAVAILABLE:
+        return "host session unavailable";
+    case TERMINAL_SESSION_LOCAL_HOST:
+    default:
+        return "local host terminal session";
+    }
 }
 
 static void
@@ -236,20 +274,48 @@ update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
 {
     const gboolean has_custom_title = session->custom_title != NULL &&
                                       *session->custom_title != '\0';
+    const char *origin_description = session_origin_description(session);
     char *tab_title = NULL;
     char *accessible_label = NULL;
 
-    if (session->lifecycle.state == GOREE_TERMINAL_SESSION_EXITED) {
+    gtk_widget_remove_css_class(session->tab_root, "glaze-session-local");
+    gtk_widget_remove_css_class(session->tab_root, "glaze-session-host");
+    gtk_widget_remove_css_class(session->tab_root, "glaze-session-disconnected");
+    gtk_widget_remove_css_class(session->tab_root, "glaze-session-exited");
+
+    if (session->origin == TERMINAL_SESSION_HOST_BRIDGE)
+        gtk_widget_add_css_class(session->tab_root, "glaze-session-host");
+    else if (session->origin == TERMINAL_SESSION_LOCAL_HOST)
+        gtk_widget_add_css_class(session->tab_root, "glaze-session-local");
+
+    if (session->lifecycle.state == GOREE_TERMINAL_SESSION_DISCONNECTED) {
+        tab_title = has_custom_title
+            ? g_strdup_printf("%s — Disconnected", session->custom_title)
+            : g_strdup_printf("Session %u — Disconnected", session->lifecycle.id);
+        accessible_label = has_custom_title
+            ? g_strdup_printf(
+                "%s, %s %u, disconnected; input disabled and output preserved",
+                session->custom_title,
+                origin_description,
+                session->lifecycle.id)
+            : g_strdup_printf(
+                "%s %u, disconnected; input disabled and output preserved",
+                origin_description,
+                session->lifecycle.id);
+        gtk_widget_add_css_class(session->tab_root, "glaze-session-disconnected");
+    } else if (session->lifecycle.state == GOREE_TERMINAL_SESSION_EXITED) {
         tab_title = has_custom_title
             ? g_strdup_printf("%s — Exited", session->custom_title)
             : g_strdup_printf("Session %u — Exited", session->lifecycle.id);
         accessible_label = has_custom_title
             ? g_strdup_printf(
-                "%s, local terminal session %u, exited; output preserved",
+                "%s, %s %u, exited; output preserved",
                 session->custom_title,
+                origin_description,
                 session->lifecycle.id)
             : g_strdup_printf(
-                "Local terminal session %u, exited; output preserved",
+                "%s %u, exited; output preserved",
+                origin_description,
                 session->lifecycle.id);
         gtk_widget_add_css_class(session->tab_root, "glaze-session-exited");
     } else {
@@ -258,16 +324,18 @@ update_session_presentation(GtkWidget *terminal, TerminalSessionView *session)
             : g_strdup_printf("Session %u", session->lifecycle.id);
         accessible_label = has_custom_title
             ? g_strdup_printf(
-                "%s, local terminal session %u",
+                "%s, %s %u",
                 session->custom_title,
+                origin_description,
                 session->lifecycle.id)
             : g_strdup_printf(
-                "Local terminal session %u",
+                "%s %u",
+                origin_description,
                 session->lifecycle.id);
-        gtk_widget_remove_css_class(session->tab_root, "glaze-session-exited");
     }
 
     gtk_editable_set_text(GTK_EDITABLE(session->tab_text), tab_title);
+    gtk_widget_set_tooltip_text(session->tab_root, accessible_label);
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(terminal),
         GTK_ACCESSIBLE_PROPERTY_LABEL,
@@ -308,8 +376,113 @@ session_child_exited(VteTerminal *terminal, int status, gpointer user_data)
 {
     TerminalSessionView *session = user_data;
 
+    if (session->origin != TERMINAL_SESSION_LOCAL_HOST)
+        return;
+
     goree_terminal_session_mark_child_exited(&session->lifecycle, status);
+    vte_terminal_set_input_enabled(terminal, FALSE);
     update_session_presentation(GTK_WIDGET(terminal), session);
+}
+
+static gboolean
+host_control_ready(gint fd, GIOCondition condition, gpointer user_data)
+{
+    TerminalSessionView *session = user_data;
+    GoreeTerminalHostEvent event;
+    GError *error = NULL;
+    int value = 0;
+
+    (void) fd;
+
+    if ((condition & G_IO_NVAL) != 0) {
+        event = GOREE_TERMINAL_HOST_EVENT_DISCONNECTED;
+    } else {
+        event = goree_terminal_host_session_poll_event(
+            &session->host_session,
+            &value,
+            &error);
+        if (event == GOREE_TERMINAL_HOST_EVENT_NONE &&
+            (condition & (G_IO_HUP | G_IO_ERR)) != 0)
+            event = GOREE_TERMINAL_HOST_EVENT_DISCONNECTED;
+    }
+
+    if (event == GOREE_TERMINAL_HOST_EVENT_NONE) {
+        g_clear_error(&error);
+        return G_SOURCE_CONTINUE;
+    }
+
+    session->host_watch_id = 0;
+    goree_terminal_host_session_close(&session->host_session);
+
+    if (event == GOREE_TERMINAL_HOST_EVENT_EXITED) {
+        goree_terminal_session_mark_child_exited(&session->lifecycle, value);
+    } else {
+        goree_terminal_session_mark_disconnected(&session->lifecycle);
+        session->origin = TERMINAL_SESSION_HOST_UNAVAILABLE;
+    }
+
+    vte_terminal_set_input_enabled(VTE_TERMINAL(session->terminal), FALSE);
+    update_session_presentation(session->terminal, session);
+    g_clear_error(&error);
+    return G_SOURCE_REMOVE;
+}
+
+static gboolean
+start_host_bridge_session(TerminalSessionView *session)
+{
+    GError *error = NULL;
+    int pty_fd;
+    VtePty *pty;
+
+    if (!goree_terminal_host_session_connect(
+            &session->host_session,
+            24,
+            80,
+            &error)) {
+        g_clear_error(&error);
+        return FALSE;
+    }
+
+    pty_fd = goree_terminal_host_session_steal_pty_fd(&session->host_session);
+    pty = vte_pty_new_foreign_sync(pty_fd, NULL, &error);
+    if (pty == NULL) {
+        close(pty_fd);
+        goree_terminal_host_session_close(&session->host_session);
+        g_clear_error(&error);
+        return FALSE;
+    }
+
+    vte_terminal_set_pty(VTE_TERMINAL(session->terminal), pty);
+    g_object_unref(pty);
+
+    if (!goree_terminal_session_mark_running(&session->lifecycle)) {
+        goree_terminal_host_session_close(&session->host_session);
+        return FALSE;
+    }
+
+    session->origin = TERMINAL_SESSION_HOST_BRIDGE;
+    vte_terminal_set_input_enabled(VTE_TERMINAL(session->terminal), TRUE);
+    session->host_watch_id = g_unix_fd_add(
+        goree_terminal_host_session_control_fd(&session->host_session),
+        G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+        host_control_ready,
+        session);
+    return session->host_watch_id != 0;
+}
+
+static void
+mark_host_session_unavailable(TerminalSessionView *session)
+{
+    static const char message[] =
+        "\r\nGoreeCloud Terminal host session is unavailable.\r\n"
+        "The sandboxed application will not silently substitute a sandbox shell.\r\n"
+        "Start or repair the GoreeCloud Terminal host-session service, then open a new session.\r\n";
+
+    session->origin = TERMINAL_SESSION_HOST_UNAVAILABLE;
+    goree_terminal_session_mark_disconnected(&session->lifecycle);
+    vte_terminal_set_input_enabled(VTE_TERMINAL(session->terminal), FALSE);
+    vte_terminal_feed(VTE_TERMINAL(session->terminal), message, -1);
+    update_session_presentation(session->terminal, session);
 }
 
 static void
@@ -550,10 +723,8 @@ create_tab_label(GtkWidget *terminal, TerminalSessionView *session)
     session->tab_root = box;
     session->tab_text = label;
     gtk_widget_add_css_class(box, "glaze-tab-label");
-    gtk_widget_add_css_class(box, "glaze-session-local");
     gtk_widget_add_css_class(close, "glaze-tab-close");
     gtk_button_set_has_frame(GTK_BUTTON(close), FALSE);
-    gtk_widget_set_tooltip_text(box, "Right-click for tab actions; double-click the name to rename");
     gtk_widget_set_tooltip_text(close, "Close terminal session");
     gtk_accessible_update_property(
         GTK_ACCESSIBLE(close),
@@ -605,8 +776,12 @@ add_session(TerminalWindow *terminal_window)
     TerminalSessionView *session = g_new0(TerminalSessionView, 1);
 
     goree_terminal_session_lifecycle_init(&session->lifecycle, session_id);
+    goree_terminal_host_session_init(&session->host_session);
     session->terminal = terminal;
     session->owner = terminal_window;
+    session->origin = running_in_flatpak()
+        ? TERMINAL_SESSION_HOST_BRIDGE
+        : TERMINAL_SESSION_LOCAL_HOST;
     g_object_set_data_full(
         G_OBJECT(terminal),
         SESSION_STATE_KEY,
@@ -641,8 +816,15 @@ add_session(TerminalWindow *terminal_window)
         G_CALLBACK(session_child_exited),
         session);
 
-    if (goree_terminal_session_mark_running(&session->lifecycle))
+    if (running_in_flatpak()) {
+        if (!start_host_bridge_session(session))
+            mark_host_session_unavailable(session);
+        else
+            update_session_presentation(terminal, session);
+    } else if (goree_terminal_session_mark_running(&session->lifecycle)) {
         spawn_default_shell(VTE_TERMINAL(terminal));
+        update_session_presentation(terminal, session);
+    }
 
     update_open_tabs_menu(terminal_window);
 }

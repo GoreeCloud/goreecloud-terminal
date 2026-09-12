@@ -17,6 +17,7 @@ if cc.has_argument('-Wno-error=overlength-strings')
 endif
 
 glib = dependency('glib-2.0', version: '>=2.76', include_type: 'system')
+gio = dependency('gio-2.0', version: '>=2.76', include_type: 'system')
 gtk = dependency('gtk4', version: '>=4.14', include_type: 'system')
 vte = dependency('vte-2.91-gtk4', version: '>=0.76', include_type: 'system')
 gnome = import('gnome')
@@ -33,11 +34,13 @@ executable(
   [
     'src/main.c',
     'src/session-lifecycle.c',
+    'src/host-session-client.c',
     'src/glaze-contract.c',
     'src/theme-engine.c',
     native_resources,
   ],
-  dependencies: [glib, gtk, vte],
+  include_directories: include_directories('include'),
+  dependencies: [glib, gio, gtk, vte],
   c_args: native_executable_c_args,
   install: false,
 )

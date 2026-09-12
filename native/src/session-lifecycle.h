@@ -5,6 +5,7 @@
 typedef enum {
     GOREE_TERMINAL_SESSION_STARTING,
     GOREE_TERMINAL_SESSION_RUNNING,
+    GOREE_TERMINAL_SESSION_DISCONNECTED,
     GOREE_TERMINAL_SESSION_EXITED,
     GOREE_TERMINAL_SESSION_CLOSING,
 } GoreeTerminalSessionState;
@@ -21,6 +22,9 @@ void goree_terminal_session_lifecycle_init(
     guint session_id);
 
 gboolean goree_terminal_session_mark_running(
+    GoreeTerminalSessionLifecycle *lifecycle);
+
+void goree_terminal_session_mark_disconnected(
     GoreeTerminalSessionLifecycle *lifecycle);
 
 void goree_terminal_session_mark_child_exited(
