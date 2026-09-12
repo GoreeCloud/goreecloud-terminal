@@ -25,6 +25,7 @@ gnome = import('gnome')
 
 product_identity = get_option('product_identity')
 product_name = 'GoreeCloud Terminal'
+product_version = meson.project_version()
 resource_prefix = '/com/goreecloud/Terminal'
 
 if product_identity == 'production'
@@ -39,6 +40,7 @@ endif
 
 identity_config = configuration_data()
 identity_config.set('PRODUCT_NAME', product_name)
+identity_config.set('PRODUCT_VERSION', product_version)
 identity_config.set('APPLICATION_ID', application_id)
 identity_config.set('ICON_NAME', application_id)
 identity_config.set('DEVELOPMENT_BUILD', development_build)
@@ -85,6 +87,7 @@ identity_main = custom_target(
     '@OUTPUT@',
     application_id,
     resource_prefix,
+    product_version,
   ],
   build_by_default: true,
 )
@@ -237,6 +240,7 @@ test('native-product-identity', product_identity_test)
 summary(
   {
     'Product name': product_name,
+    'Product version': product_version,
     'Product identity': product_identity,
     'Application ID': application_id,
     'Canonical launcher': 'goreecloud-terminal',
