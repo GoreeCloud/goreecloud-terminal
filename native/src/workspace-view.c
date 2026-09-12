@@ -2,6 +2,7 @@
 
 #define WORKSPACE_VIEW_STATE_KEY "goreecloud-workspace-view-state"
 #define WORKSPACE_PANE_MIN_PIXELS 80
+#define WORKSPACE_PANE_RESIZE_STEP_PIXELS 32
 
 typedef struct _WorkspaceViewState WorkspaceViewState;
 
@@ -190,6 +191,62 @@ build_tab_layout(
     return layout;
 }
 
+static gboolean
+workspace_key_pressed(
+    GtkEventControllerKey *controller,
+    guint keyval,
+    guint keycode,
+    GdkModifierType modifiers,
+    gpointer user_data)
+{
+    GtkWidget *workspace_view = user_data;
+    const GdkModifierType relevant_mask =
+        GDK_SHIFT_MASK |
+        GDK_CONTROL_MASK |
+        GDK_ALT_MASK |
+        GDK_SUPER_MASK |
+        GDK_META_MASK |
+        GDK_HYPER_MASK;
+    GdkModifierType relevant = modifiers & relevant_mask;
+
+    (void) controller;
+    (void) keycode;
+
+    if (keyval == GDK_KEY_F6 && relevant == 0) {
+        goree_terminal_workspace_view_focus_next(workspace_view);
+        return TRUE;
+    }
+    if (keyval == GDK_KEY_F6 && relevant == GDK_SHIFT_MASK) {
+        goree_terminal_workspace_view_focus_previous(workspace_view);
+        return TRUE;
+    }
+
+    GdkModifierType required_resize = GDK_CONTROL_MASK | GDK_ALT_MASK;
+    if ((relevant & required_resize) != required_resize ||
+        (relevant & ~(required_resize | GDK_SHIFT_MASK)) != 0)
+        return FALSE;
+
+    if (keyval == GDK_KEY_plus ||
+        keyval == GDK_KEY_equal ||
+        keyval == GDK_KEY_KP_Add) {
+        goree_terminal_workspace_view_resize_active(
+            workspace_view,
+            WORKSPACE_PANE_RESIZE_STEP_PIXELS);
+        return TRUE;
+    }
+
+    if (keyval == GDK_KEY_minus ||
+        keyval == GDK_KEY_underscore ||
+        keyval == GDK_KEY_KP_Subtract) {
+        goree_terminal_workspace_view_resize_active(
+            workspace_view,
+            -WORKSPACE_PANE_RESIZE_STEP_PIXELS);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 GtkWidget *
 goree_terminal_workspace_view_new(
     const GoreeTerminalWorkspaceRuntime *runtime,
@@ -265,6 +322,22 @@ goree_terminal_workspace_view_new(
         WORKSPACE_VIEW_STATE_KEY,
         state,
         workspace_view_state_free);
+
+    GtkEventController *keys = gtk_event_controller_key_new();
+    gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
+    g_signal_connect(
+        keys,
+        "key-pressed",
+        G_CALLBACK(workspace_key_pressed),
+        state->notebook);
+    gtk_widget_add_controller(state->notebook, keys);
+
+    gtk_accessible_update_property(
+        GTK_ACCESSIBLE(state->notebook),
+        GTK_ACCESSIBLE_PROPERTY_DESCRIPTION,
+        "Workspace panes: F6 moves to the next pane, Shift+F6 moves to the previous pane, and Control+Alt+Plus or Control+Alt+Minus resizes the active split pane.",
+        -1);
+
     return state->notebook;
 }
 
