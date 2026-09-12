@@ -225,7 +225,7 @@ def run_profile_launch_case(socket_path: Path, profile_dir: Path) -> None:
                 "printf '__PROFILE_PWD__%s\\n' \"$PWD\"; "
                 "printf '__PROFILE_ALLOWED__%s\\n' \"$GOREE_TERMINAL_TEST_ALLOWED\"; "
                 "printf '__PROFILE_UNLISTED__%s\\n' \"${GOREE_TERMINAL_TEST_UNLISTED-unset}\"; "
-                "printf '__PROFILE_DONE__\\n'; exit\n"
+                "printf '__PROFILE_%s__\\n' 'DONE'; exit\n"
             ).encode("utf-8")
             os.write(pty_fd, command)
             output = read_pty_until(pty_fd, PROFILE_DONE)
