@@ -43,6 +43,7 @@ executable(
     'src/workspace-store.c',
     'src/profile-runtime.c',
     'src/workspace-runtime.c',
+    'src/workspace-view.c',
     native_resources,
   ],
   include_directories: include_directories('include'),
