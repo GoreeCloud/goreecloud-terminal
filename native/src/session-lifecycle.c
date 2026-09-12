@@ -27,6 +27,17 @@ goree_terminal_session_mark_running(GoreeTerminalSessionLifecycle *lifecycle)
 }
 
 void
+goree_terminal_session_mark_disconnected(
+    GoreeTerminalSessionLifecycle *lifecycle)
+{
+    g_return_if_fail(lifecycle != NULL);
+
+    if (lifecycle->state != GOREE_TERMINAL_SESSION_CLOSING &&
+        lifecycle->state != GOREE_TERMINAL_SESSION_EXITED)
+        lifecycle->state = GOREE_TERMINAL_SESSION_DISCONNECTED;
+}
+
+void
 goree_terminal_session_mark_child_exited(
     GoreeTerminalSessionLifecycle *lifecycle,
     int exit_status)
@@ -60,5 +71,6 @@ goree_terminal_session_preserves_output(
     const GoreeTerminalSessionLifecycle *lifecycle)
 {
     g_return_val_if_fail(lifecycle != NULL, FALSE);
-    return lifecycle->state == GOREE_TERMINAL_SESSION_EXITED;
+    return lifecycle->state == GOREE_TERMINAL_SESSION_EXITED ||
+           lifecycle->state == GOREE_TERMINAL_SESSION_DISCONNECTED;
 }
