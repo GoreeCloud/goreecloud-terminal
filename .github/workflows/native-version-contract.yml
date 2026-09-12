@@ -5,6 +5,7 @@ on:
     paths:
       - 'native/meson.build'
       - 'native/data/goreecloud-terminal.metainfo.xml.in'
+      - 'native/package-contract.json'
       - 'native/src/product-identity.h.in'
       - 'native/src/test-product-identity.c'
       - 'native/tools/render-product-main.py'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'native/meson.build'
       - 'native/data/goreecloud-terminal.metainfo.xml.in'
+      - 'native/package-contract.json'
       - 'native/src/product-identity.h.in'
       - 'native/src/test-product-identity.c'
       - 'native/tools/render-product-main.py'
@@ -62,10 +64,24 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           python3 -m py_compile native/tools/render-product-main.py
+          python3 -m json.tool native/package-contract.json >/dev/null
           grep -Fq "product_version = meson.project_version()" native/meson.build
           grep -Fq "identity_config.set('PRODUCT_VERSION', product_version)" native/meson.build
           grep -Fq '#define GOREECLOUD_TERMINAL_VERSION "@PRODUCT_VERSION@"' native/src/product-identity.h.in
           grep -Fq '<release version="@PRODUCT_VERSION@"' native/data/goreecloud-terminal.metainfo.xml.in
+          python3 - <<'PY'
+          import json
+          import pathlib
+
+          contract = json.loads(pathlib.Path('native/package-contract.json').read_text())
+          artifact = contract['artifact_identity']
+          assert artifact == {
+              'package_name': 'goreecloud-terminal',
+              'install_prefix': '/usr',
+              'version_authority': 'native/meson.build:project.version',
+          }, artifact
+          print('package-version-authority=native/meson.build:project.version')
+          PY
 
       - name: Build and compare Development version surfaces
         shell: bash
