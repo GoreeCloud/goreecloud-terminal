@@ -1,0 +1,316 @@
+name: Zorin 17.3 Host Companion DEB
+
+on:
+  pull_request:
+    paths:
+      - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/host-agent/**'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/session-profile.c'
+      - 'native/src/session-profile.h'
+      - 'native/src/terminal-preferences.c'
+      - 'native/src/terminal-preferences.h'
+      - 'native/src/workspace-store.c'
+      - 'native/src/workspace-store.h'
+      - 'native/tools/build-jammy-host-companion-deb.py'
+      - '.github/workflows/zorin17-host-companion-deb.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/host-agent/**'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/session-profile.c'
+      - 'native/src/session-profile.h'
+      - 'native/src/terminal-preferences.c'
+      - 'native/src/terminal-preferences.h'
+      - 'native/src/workspace-store.c'
+      - 'native/src/workspace-store.h'
+      - 'native/tools/build-jammy-host-companion-deb.py'
+      - '.github/workflows/zorin17-host-companion-deb.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zorin17-host-companion-deb-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deb:
+    name: Build and exercise inert Jammy host companion DEB
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: ubuntu:22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install package build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            git \
+            libglib2.0-dev \
+            meson \
+            ninja-build \
+            pkg-config \
+            python3 \
+            xz-utils
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Build deterministic companion packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -m py_compile native/tools/build-jammy-host-companion-deb.py
+
+          stage="$PWD/_jammy-deb-stage"
+          maintenance_build="$PWD/_jammy-deb-maintenance-build"
+          agent_build="$PWD/_jammy-deb-agent-build"
+          out_a="$PWD/_jammy-deb-out-a"
+          out_b="$PWD/_jammy-deb-out-b"
+          out_upgrade="$PWD/_jammy-deb-out-upgrade"
+
+          meson setup "$agent_build" native/host-agent \
+            --buildtype=release \
+            --prefix=/usr
+          meson compile -C "$agent_build"
+          python3 native/host-agent/test-host-agent.py \
+            "$agent_build/goreecloud-terminal-host-agent"
+          DESTDIR="$stage" meson install -C "$agent_build"
+          python3 native/host-agent/test-service-contract.py \
+            "$stage/usr/lib/systemd/user/goreecloud-terminal-host-agent.service" \
+            --expect-exec /usr/libexec/goreecloud-terminal-host-agent
+
+          meson setup "$maintenance_build" native \
+            --buildtype=release \
+            --prefix=/usr \
+            -Dbuild_application=false \
+            -Dinstall_migration_tool=true
+          meson compile -C "$maintenance_build"
+          meson test -C "$maintenance_build" --print-errorlogs
+          DESTDIR="$stage" meson install -C "$maintenance_build"
+
+          source_version="$(meson introspect "$maintenance_build" --projectinfo | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
+          source_epoch="$(git show -s --format=%ct "$SOURCE_SHA")"
+          architecture="$(dpkg-architecture -qDEB_HOST_ARCH)"
+          test "$architecture" = amd64
+
+          python3 native/tools/build-jammy-host-companion-deb.py \
+            --stage "$stage" \
+            --output-dir "$out_a" \
+            --source-version "$source_version" \
+            --source-sha "$SOURCE_SHA" \
+            --debian-revision 1 \
+            --architecture "$architecture" \
+            --source-date-epoch "$source_epoch"
+          python3 native/tools/build-jammy-host-companion-deb.py \
+            --stage "$stage" \
+            --output-dir "$out_b" \
+            --source-version "$source_version" \
+            --source-sha "$SOURCE_SHA" \
+            --debian-revision 1 \
+            --architecture "$architecture" \
+            --source-date-epoch "$source_epoch"
+          python3 native/tools/build-jammy-host-companion-deb.py \
+            --stage "$stage" \
+            --output-dir "$out_upgrade" \
+            --source-version "$source_version" \
+            --source-sha "$SOURCE_SHA" \
+            --debian-revision '2~ciupgrade' \
+            --architecture "$architecture" \
+            --source-date-epoch "$source_epoch"
+
+          candidate="$(find "$out_a" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          duplicate="$(find "$out_b" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          upgrade="$(find "$out_upgrade" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$candidate"
+          test -n "$duplicate"
+          test -n "$upgrade"
+
+          candidate_sha="$(sha256sum "$candidate" | awk '{print $1}')"
+          duplicate_sha="$(sha256sum "$duplicate" | awk '{print $1}')"
+          test "$candidate_sha" = "$duplicate_sha"
+
+          package_name="$(dpkg-deb --field "$candidate" Package)"
+          deb_version="$(dpkg-deb --field "$candidate" Version)"
+          deb_arch="$(dpkg-deb --field "$candidate" Architecture)"
+          depends="$(dpkg-deb --field "$candidate" Depends)"
+          test "$package_name" = goreecloud-terminal-host-companion
+          test "$deb_version" = '0.1.0~dev-1'
+          test "$deb_arch" = amd64
+          test "$depends" = 'libc6 (>= 2.35), libglib2.0-0 (>= 2.72), libglib2.0-bin (>= 2.72), systemd (>= 249)'
+          dpkg --compare-versions "$deb_version" lt '0.1.0-1'
+          upgrade_version="$(dpkg-deb --field "$upgrade" Version)"
+          dpkg --compare-versions "$upgrade_version" gt "$deb_version"
+
+          control_dir="$PWD/_jammy-deb-control"
+          mkdir -p "$control_dir"
+          dpkg-deb --control "$candidate" "$control_dir"
+          test "$(find "$control_dir" -type f -printf '%f\n' | LC_ALL=C sort)" = control
+          test ! -e "$control_dir/postinst"
+          test ! -e "$control_dir/prerm"
+          test ! -e "$control_dir/postrm"
+          test ! -e "$control_dir/preinst"
+
+          actual_payload="$PWD/_jammy-deb-payload.txt"
+          expected_payload="$PWD/_jammy-deb-expected.txt"
+          dpkg-deb --fsys-tarfile "$candidate" | tar -tf - | \
+            sed '/\/$/d; s#^\./#/#' | LC_ALL=C sort > "$actual_payload"
+          cat > "$expected_payload" <<'EOF'
+          /usr/bin/goreecloud-terminal-migrate
+          /usr/lib/systemd/user/goreecloud-terminal-host-agent.service
+          /usr/libexec/goreecloud-terminal-host-agent
+          /usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml
+          EOF
+          LC_ALL=C sort -o "$expected_payload" "$expected_payload"
+          diff -u "$expected_payload" "$actual_payload"
+
+          extract="$PWD/_jammy-deb-extract"
+          mkdir -p "$extract"
+          dpkg-deb --extract "$candidate" "$extract"
+          test "$(stat -c '%u:%g:%a' "$extract/usr/bin/goreecloud-terminal-migrate")" = '0:0:755'
+          test "$(stat -c '%u:%g:%a' "$extract/usr/libexec/goreecloud-terminal-host-agent")" = '0:0:755'
+          test "$(stat -c '%u:%g:%a' "$extract/usr/lib/systemd/user/goreecloud-terminal-host-agent.service")" = '0:0:644'
+          test "$(stat -c '%u:%g:%a' "$extract/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml")" = '0:0:644'
+
+          provenance="$(find "$out_a" -maxdepth 1 -type f -name '*.provenance.json' -print -quit)"
+          test -n "$provenance"
+          python3 - "$provenance" "$candidate_sha" "$SOURCE_SHA" <<'PY'
+          import json
+          import sys
+          path, expected_sha, source_sha = sys.argv[1:]
+          data = json.load(open(path, encoding='utf-8'))
+          assert data['package_name'] == 'goreecloud-terminal-host-companion'
+          assert data['source_sha'] == source_sha
+          assert data['debian_version'] == '0.1.0~dev-1'
+          assert data['architecture'] == 'amd64'
+          assert data['package_sha256'] == expected_sha
+          assert data['gui_included'] is False
+          assert data['automatic_host_agent_enablement'] is False
+          assert data['automatic_host_agent_start'] is False
+          assert data['automatic_migration'] is False
+          assert data['automatic_user_state_deletion'] is False
+          assert data['signed'] is False
+          assert data['production_approved'] is False
+          assert data['stable_approved'] is False
+          assert len(data['payload']) == 4
+          PY
+
+          printf 'CANDIDATE=%s\nUPGRADE=%s\nSOURCE_VERSION=%s\nDEB_VERSION=%s\nPACKAGE_SHA256=%s\n' \
+            "$candidate" "$upgrade" "$source_version" "$deb_version" "$candidate_sha" >> "$GITHUB_ENV"
+
+      - name: Exercise APT install upgrade rollback and removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$CANDIDATE"
+          test -f "$UPGRADE"
+
+          useradd --create-home --shell /bin/bash goree-test
+          install -d -m 0700 -o goree-test -g goree-test \
+            /home/goree-test/.config/goreecloud/terminal \
+            /home/goree-test/.local/state/goreecloud/terminal \
+            /home/goree-test/.config/dconf
+          printf 'native-state-must-survive\n' > /home/goree-test/.config/goreecloud/terminal/keep.txt
+          printf 'rollback-state-must-survive\n' > /home/goree-test/.local/state/goreecloud/terminal/keep.txt
+          printf 'synthetic-transitional-state-must-survive\n' > /home/goree-test/.config/dconf/user
+          chown -R goree-test:goree-test /home/goree-test/.config /home/goree-test/.local
+          before="$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          # Remove build-only packages so local APT installation must satisfy the
+          # runtime dependency contract from the candidate package itself.
+          apt-get purge -y build-essential libglib2.0-dev meson ninja-build pkg-config || true
+          apt-get autoremove -y
+
+          apt-get install -y "$CANDIDATE"
+          test "$(dpkg-query -W -f='${Status}' goreecloud-terminal-host-companion)" = 'install ok installed'
+          test "$(dpkg-query -W -f='${Version}' goreecloud-terminal-host-companion)" = '0.1.0~dev-1'
+          test -x /usr/bin/goreecloud-terminal-migrate
+          test -x /usr/libexec/goreecloud-terminal-host-agent
+          test -f /usr/lib/systemd/user/goreecloud-terminal-host-agent.service
+          test -f /usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml
+          /usr/bin/goreecloud-terminal-migrate --help >/dev/null
+          XDG_RUNTIME_DIR=/tmp/goree-package-test /usr/libexec/goreecloud-terminal-host-agent --print-socket | \
+            grep -Fx '/tmp/goree-package-test/goreecloud-terminal/host-agent.sock'
+          gsettings list-relocatable-schemas | grep -Fx 'com.goreecloud.Terminal.Migration.LegacyRoot'
+          gsettings list-relocatable-schemas | grep -Fx 'com.goreecloud.Terminal.Migration.LegacyProfile'
+          ! pidof goreecloud-terminal-host-agent
+          test ! -e /root/.config/systemd/user/default.target.wants/goreecloud-terminal-host-agent.service
+          test ! -e /home/goree-test/.config/systemd/user/default.target.wants/goreecloud-terminal-host-agent.service
+          test "$before" = "$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          apt-get install --reinstall -y "$CANDIDATE"
+          test "$(dpkg-query -W -f='${Version}' goreecloud-terminal-host-companion)" = '0.1.0~dev-1'
+          test "$before" = "$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          apt-get install -y "$UPGRADE"
+          test "$(dpkg-query -W -f='${Version}' goreecloud-terminal-host-companion)" = '0.1.0~dev-2~ciupgrade'
+          ! pidof goreecloud-terminal-host-agent
+          test "$before" = "$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          apt-get install --allow-downgrades -y "$CANDIDATE"
+          test "$(dpkg-query -W -f='${Version}' goreecloud-terminal-host-companion)" = '0.1.0~dev-1'
+          ! pidof goreecloud-terminal-host-agent
+          test "$before" = "$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          apt-get purge -y goreecloud-terminal-host-companion
+          test ! -e /usr/bin/goreecloud-terminal-migrate
+          test ! -e /usr/libexec/goreecloud-terminal-host-agent
+          test ! -e /usr/lib/systemd/user/goreecloud-terminal-host-agent.service
+          test ! -e /usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml
+          ! gsettings list-relocatable-schemas | grep -F 'com.goreecloud.Terminal.Migration.'
+          test "$before" = "$(sha256sum \
+            /home/goree-test/.config/goreecloud/terminal/keep.txt \
+            /home/goree-test/.local/state/goreecloud/terminal/keep.txt \
+            /home/goree-test/.config/dconf/user)"
+
+          printf 'Jammy DEB lifecycle: PASS source=%s package=%s sha256=%s\n' \
+            "$SOURCE_SHA" "$DEB_VERSION" "$PACKAGE_SHA256"
+
+      - name: Upload exact Development companion package evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: goreecloud-terminal-host-companion-${{ env.SOURCE_SHA }}
+          path: |
+            _jammy-deb-out-a/*.deb
+            _jammy-deb-out-a/*.provenance.json
+          if-no-files-found: error
+          retention-days: 30
