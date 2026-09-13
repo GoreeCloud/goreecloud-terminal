@@ -193,4 +193,4 @@ This staged layout is only one build/package-validation layer. Native production
 - Glaze UI and accessibility acceptance;
 - independent exact-artifact verification, SBOM/signature/provenance acceptance for the eventual approved package, and governed release promotion.
 
-Passing source, maintenance compatibility, or staged-install CI is not Stable or production evidence.
+Passing source or staged-install CI is not Stable or production evidence. Passing maintenance compatibility CI is likewise not Stable or production evidence.
