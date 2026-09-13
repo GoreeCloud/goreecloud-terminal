@@ -1,0 +1,185 @@
+name: Zorin 17.3 Host Companion Contract
+
+on:
+  pull_request:
+    paths:
+      - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/host-agent/**'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/session-profile.c'
+      - 'native/src/session-profile.h'
+      - 'native/src/terminal-preferences.c'
+      - 'native/src/terminal-preferences.h'
+      - 'native/src/test-legacy-migration.c'
+      - 'native/src/test-session-profile.c'
+      - 'native/src/test-terminal-preferences.c'
+      - 'native/src/test-workspace-store.c'
+      - 'native/src/workspace-store.c'
+      - 'native/src/workspace-store.h'
+      - '.github/workflows/zorin17-host-companion-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'native/meson.build'
+      - 'native/meson_options.txt'
+      - 'native/host-agent/**'
+      - 'native/data/com.goreecloud.Terminal.Migration.gschema.xml'
+      - 'native/src/legacy-migration.c'
+      - 'native/src/legacy-migration.h'
+      - 'native/src/migration-tool.c'
+      - 'native/src/session-profile.c'
+      - 'native/src/session-profile.h'
+      - 'native/src/terminal-preferences.c'
+      - 'native/src/terminal-preferences.h'
+      - 'native/src/test-legacy-migration.c'
+      - 'native/src/test-session-profile.c'
+      - 'native/src/test-terminal-preferences.c'
+      - 'native/src/test-workspace-store.c'
+      - 'native/src/workspace-store.c'
+      - 'native/src/workspace-store.h'
+      - '.github/workflows/zorin17-host-companion-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zorin17-host-companion-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jammy-compatibility:
+    name: Validate host companion on Ubuntu 22.04 Jammy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: ubuntu:22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Install Jammy build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            git \
+            libglib2.0-dev \
+            meson \
+            ninja-build \
+            pkg-config \
+            python3
+
+      - name: Check out exact source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source and Jammy dependency floor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+          glib_version="$(pkg-config --modversion glib-2.0)"
+          gio_version="$(pkg-config --modversion gio-2.0)"
+          printf 'SOURCE_SHA=%s\nGLIB_VERSION=%s\nGIO_VERSION=%s\n' \
+            "$SOURCE_SHA" "$glib_version" "$gio_version"
+
+          dpkg --compare-versions "$glib_version" ge 2.72
+          dpkg --compare-versions "$gio_version" ge 2.72
+          if dpkg --compare-versions "$glib_version" ge 2.76; then
+            echo "Jammy compatibility job unexpectedly has GLib >= 2.76; it no longer proves the intended older floor." >&2
+            exit 1
+          fi
+
+          grep -Fq "glib_maintenance = dependency('glib-2.0', version: '>=2.72'" native/meson.build
+          grep -Fq "gio_maintenance = dependency('gio-2.0', version: '>=2.72'" native/meson.build
+          grep -Fq "glib_application = dependency('glib-2.0', version: '>=2.76'" native/meson.build
+          grep -Fq "gtk = dependency('gtk4', version: '>=4.14'" native/meson.build
+          grep -Fq "vte = dependency('vte-2.91-gtk4', version: '>=0.76'" native/meson.build
+
+      - name: Build and exercise standalone host agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$PWD/_jammy-host-agent-build"
+          stage="$PWD/_jammy-companion-stage"
+
+          meson setup "$build" native/host-agent \
+            --buildtype=debugoptimized \
+            --prefix=/usr
+          meson compile -C "$build"
+          python3 native/host-agent/test-host-agent.py \
+            "$build/goreecloud-terminal-host-agent"
+
+          DESTDIR="$stage" meson install -C "$build"
+          test -x "$stage/usr/libexec/goreecloud-terminal-host-agent"
+          service="$stage/usr/lib/systemd/user/goreecloud-terminal-host-agent.service"
+          test -f "$service"
+          python3 native/host-agent/test-service-contract.py "$service" \
+            --expect-exec /usr/libexec/goreecloud-terminal-host-agent
+
+      - name: Build and test maintenance-only migration surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$PWD/_jammy-maintenance-build"
+          stage="$PWD/_jammy-companion-stage"
+
+          meson setup "$build" native \
+            --buildtype=debugoptimized \
+            --prefix=/usr \
+            -Dbuild_application=false \
+            -Dinstall_migration_tool=true
+          meson compile -C "$build"
+          meson test -C "$build" --print-errorlogs
+          DESTDIR="$stage" meson install -C "$build"
+
+          test -x "$stage/usr/bin/goreecloud-terminal-migrate"
+          test -f "$stage/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml"
+          test ! -e "$stage/usr/bin/goreecloud-terminal"
+          test ! -e "$stage/usr/share/applications/com.goreecloud.Terminal.desktop"
+          test ! -e "$stage/usr/share/applications/com.goreecloud.Terminal.Devel.desktop"
+          test ! -e "$stage/usr/share/metainfo/com.goreecloud.Terminal.metainfo.xml"
+          test ! -e "$stage/usr/share/metainfo/com.goreecloud.Terminal.Devel.metainfo.xml"
+
+          if ldd "$stage/usr/bin/goreecloud-terminal-migrate" | grep -Eiq 'libgtk|libvte'; then
+            echo 'Maintenance-only migration binary unexpectedly links to GTK or VTE.' >&2
+            exit 1
+          fi
+
+          "$stage/usr/bin/goreecloud-terminal-migrate" --help >/dev/null
+
+      - name: Verify prospective companion payload remains narrow
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$PWD/_jammy-companion-stage"
+          actual="$RUNNER_TEMP/jammy-companion-files.txt"
+          expected="$RUNNER_TEMP/jammy-companion-expected.txt"
+
+          find "$stage" -type f -printf '/%P\n' | LC_ALL=C sort > "$actual"
+          cat > "$expected" <<'EOF'
+          /usr/bin/goreecloud-terminal-migrate
+          /usr/lib/systemd/user/goreecloud-terminal-host-agent.service
+          /usr/libexec/goreecloud-terminal-host-agent
+          /usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml
+          EOF
+          LC_ALL=C sort -o "$expected" "$expected"
+          diff -u "$expected" "$actual"
+
+          test ! -e "$stage/usr/bin/goreecloud-terminal"
+          test ! -e "$stage/usr/share/applications"
+          test ! -e "$stage/usr/share/metainfo"
+
+          printf 'Zorin 17.3 / Jammy host companion compatibility: PASS\n'
