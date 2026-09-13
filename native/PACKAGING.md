@@ -20,7 +20,7 @@ The former native-only `.Native` / `.Native.Devel` application identities are no
 
 ## Staged application layout
 
-With `--prefix=/usr`, a host-native application build using the default `-Dinstall_migration_tool=true` installs:
+With `--prefix=/usr`, a host-native application build using the default `-Dbuild_application=true -Dinstall_migration_tool=true` installs:
 
 - `/usr/bin/goreecloud-terminal`
 - `/usr/bin/goreecloud-terminal-migrate`
@@ -33,7 +33,7 @@ Development and production layouts are staged and validated independently. The D
 
 The desktop entry, AppStream metadata, installed icon name, and runtime application ID all derive from the same selected product identity. A production staging root must not contain Development identity files, and a Development staging root must not contain production identity files.
 
-`install_migration_tool` controls only installation of the host migration command and its compatibility schema. The migration unit-test source remains part of ordinary native builds even when that install surface is disabled.
+`build_application=false` is a host-maintenance compatibility mode. It does not lower the GUI dependency contract and it must not install `goreecloud-terminal`, desktop metadata, AppStream metadata, or application icons. `install_migration_tool` controls installation of the host migration command and its compatibility schema. The migration unit-test source remains part of validation even when the GUI application is not built.
 
 ## Version authority
 
@@ -81,6 +81,34 @@ With `--prefix=/usr`, it installs:
 The systemd user service is intentionally lifecycle-only because it launches the user's interactive host shell. Service-level execution sandboxing, namespace/network-family restrictions, privilege-state restrictions, forced umasks, environment rewriting, and similar process policy would be inherited by descendant shells and would change normal host behavior. The security boundary therefore remains in the private runtime directory/socket, same-user `SO_PEERCRED` checks, bounded versioned protocol, approved-shell and launch-context validation, and the absence of arbitrary-command or network-listener authority. `native/host-agent/test-service-contract.py` locks this service contract in CI.
 
 Staged install validation may place the application and host-agent files into the same temporary DESTDIR to verify a coherent filesystem layout. That does not constitute host-agent enablement, workstation deployment, or physical PTY/job-control acceptance.
+
+## Zorin OS 17.3 / Jammy host companion boundary
+
+Issue #99 governs compatibility for the controlled Zorin OS 17.3 Pro workstation, whose distribution base is Ubuntu 22.04/Jammy.
+
+The full native GTK/VTE application is not currently a valid system-linked Zorin 17.3 package target. The application keeps these minimum requirements:
+
+- GLib/GIO 2.76 or newer;
+- GTK 4.14 or newer; and
+- VTE GTK4 0.76 or newer.
+
+Jammy's normal repositories are below that GUI floor. Packaging must not disguise that mismatch by weakening the application's required versions, overwriting distribution libraries, silently enabling external repositories, or installing a private GTK/VTE stack into normal system library locations.
+
+The host companion is intentionally narrower. The standalone host agent has no GTK, VTE, or GLib dependency. Native Meson now also supports `-Dbuild_application=false`, under which migration maintenance uses a separately declared GLib/GIO 2.72 floor while the GUI application requirements remain unchanged. In that mode the only migration install surfaces are:
+
+- `/usr/bin/goreecloud-terminal-migrate`; and
+- `/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml`.
+
+Combined with the standalone host-agent project, the prospective Zorin 17.3 host companion owns exactly four source-controlled files:
+
+- `/usr/bin/goreecloud-terminal-migrate`;
+- `/usr/libexec/goreecloud-terminal-host-agent`;
+- `/usr/lib/systemd/user/goreecloud-terminal-host-agent.service`; and
+- `/usr/share/glib-2.0/schemas/com.goreecloud.Terminal.Migration.gschema.xml`.
+
+The `Zorin 17.3 Host Companion Contract` must compile and exercise the host agent and its PTY/protocol tests on Ubuntu 22.04, compile/run the migration and rollback tests against Jammy GLib/GIO without GTK/VTE linkage, stage only the four files above, and prove the maintenance-only configuration does not install any GUI application, desktop, AppStream, or icon surface.
+
+This compatibility contract does not itself create or approve a `.deb`. A Development host-companion `.deb` may be defined only after the Jammy compatibility contract passes on an exact source revision. Package installation must remain inert with respect to user authority: no automatic host-agent enable/start, no automatic migration, no automatic partial migration, and no deletion of transitional or native user state.
 
 ## Flatpak Development boundary
 
@@ -146,11 +174,14 @@ The repository staging contract must, for both Development and production identi
 15. validate each combined staged host-native root against `native/package-contract.json`, rejecting missing or unexpected package-owned files and any premature package-format selection; and
 16. render and retain deterministic Development and production staged-payload provenance manifests bound to the exact source SHA and Meson-derived version.
 
+The Zorin/Jammy companion contract is additional compatibility evidence and does not replace these general native package boundaries.
+
 ## Remaining production blockers
 
 This staged layout is only one build/package-validation layer. Native production readiness still requires, at minimum:
 
-- completion of issue #97 with a governed native package/artifact format, supported distribution/package-manager scope, and exact artifact identity;
+- completion of issue #97 with a governed native package/artifact model and broader supported distribution/package-manager scope;
+- completion of issue #99 Jammy compatibility and a governed Development host-companion package before any Zorin 17.3 package-manager acceptance;
 - governed production/Stable version assignment, package-version policy, release tags, and release notes beyond the current `0.1.0-dev` Development authority;
 - supported-workstation installation and removal behavior;
 - package-manager and physical supported-workstation upgrade, coexistence/replacement, migration, rollback, interruption, and recovery validation against the transitional line;
@@ -162,4 +193,4 @@ This staged layout is only one build/package-validation layer. Native production
 - Glaze UI and accessibility acceptance;
 - independent exact-artifact verification, SBOM/signature/provenance acceptance for the eventual approved package, and governed release promotion.
 
-Passing source or staged-install CI is not Stable or production evidence.
+Passing source or staged-install CI is not Stable or production evidence. Passing maintenance compatibility CI is likewise not Stable or production evidence.
