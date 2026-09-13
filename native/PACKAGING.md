@@ -48,6 +48,27 @@ That value is propagated into:
 
 The AppStream release remains explicitly `type="development"`. Selecting `-Dproduct_identity=production` changes the application identity being staged; it does not promote the source version or lifecycle to Stable. The `Native Version Contract` workflow must prove Meson introspection, generated runtime identity, rendered About source, and installed AppStream metadata all agree for both identities.
 
+## Format-neutral package payload contract
+
+`native/package-contract.json` is the machine-readable authority for the current host-native staged package payload boundary. It deliberately does not select RPM, DEB, or any other distribution package format. Under issue #97, the package format remains unselected until GoreeCloud establishes the supported distribution/package-manager scope and approves an artifact model from authoritative requirements rather than inferring one from CI or a test workstation.
+
+The contract records:
+
+- the canonical package name, `/usr` install prefix, application identities, and Meson version authority;
+- the exact host-native file payload currently produced by the application, migration-maintenance, and host-session components;
+- host-side components that must remain outside the Flatpak sandbox;
+- user state that package actions must preserve rather than treat as package-owned disposable data;
+- fail-closed package-action policy that forbids automatic migration, automatic partial migration, transitional-state deletion, user-state deletion, host-agent enablement, or host-agent start at this Development checkpoint; and
+- the evidence boundary requiring a retained staged-payload manifest plus package-manager, physical-workstation, exact-artifact, and Everkeep recovery acceptance before production or Stable claims.
+
+`native/tools/validate-package-contract.py` resolves the identity-specific payload and compares it to the combined staged application plus host-agent filesystem root. Validation fails on missing files, unexpected files, non-regular package-owned paths, executable-mode drift, obsolete `.Native` identity paths, package-policy drift, sandbox-boundary drift, or premature package-format selection. Future distro-specific package definitions must be derived from this governed payload contract rather than silently adding or omitting installed files.
+
+`native/tools/render-package-payload-manifest.py` creates deterministic staged-payload provenance for Development and production identities after the exact payload has passed validation. Each manifest contains only package-owned evidence: the exact Git source revision, Meson-derived version, selected application identity, package-format state, installed path, file mode, byte size, and SHA-256 digest. It does not inspect user configuration, terminal content, shell history, credentials, secrets, SSH data, environment values, or migration-source contents. The `Native Install Layout Contract` retains the two manifests as a 30-day CI evidence artifact named with the exact source SHA.
+
+The retained staged-payload provenance is Development validation evidence only. It is not a signed distro package, an SBOM substitute, package-manager acceptance, a published release artifact, production approval, or Stable evidence.
+
+This contract establishes a format-neutral package payload definition only. It is not a distro package, package-manager transaction, signature, published artifact, workstation installation, migration approval, production approval, or Stable evidence.
+
 ## Host-session component
 
 The host-session agent remains a separate native Meson project because it runs outside a sandboxed application boundary and has different installation and security responsibilities.
@@ -120,14 +141,16 @@ The repository staging contract must, for both Development and production identi
 10. prove the sandbox-style/Flatpak configuration excludes the migration command and compatibility schema with `install_migration_tool=false`;
 11. build and stage the host-agent into the same temporary filesystem root;
 12. verify the systemd user service points to the staged layout's canonical `/usr/libexec/goreecloud-terminal-host-agent` runtime path and remains lifecycle-only so spawned host shells retain normal host semantics;
-13. prove the staged AppStream release version equals the Meson/runtime version for both application identities; and
-14. validate migration preflight, explicit partial-migration consent, private backup/rollback behavior, checksum rejection, and failure rollback in automated tests.
+13. prove the staged AppStream release version equals the Meson/runtime version for both application identities;
+14. validate migration preflight, explicit partial-migration consent, private backup/rollback behavior, checksum rejection, and failure rollback in automated tests;
+15. validate each combined staged host-native root against `native/package-contract.json`, rejecting missing or unexpected package-owned files and any premature package-format selection; and
+16. render and retain deterministic Development and production staged-payload provenance manifests bound to the exact source SHA and Meson-derived version.
 
 ## Remaining production blockers
 
 This staged layout is only one build/package-validation layer. Native production readiness still requires, at minimum:
 
-- a governed native package/artifact format and exact artifact identity;
+- completion of issue #97 with a governed native package/artifact format, supported distribution/package-manager scope, and exact artifact identity;
 - governed production/Stable version assignment, package-version policy, release tags, and release notes beyond the current `0.1.0-dev` Development authority;
 - supported-workstation installation and removal behavior;
 - package-manager and physical supported-workstation upgrade, coexistence/replacement, migration, rollback, interruption, and recovery validation against the transitional line;
@@ -137,6 +160,6 @@ This staged layout is only one build/package-validation layer. Native production
 - real Privacy Shield-authorized remote/SSH acceptance;
 - all applicable Integral Platform System integrations and evidence;
 - Glaze UI and accessibility acceptance;
-- independent exact-artifact verification and governed release promotion.
+- independent exact-artifact verification, SBOM/signature/provenance acceptance for the eventual approved package, and governed release promotion.
 
 Passing source or staged-install CI is not Stable or production evidence.
